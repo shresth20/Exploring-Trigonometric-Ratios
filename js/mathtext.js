@@ -61,17 +61,28 @@
     return TOKEN.test(String(text == null ? '' : text));
   }
 
-  /* A root: the sign, and the figure it covers wearing the bar as its top
-     edge. One inline-flex, so it never breaks between the two. */
+  /* A root, as it is typeset: the sign DRAWN (not the √ glyph, whose top
+     never meets the bar) with its last stroke running up into the bar,
+     and the figure it covers wearing that bar as its top edge. The sign is
+     in em units -- 100 to the em -- so it is as tall as the figure and its
+     bar whatever the size; its top stroke sits exactly on the bar. One
+     inline-flex, so it never breaks between the two. */
+  var SVG_NS = 'http://www.w3.org/2000/svg';
+  var SIGN_PATH = 'M3 72 L13 65 L29 110 L54 4 L58 4';
+
   function radical(n) {
     var el = document.createElement('span');
     el.className = 'rad';
     el.setAttribute('role', 'img');
     el.setAttribute('aria-label', '√' + n);
-    var sign = document.createElement('span');
-    sign.className = 'rad__sign';
+    var sign = document.createElementNS(SVG_NS, 'svg');
+    sign.setAttribute('class', 'rad__sign');
+    sign.setAttribute('viewBox', '0 0 58 118');
     sign.setAttribute('aria-hidden', 'true');
-    sign.textContent = '√';
+    sign.setAttribute('focusable', 'false');
+    var stroke = document.createElementNS(SVG_NS, 'path');
+    stroke.setAttribute('d', SIGN_PATH);
+    sign.appendChild(stroke);
     var x = document.createElement('span');
     x.className = 'rad__x';
     x.setAttribute('aria-hidden', 'true');
@@ -157,9 +168,141 @@
     return el;
   }
 
+  /* ======================================================================
+   * A root in a figure label (SVG <text>)
+   * ----------------------------------------------------------------------
+   * A <text> cannot hold a drawn path, so a watched label keeps one beside
+   * it -- its "ink", the next sibling -- with the same sign and bar as
+   * .rad above. The label itself keeps the figure under the bar and a
+   * space where the sign goes; the ink is drawn over that space and along
+   * the top of the figure, in the label's own coordinates, and wears the
+   * label's transform, classes and inline style, so it lands, pulses,
+   * turns and fades with it. Anything that writes the label -- writeVal,
+   * or textContent set straight -- is seen, and the root laid out again.
+   *
+   *   MathText.watch(textEl)  -- keep any root in this label drawn
+   * ====================================================================== */
+  var SIGN_W = 58, SIGN_TOP = 4, SIGN_FOOT = 110;
+  var SIGN_PTS = [[3, 72], [13, 65], [29, 110], [54, 4], [58, 4]];
+  var watched = [];
+  var measurer = null;
+
+  function round2(n) { return Math.round(n * 100) / 100; }
+
+  /* How far the figures rise above the baseline, in the label's own units. */
+  function capOf(text, s) {
+    if (!measurer) measurer = document.createElement('canvas').getContext('2d');
+    var cs = global.getComputedStyle(text);
+    measurer.font = cs.fontWeight + ' ' + cs.fontSize + ' ' + cs.fontFamily;
+    return measurer.measureText(s).actualBoundingBoxAscent;
+  }
+
+  /* The label's text as tspans: each root's figure in a .rad-x, after a
+     .rad-gap that holds the sign's room. Plain text is left plain. */
+  function layoutSvg(text) {
+    if (text.querySelector('tspan.rad-x')) return;
+    var s = text.textContent;
+    RADICAL.lastIndex = 0;
+    if (!RADICAL.test(s)) return;
+    text.textContent = '';
+    var from = 0, m;
+    RADICAL.lastIndex = 0;
+    while ((m = RADICAL.exec(s)) !== null) {
+      if (m.index > from) text.appendChild(document.createTextNode(s.slice(from, m.index)));
+      var gap = document.createElementNS(SVG_NS, 'tspan');
+      gap.setAttribute('class', 'rad-gap');
+      gap.textContent = ' ';
+      var x = document.createElementNS(SVG_NS, 'tspan');
+      x.setAttribute('class', 'rad-x');
+      x.textContent = m[1];
+      text.appendChild(gap);
+      text.appendChild(x);
+      from = m.index + m[0].length;
+    }
+    if (from < s.length) text.appendChild(document.createTextNode(s.slice(from)));
+  }
+
+  /* The ink takes on the label's look: its classes (so its opacity and
+     its pulse), its transform and inline style, and its colour as stroke. */
+  function mirror(text, ink) {
+    ink.setAttribute('class', (text.getAttribute('class') || '') + ' rad-ink');
+    var tf = text.getAttribute('transform');
+    if (tf) ink.setAttribute('transform', tf); else ink.removeAttribute('transform');
+    ink.setAttribute('style', (text.getAttribute('style') || '') +
+      ';stroke:' + global.getComputedStyle(text).fill);
+  }
+
+  /* The sign and bar for every root in the label; false while the label
+     cannot be measured (it, or a group round it, is hidden). */
+  function drawSvg(text) {
+    var ink = text._radInk;
+    var roots = text.querySelectorAll('tspan.rad-x');
+    if (!roots.length) { ink.setAttribute('d', ''); return true; }
+    if (ink.previousSibling !== text && text.parentNode) {
+      text.parentNode.insertBefore(ink, text.nextSibling);
+    }
+    var d = '', fs = parseFloat(global.getComputedStyle(text).fontSize) || 25;
+    try {
+      for (var i = 0; i < roots.length; i++) {
+        var x = roots[i], gap = x.previousSibling;
+        var n = x.textContent.length;
+        var start = x.getStartPositionOfChar(0);
+        var end = x.getEndPositionOfChar(n - 1).x;
+        var g0 = gap.getStartPositionOfChar(0).x;
+        if (!(end > start.x)) return false;
+        var bar = start.y - capOf(text, x.textContent) - 0.14 * fs;
+        var foot = start.y + 0.04 * fs;
+        var x1 = start.x - 0.04 * fs;
+        var x0 = Math.max(g0, x1 - 0.55 * fs);
+        var pts = SIGN_PTS.map(function (p) {
+          return round2(x0 + p[0] / SIGN_W * (x1 - x0)) + ' ' +
+                 round2(bar + (p[1] - SIGN_TOP) / (SIGN_FOOT - SIGN_TOP) * (foot - bar));
+        });
+        pts.push(round2(end + 0.06 * fs) + ' ' + round2(bar));
+        d += 'M' + pts.join(' L');
+      }
+    } catch (e) {
+      return false;
+    }
+    ink.setAttribute('d', d);
+    ink.setAttribute('stroke-width', round2(0.08 * fs));
+    mirror(text, ink);
+    return true;
+  }
+
+  function update(text) {
+    layoutSvg(text);
+    if (drawSvg(text) || text._radRetry) return;
+    /* not measurable yet: look again shortly, while the label is still in
+       the page and still has a root to draw */
+    text._radRetry = setTimeout(function () {
+      text._radRetry = null;
+      if (text.isConnected && text.querySelector('tspan.rad-x')) update(text);
+    }, 150);
+  }
+
+  function watch(text) {
+    if (!text || text._radInk) return text;
+    text._radInk = document.createElementNS(SVG_NS, 'path');
+    text._radInk.setAttribute('aria-hidden', 'true');
+    new MutationObserver(function () { update(text); }).observe(text, {
+      childList: true, characterData: true, subtree: true, attributes: true,
+      attributeFilter: ['x', 'y', 'dx', 'dy', 'text-anchor', 'transform', 'class', 'style', 'hidden']
+    });
+    watched.push(text);
+    update(text);
+    return text;
+  }
+
+  /* the figures move once the display face has loaded */
+  if (document.fonts && document.fonts.ready) {
+    document.fonts.ready.then(function () { watched.forEach(update); });
+  }
+
   global.MathText = {
     GLYPHS: GLYPHS,
     has: has,
-    write: write
+    write: write,
+    watch: watch
   };
 })(window);

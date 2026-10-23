@@ -685,18 +685,46 @@ body {
 }
 
 /* ---- A root drawn -----------------------------------------------------------
-   √2, √3: the sign, and the figure it covers wearing the bar as its top
-   edge -- the vinculum -- so the root reads as it is written by hand. */
+   √2, √3 as they are typeset: the sign drawn (mathtext.js), its last
+   stroke running up into the bar -- the vinculum -- which is the top edge
+   of the figure it covers. The sign's box is 1.18em tall, the same as the
+   figure's (.08em bar + .1em gap + a 1em line), so the two meet exactly.
+   The sign stands out of the flow, so the root sits on the line by the
+   figure's own baseline. */
 .rad {
+  position: relative;
   display: inline-flex;
   align-items: flex-start;
+  padding-left: .58em;
   white-space: nowrap;
 }
-.rad__sign { line-height: 1; }
+.rad__sign {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: .58em;
+  height: 1.18em;
+  overflow: visible;
+}
+.rad__sign path {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 8;
+  stroke-linecap: butt;
+  stroke-linejoin: round;
+}
 .rad__x {
-  padding: .06em .08em 0 .04em;
-  border-top: .085em solid currentColor;
+  padding: .1em .08em 0 .04em;
+  border-top: .08em solid currentColor;
   line-height: 1;
+}
+/* The same sign and bar beside a label on the figure (an SVG <text>
+   cannot hold them), stroked in the label's colour. */
+.rad-ink {
+  fill: none !important;
+  stroke-linecap: butt;
+  stroke-linejoin: round;
+  pointer-events: none;
 }
 
 /* ---- Next ---------------------------------------------------------------

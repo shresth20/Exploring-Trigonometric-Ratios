@@ -35,12 +35,15 @@
   var A = { x: 350, y: 345 }, B = { x: 650, y: 345 }, C = { x: 650, y: 135 };
   var DRAW_TIME = 2.4;
 
-  /* The three boxes round the triangle, each tied to its side. */
+  /* The three boxes round the triangle, each tied to its side: every
+     leader ends ON its side's midpoint. The adjacent box sits below the
+     base, so its leader comes up from underneath and never crosses θ or
+     the hypotenuse on the way. */
   function boxSpecs(t) {
     return [
-      { name: 'lblHypotenuse', x: 60,  y: 118, anchor: t.outsideOf('CA', 12) },
-      { name: 'lblOpposite',   x: 760, y: 182, anchor: t.outsideOf('BC', 12) },
-      { name: 'lblAdjacent',   x: 60,  y: 300, anchor: t.outsideOf('AB', 12) }
+      { name: 'lblHypotenuse', x: 60,  y: 118, anchor: t.midOf('CA') },
+      { name: 'lblOpposite',   x: 760, y: 182, anchor: t.midOf('BC') },
+      { name: 'lblAdjacent',   x: 60,  y: 362, anchor: t.midOf('AB') }
     ];
   }
 

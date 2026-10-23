@@ -157,6 +157,8 @@
     Object.keys(SIDES).forEach(function (s) {
       words[s] = el('text', { 'class': 'figure-label tri__word', 'data-side': s, 'text-anchor': 'middle' }, group);
       vals[s]  = el('text', { 'class': 'figure-label tri__val', 'data-side': s, 'text-anchor': 'middle' }, group);
+      /* a length may be a root (√2, √3 units): drawn with its sign and bar */
+      if (global.MathText) global.MathText.watch(vals[s]);
     });
     ['A', 'B', 'C'].forEach(function (v) {
       angles[v] = el('text', { 'class': 'figure-label tri__angle', 'data-vertex': v, 'text-anchor': 'middle' }, group);

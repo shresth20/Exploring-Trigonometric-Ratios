@@ -136,7 +136,7 @@
         /* the angle's measure takes θ's place while the slider is in hand */
         t.writeAngle('A', T('lblDegVal', { n: START_DEG }));
         slider = W.slider({
-          min: 20, max: 70, value: START_DEG, target: 45, snap: 2,
+          min: 20, max: 50, value: START_DEG, target: 45, snap: 2,
           label: T('lblAngle'),
           onChange: function (v) {
             shapeAt(v);

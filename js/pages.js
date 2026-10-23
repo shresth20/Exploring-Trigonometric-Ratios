@@ -103,7 +103,9 @@
   /* One box, with the dashed leader that ties it to the part it is for.
      `b` is { name, x, y, anchor }: where the box sits and the point its
      leader runs to. The leader runs level out of the box, turns once, and
-     goes to the anchor. */
+     goes to the anchor. The leader itself is drawn the other way, from the
+     anchor back to the box, so its dash pattern starts with a dash ON the
+     part and never leaves a gap there; the mask still draws from the box. */
   var maskN = 0;
   function buildBox(group, defs, b) {
     var left = b.x + BOX_W / 2 < (b.anchor ? b.anchor.x : CX);
@@ -122,7 +124,10 @@
     mask.appendChild(maskPath);
     defs.appendChild(mask);
 
-    var leader = el('path', { 'class': 'q-leader', d: d, mask: 'url(#' + maskId + ')' });
+    var back = 'M' + round2(target.x) + ' ' + round2(target.y) +
+               ' L' + round2(turn.x) + ' ' + round2(turn.y) +
+               ' L' + round2(edge.x) + ' ' + round2(edge.y);
+    var leader = el('path', { 'class': 'q-leader', d: back, mask: 'url(#' + maskId + ')' });
     group.appendChild(leader);
 
     var g = el('g', { 'class': 'q-box', 'data-name': b.name, tabindex: 0, role: 'button' });
