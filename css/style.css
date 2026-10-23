@@ -1,0 +1,1036 @@
+/* ==========================================================================
+   Exploring Trigonometric Ratios -- base layer
+   Screen shell: full-bleed night-sky artwork + a 16:9 board floating on it.
+   The shell, the bird, the bubbles, the pills and the Next disc are the
+   lesson's common kit; everything the triangle pages draw of their own is
+   in css/trig.css.
+   ========================================================================== */
+
+/* ---- Fonts (bundled, offline only -- no CDN) ---------------------------- */
+/* Baloo 2 is the game's one typeface for the lesson. Lilita One is the face
+   the welcome title is lettered in; the title is painted into the welcome
+   artwork now, so the face is kept for --font-title only. Poppins stays
+   registered purely as the fallback for the frame or two before the
+   variable font has decoded. */
+@font-face {
+  font-family: "Baloo 2";
+  src: url("../assets/fonts/baloo_2/baloo2-variablefont_wght.woff2") format("woff2-variations");
+  font-weight: 400 800;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Lilita One";
+  src: url("../assets/fonts/lilita_one/lilitaone-regular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Poppins";
+  src: url("../assets/fonts/poppins/poppins-regular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Poppins";
+  src: url("../assets/fonts/poppins/poppins-semibold.woff2") format("woff2");
+  font-weight: 600;
+  font-display: swap;
+}
+@font-face {
+  font-family: "Poppins";
+  src: url("../assets/fonts/poppins/poppins-bold.woff2") format("woff2");
+  font-weight: 700;
+  font-display: swap;
+}
+
+/* ==========================================================================
+   Tokens
+   The palette block is the game's shared colour set, mixed from the
+   artwork it sits on: a moonlit indigo sky behind, a pale periwinkle board
+   with blue waves in its corners. Everything below the palette is DERIVED
+   from it: no scene, and no rule in any other file, writes a raw hex value.
+   ========================================================================== */
+:root {
+  /* ---- palette ---------------------------------------------------------- */
+  /* Common text: the sky's indigo taken down to an ink */
+  --text-primary: #262A7A;
+  --text-secondary: #5A5E9E;
+
+  /* Board: the pale face, and the blue wave painted into its corners */
+  --board-bg: #F4F6FF;
+  --board-decoration: #DDE4FF;
+
+  /* Sky blue -- the board's waves */
+  --blue-fill: #8FB8FF;
+  --blue-border: #3A6FD8;
+
+  /* Teal */
+  --teal-fill: #7FE0D2;
+  --teal-border: #1FA393;
+
+  /* Indigo -- the sky */
+  --indigo-fill: #A6A4FF;
+  --indigo-border: #5B55D6;
+
+  /* Rose */
+  --rose-fill: #FFA3B5;
+  --rose-border: #D9456B;
+
+  /* Amber -- the moon */
+  --amber-fill: #FFD58A;
+  --amber-border: #D1922A;
+
+  /* ---- the triangle: the marks themselves --------------------------------
+     One ink per side ROLE, for the mark on the board and the word that
+     names it alike: the three sides and the three names are the one idea
+     seen twice, so they share a colour. Before a side has a role it is
+     drawn in the plain line ink. */
+  --tri-line:   #3F43B5;      /* a side before it is named              */
+  --tri-fill:   #E3E8FF;      /* the wash inside                        */
+  --side-opp:   #E0457B;      /* opposite                               */
+  --side-adj:   #1FA393;      /* adjacent                               */
+  --side-hyp:   #5B55D6;      /* hypotenuse                             */
+  --angle-ink:  #E8921A;      /* θ: its arc and its letter              */
+  --right-ink:  var(--text-primary);  /* the right angle's small square  */
+  --tri-point:  #262A7A;      /* the vertices                           */
+  /* One weight for every side of every triangle, lesson and activity alike. */
+  --part-weight: 4;
+
+  /* ---- right and wrong --------------------------------------------------
+     A true green and a true red for answers, read in the quarter-second a
+     verdict is on screen. */
+  --right-fill:   #7EE08A;
+  --right-border: #2FB84B;
+  --wrong-fill:   #FF7B7B;
+  --wrong-border: #E8323A;
+
+  /* ---- derived: surfaces ------------------------------------------------ */
+  --board-highlight: #FFFFFF;
+  --board-border: #FFFFFF;
+
+  /* ---- derived: the speech bubble ---------------------------------------
+     The bubble is the board's own surface, lifted off the page and given a
+     tail: same panel colour, same white rim, same ink. */
+  --bubble-bg: var(--board-decoration);
+  --bubble-rim: var(--board-highlight);
+  --bubble-ink: var(--text-primary);
+  --bubble-sheen: #FFFFFF;
+
+  /* The page behind the board, in the sky's own indigo. */
+  --page-bg: #2F2DA6;
+  --page-bg-deep: #1B1A66;
+
+  /* ---- derived: raised controls ----------------------------------------
+     --horizon is the wall a 3D control stands on: the same hue as the
+     surface, dropped far enough to read as a side rather than as a shadow. */
+  --horizon: color-mix(in srgb, var(--blue-fill) 40%, var(--board-decoration));
+  --button-bg: var(--board-decoration);
+  --button-text: var(--text-primary);
+
+  /* ---- derived: the pills -------------------------------------------------
+     One face, one rim and one wall for every pill in the game -- the names
+     in the tray, the answers under a question, the values in a sentence --
+     so the same object reads the same wherever it stands. */
+  --pill-border: var(--blue-border);
+  --pill-face-mid: color-mix(in srgb, var(--blue-fill) 18%, #FFFFFF);
+  --pill-face-low: color-mix(in srgb, var(--blue-fill) 36%, #FFFFFF);
+  --pill-wall: color-mix(in srgb, var(--blue-border) 78%, var(--horizon));
+
+  /* ---- derived: the round Next disc --------------------------------------
+     A rim, a face lit from the top, and a rounded arrow -- in the moon's
+     amber, so it is the one warm thing on the cool board. */
+  --next-rim:    var(--amber-border);
+  --next-face-1: color-mix(in srgb, var(--amber-fill) 55%, #FFFFFF);
+  --next-face-2: var(--amber-fill);
+  --next-face-3: color-mix(in srgb, var(--amber-fill) 72%, var(--amber-border));
+  --next-arrow:  var(--board-highlight);
+
+  /* ---- derived: glow and shadow ----------------------------------------- */
+  --glow-board: color-mix(in srgb, #FFFFFF 55%, transparent);
+  --glow-board-soft: color-mix(in srgb, var(--blue-fill) 40%, transparent);
+  --glow-board-dim: color-mix(in srgb, var(--indigo-border) 28%, transparent);
+  --shadow-soft: color-mix(in srgb, var(--text-primary) 18%, transparent);
+  --shadow-deep: color-mix(in srgb, var(--text-primary) 30%, transparent);
+
+  /* ---- derived: the ink names the rest of the game uses ------------------ */
+  --ink: var(--text-primary);
+  --ink-soft: var(--text-secondary);
+
+  --font-display: "Baloo 2", "Poppins", system-ui, sans-serif;
+  --font-body: "Baloo 2", "Poppins", system-ui, sans-serif;
+  --font-title: "Lilita One", "Baloo 2", system-ui, sans-serif;
+
+  /* ---- artwork (script.js preloads the same files) ---------------------- */
+  --art-page: url("../assets/images/background.png");
+  --art-board: url("../assets/images/board.png");
+  --art-welcome: url("../assets/images/welcome.png");
+
+  /* ---- stacking ---------------------------------------------------------
+     One ladder for the whole frame, so "behind the board" and "on the header"
+     are the same idea expressed twice rather than two piles of magic numbers. */
+  --z-hero: 1;        /* the mascot out on the field -- UNDER the board      */
+  --z-board: 2;
+  --z-stage: 1;       /* inside the board: the figure                        */
+  --z-footer: 2;      /* inside the board: the names to drag                 */
+  --z-header: 3;      /* inside the board: the prompt row and its mascot     */
+  --z-next: 6;        /* over the board, under the welcome screen            */
+  --z-welcome: 9;
+
+  /* One 16:9 box that always fits: capped by a max width, by the viewport
+     width, and -- via 160vh (= 90vh x 16/9) -- by the viewport height. */
+  --board-w: min(1500px, 96vw, 160vh);
+
+  /* The three board bands, as fractions of the board's own height. Fixed
+     rather than content-sized: the header has to hold its height on the
+     beats where it is empty, or the figure below it would shift. */
+  --row-top: 16%;
+  --row-bottom: 11%;
+
+  /* The board's own padding, named so a section can work out the stage's
+     full size. */
+  --board-pad-y: clamp(10px, 2.2vh, 22px);
+  --board-pad-x: clamp(18px, calc(var(--board-w) * .032), 44px);
+  --stage-full-h: calc(var(--board-w) * 9 / 16 - 2 * var(--board-pad-y) - 6px);
+  --stage-full-w: calc(var(--board-w) - 2 * var(--board-pad-x) - 6px);
+
+  /* The bird beside the figure, and the type of the pane it speaks from. */
+  --bird-beside: calc(var(--stage-full-h) * .36);
+  --bubble-beside-fs: calc(var(--stage-full-w) * .5 * .053);
+  /* The type size of everything set in the right pane -- the equations,
+     the table, the slider -- keyed to the board itself as the bubble's is,
+     so the pane and the figure beside it scale as one. */
+  --pane-fs: clamp(14px, calc(var(--board-w) * .0215), 34px);
+}
+
+/* ---- Reset -------------------------------------------------------------- */
+*,
+*::before,
+*::after { box-sizing: border-box; }
+
+html, body {
+  height: 100%;
+  margin: 0;
+  padding: 0;
+}
+
+body {
+  min-height: 100dvh;
+  overflow: hidden;
+  font-family: var(--font-body);
+  color: var(--ink);
+  -webkit-font-smoothing: antialiased;
+  -webkit-tap-highlight-color: transparent;
+
+  /* Artwork over the full viewport, over a token gradient that carries the
+     first frame and any decode failure. Covered at its own proportions. */
+  background:
+    var(--art-page) center / cover no-repeat,
+    linear-gradient(180deg, var(--page-bg) 0%, var(--page-bg-deep) 100%);
+  background-color: var(--page-bg);
+}
+
+/* ---- Shell -------------------------------------------------------------- */
+#app {
+  position: relative;
+  width: 100%;
+  height: 100dvh;
+  display: grid;
+  place-items: center;
+}
+
+/* The staging box. Everything in the lesson is positioned against it, so a
+   control placed in its bottom-right corner stays there whether or not the
+   board is on screen. */
+.frame {
+  position: relative;
+  width: var(--board-w);
+  aspect-ratio: 16 / 9;
+}
+
+/* ---- Board -------------------------------------------------------------- */
+.board {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-board);
+
+  display: grid;
+  grid-template-rows: var(--row-top) minmax(0, 1fr) var(--row-bottom);
+  padding: var(--board-pad-y) var(--board-pad-x);
+  border-radius: clamp(18px, 3.4vh, 34px);
+  border: 3px solid var(--board-border);
+  background:
+    var(--art-board) center / 100% 100% no-repeat,
+    radial-gradient(72% 58% at 50% 42%, var(--board-highlight) 0%, var(--board-bg) 70%);
+  background-color: var(--board-bg);
+  /* The halo the board sits in. Every layer is blurred: a spread with no blur
+     paints a solid ring, and a solid ring has a visible edge. */
+  box-shadow:
+    0 0 12px 0 var(--glow-board),
+    0 0 32px 8px var(--glow-board-soft),
+    0 0 68px 22px var(--glow-board-dim),
+    0 18px 44px var(--shadow-deep);
+
+  /* Laid out from the first frame but invisible until the scene reveals it. */
+  opacity: 0;
+  visibility: hidden;
+}
+.board.show { opacity: 1; visibility: visible; }
+
+/* The top band, closed: nothing is in it -- the bird has gone and the line
+   has been cleared -- so the row is taken away and the stage below takes
+   the room (see collapseHeader in pages.js). */
+.board.is-headless { --row-top: 0%; }
+/* Both bands closed: the picture has the whole board. */
+.board.is-bare { --row-top: 0%; --row-bottom: 0%; }
+/* The bottom band, closed while nothing is in it. */
+.board:not(:has(.board__bottom > :not([hidden]))) { --row-bottom: 0%; }
+.board { transition: grid-template-rows .45s ease; }
+
+/* The three bands. Each gets its own level on the --z ladder. */
+.board__top {
+  position: relative;
+  z-index: var(--z-header);
+  min-height: 0;
+  display: grid;
+  align-items: end;
+}
+.board__bottom {
+  position: relative;
+  z-index: var(--z-footer);
+  min-height: 0;
+}
+.board__stage {
+  position: relative;
+  z-index: var(--z-stage);
+  min-height: 0;
+  display: grid;
+  place-items: center;
+}
+
+/* ---- The prompt row (header) -------------------------------------------
+   Mascot, then the line it is saying. The row is laid out from the first
+   frame and holds its height whether or not there is text in it. The pair
+   is centred in the header on the words' own width. */
+.prompt {
+  display: flex;
+  align-items: flex-end;
+  justify-content: center;
+  height: 100%;
+  padding-inline: clamp(8px, 2%, 28px);
+}
+
+/* The mascot's header slot. Taller than the band it sits in, so the bird
+   stands ON the header rather than inside it. */
+.prompt__mascot {
+  position: relative;
+  flex: 0 0 auto;
+  align-self: flex-end;
+  height: 120%;
+  aspect-ratio: 1;
+  pointer-events: none;
+}
+.prompt__line {
+  margin: 0;
+  align-self: center;
+  flex: 0 1 auto;
+  min-width: 0;
+  text-align: left;
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(17px, 3.3vh, 32px);
+  line-height: 1.22;
+  color: var(--text-primary);
+}
+/* The typed line wraps where its box does: each word keeps its trailing
+   space, and a space at the end of a row hangs rather than breaking. */
+.prompt__line .type { white-space: pre-wrap; }
+
+/* ==========================================================================
+   The figure
+   Laid over the stage rather than sized inside it, so the picture is sized
+   by the shorter side -- the height -- and centred on the longer one.
+   ========================================================================== */
+.figure {
+  position: absolute;
+  --figure-grow: 8%;
+  --figure-lift: 0%;
+  inset: calc(var(--figure-grow) / -2);
+  top: calc(var(--figure-grow) / -2 - var(--figure-lift));
+  display: block;
+  width: calc(100% + var(--figure-grow));
+  height: calc(100% + var(--figure-grow));
+  overflow: visible;
+  filter: drop-shadow(0 3px 5px var(--shadow-soft));
+  /* The figure is pressed and dragged on -- names dropped on it, a point
+     slid -- and a browser that takes a finger on it for a scroll cancels
+     the pointer mid-gesture. The page never scrolls, so nothing is lost. */
+  touch-action: none;
+}
+.figure g[hidden] { display: none; }
+.board:not(.is-headless):not(.is-bare) .figure { --figure-lift: 4%; }
+
+/* Every word set ON the figure is the same piece of lettering; only the
+   colour is the mark's own. The size is in user units, so a word scales
+   with the shape it is naming. */
+.figure-label {
+  font-family: var(--font-display);
+  font-weight: 800;
+  font-size: 27px;
+  letter-spacing: .3px;
+}
+
+/* ---- Points ---------------------------------------------------------------
+   Every vertex is the same mark, in the deep indigo ink. */
+.end-dot {
+  fill: var(--tri-point);
+  opacity: 0;
+}
+.pt-defs { position: absolute; width: 0; height: 0; overflow: hidden; }
+.pt-mark { fill: var(--tri-point); }
+.pt-end   { marker-end: url(#ptMark); }
+.pt-start { marker-start: url(#ptMark); }
+.pt-ends  { marker-start: url(#ptMark); marker-end: url(#ptMark); }
+
+/* ---- The callout --------------------------------------------------------
+   The board's own ink, not a colour off the figure: an annotation is not
+   part of the shape. */
+.mark__arrow,
+.mark__head {
+  fill: none;
+  stroke: var(--text-primary);
+  stroke-width: 2.4;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.mark__arrow {
+  stroke-dasharray: 4 4;
+  stroke-linecap: butt;
+}
+.mark__arrow-mask {
+  fill: none;
+  stroke: #FFFFFF;
+  stroke-width: 12;
+  stroke-linecap: round;
+}
+.mark__label { fill: var(--text-primary); }
+
+/* ==========================================================================
+   The activity -- name the parts
+   Boxes hung off the figure, each tied by a dashed leader to the side it
+   is for, and names dragged into them from the tray.
+   ========================================================================== */
+.q-leader,
+.q-box {
+  opacity: 0;
+  transition: opacity .34s ease;
+}
+.q-leader.is-shown,
+.q-box.is-shown { opacity: 1; }
+
+.q-leader.is-shown.is-quiet { opacity: .32; }
+.q-box.is-shown.is-quiet { opacity: .42; }
+
+.q-leader.is-shown.is-quiet.is-over,
+.q-box.is-shown.is-quiet.is-over,
+.q-box.is-shown.is-quiet.is-right,
+.q-box.is-shown.is-quiet.is-wrong,
+.q-box.is-shown.is-quiet:focus-visible { opacity: 1; }
+.q-leader.is-shown.is-quiet.is-target,
+.q-box.is-shown.is-quiet.is-target { opacity: 1; }
+
+/* The leader from each box to its side: dashed, in the softer ink, so it
+   is plainly a tie and not a fourth line on the triangle. Shown through a
+   mask drawn with the dash trick -- see boxIn in animations.js. */
+.q-leader {
+  fill: none;
+  stroke: var(--text-secondary);
+  stroke-width: 2;
+  stroke-dasharray: 4 7;
+  stroke-linecap: butt;
+  stroke-linejoin: miter;
+}
+.q-leader-mask {
+  fill: none;
+  stroke: #FFFFFF;
+  stroke-width: 8;
+  stroke-linejoin: miter;
+}
+
+/* A box. Dashed and empty while it waits; solid green with a tick once it
+   has its name; red for a beat when it is given the wrong one. */
+.q-box {
+  outline: none;
+  cursor: default;
+  pointer-events: none;
+}
+.is-live .q-box {
+  pointer-events: all;
+  cursor: pointer;
+}
+.is-live .q-box.is-right {
+  pointer-events: none;
+  cursor: default;
+}
+.q-box__rect {
+  fill: var(--board-highlight);
+  stroke: var(--pill-border);
+  stroke-width: 2.4;
+  stroke-dasharray: 8 6;
+  transition: stroke .25s ease, fill .25s ease, stroke-width .25s ease;
+}
+.q-box.is-target .q-box__rect,
+.q-box.is-over .q-box__rect {
+  fill: color-mix(in srgb, var(--blue-fill) 24%, #FFFFFF);
+  stroke-width: 3.2;
+}
+.q-box.is-right .q-box__rect {
+  fill: color-mix(in srgb, var(--right-fill) 28%, #FFFFFF);
+  stroke: var(--right-border);
+  stroke-width: 3.2;
+  stroke-dasharray: none;
+}
+.q-box.is-wrong .q-box__rect {
+  fill: color-mix(in srgb, var(--wrong-fill) 30%, #FFFFFF);
+  stroke: var(--wrong-border);
+  stroke-width: 3.2;
+  stroke-dasharray: none;
+}
+.q-box:focus-visible .q-box__rect {
+  stroke: var(--pill-border);
+  stroke-width: 3.6;
+  stroke-dasharray: none;
+}
+.q-box__text {
+  fill: var(--text-primary);
+  font-size: 22px;
+  opacity: 0;
+}
+/* The tick beside a right answer. */
+.q-badge { opacity: 0; }
+.q-badge__ring { fill: var(--right-border); }
+.q-badge__tick {
+  fill: none;
+  stroke: #FFFFFF;
+  stroke-width: 3;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ---- The names to drag --------------------------------------------------
+   Pills in the board's footer band. Each stands on a short wall, as the
+   game's other controls do, and lifts off it when picked up. */
+.tray {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  gap: clamp(6px, 1.2%, 16px);
+  padding: 0 1%;
+}
+.tray[hidden] { display: none; }
+.tray--choice { gap: clamp(14px, 3%, 44px); }
+
+.chip {
+  --edge: 4px;
+
+  position: relative;
+  appearance: none;
+  cursor: grab;
+  touch-action: none;
+  user-select: none;
+  -webkit-user-select: none;
+
+  padding: .32em 1.1em .38em;
+  border: 3px solid var(--pill-border);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #FFFFFF 0%, var(--pill-face-mid) 55%, var(--pill-face-low) 100%);
+  box-shadow:
+    0 var(--edge) 0 var(--pill-wall),
+    0 calc(var(--edge) + 3px) 10px var(--shadow-soft);
+
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(12px, min(3vh, 1.9vw), 26px);
+  line-height: 1.1;
+  letter-spacing: .3px;
+  color: var(--text-primary);
+  white-space: nowrap;
+
+  transition: box-shadow .18s ease, border-color .18s ease, filter .18s ease;
+}
+.chip:hover { filter: brightness(1.03); }
+.chip:focus-visible {
+  outline: none;
+  border-color: var(--indigo-border);
+}
+.chip.is-lifted {
+  cursor: grabbing;
+  z-index: 5;
+  box-shadow:
+    0 var(--edge) 0 var(--pill-wall),
+    0 16px 28px var(--shadow-deep);
+}
+.chip.is-picked {
+  border-color: var(--indigo-border);
+  box-shadow:
+    0 var(--edge) 0 var(--pill-wall),
+    0 0 0 4px color-mix(in srgb, var(--blue-fill) 45%, transparent),
+    0 calc(var(--edge) + 3px) 10px var(--shadow-soft);
+}
+.chip.is-docked {
+  visibility: hidden;
+  pointer-events: none;
+}
+
+/* ---- The answers to a question --------------------------------------------
+   The same pill as a name in the tray, pressed rather than dragged. */
+.choice {
+  --edge: 4px;
+
+  position: relative;
+  appearance: none;
+  cursor: pointer;
+  user-select: none;
+  -webkit-user-select: none;
+
+  padding: .3em 1.5em .36em;
+  border: 3px solid var(--pill-border);
+  border-radius: 999px;
+  background: linear-gradient(180deg, #FFFFFF 0%, var(--pill-face-mid) 55%, var(--pill-face-low) 100%);
+  box-shadow:
+    0 var(--edge) 0 var(--pill-wall),
+    0 calc(var(--edge) + 3px) 10px var(--shadow-soft);
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  box-sizing: border-box;
+  min-height: 2.6em;
+
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(14px, min(3vh, 2.2vw), 28px);
+  line-height: 1.1;
+  letter-spacing: .3px;
+  color: var(--text-primary);
+  white-space: nowrap;
+
+  transition: box-shadow .2s ease, border-color .2s ease,
+              background .25s ease, filter .18s ease;
+}
+.choice:hover { filter: brightness(1.03); }
+.choice:focus-visible { outline: none; border-color: var(--indigo-border); }
+
+.choice.is-right {
+  border-color: var(--right-border);
+  background: linear-gradient(180deg, #FFFFFF 0%,
+              color-mix(in srgb, var(--right-fill) 40%, #FFFFFF) 100%);
+  box-shadow:
+    0 var(--edge) 0 var(--right-border),
+    0 calc(var(--edge) + 3px) 10px var(--shadow-soft);
+}
+.choice.is-wrong {
+  border-color: var(--wrong-border);
+  background: linear-gradient(180deg, #FFFFFF 0%,
+              color-mix(in srgb, var(--wrong-fill) 40%, #FFFFFF) 100%);
+  box-shadow:
+    0 var(--edge) 0 var(--wrong-border),
+    0 calc(var(--edge) + 3px) 10px var(--shadow-soft);
+}
+.choice.is-done { cursor: default; pointer-events: none; }
+/* A refused answer, spent: it steps back so the eye is left on the rest. */
+.choice.is-out { opacity: .45; }
+
+/* ---- A fraction stood up ----------------------------------------------------
+   1⁄√2 in a value, written the way it is written on paper: the numerator
+   over the denominator with the bar between -- the span mathtext.js lays
+   out wherever text goes into a pill, a box or a cell. */
+.frac {
+  display: inline-flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: stretch;
+  vertical-align: middle;
+  height: .9em;
+  margin: 0 .1em 0 .04em;
+  font-weight: 800;
+  line-height: 1;
+  letter-spacing: 0;
+  text-align: center;
+  white-space: nowrap;
+}
+.frac__n,
+.frac__d { display: block; padding: 0 .14em; font-size: .7em; }
+.frac__n { padding-bottom: .08em; }
+.frac__d {
+  padding-top: .1em;
+  border-top: .12em solid currentColor;
+}
+
+/* A fraction held in brackets, the brackets drawn as tall as the stack. */
+.frac-group {
+  display: inline-flex;
+  align-items: center;
+  vertical-align: middle;
+  height: .9em;
+  white-space: nowrap;
+}
+.frac-group .frac { margin: 0 .02em; }
+.frac-paren {
+  display: inline-block;
+  font-weight: 400;
+  line-height: 1;
+  transform: scaleY(1.55);
+  transform-origin: 50% 55%;
+}
+
+/* ---- A root drawn -----------------------------------------------------------
+   √2, √3: the sign, and the figure it covers wearing the bar as its top
+   edge -- the vinculum -- so the root reads as it is written by hand. */
+.rad {
+  display: inline-flex;
+  align-items: flex-start;
+  white-space: nowrap;
+}
+.rad__sign { line-height: 1; }
+.rad__x {
+  padding: .06em .08em 0 .04em;
+  border-top: .085em solid currentColor;
+  line-height: 1;
+}
+
+/* ---- Next ---------------------------------------------------------------
+   Anchored to the frame's bottom-right corner, which IS the board's
+   bottom-right corner, whether or not the board is there yet. */
+.next-btn {
+  --edge: 5px;
+  --sink: 0px;
+
+  position: absolute;
+  right: clamp(14px, 2.6%, 40px);
+  bottom: clamp(12px, 2.4%, 34px);
+  z-index: var(--z-next);
+
+  display: grid;
+  place-items: center;
+  width: clamp(56px, 9.2vh, 94px);
+  aspect-ratio: 1;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: none;
+  filter: drop-shadow(0 5px 9px var(--shadow-soft));
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+  translate: 0 var(--sink);
+
+  opacity: 0;
+  transition: filter .18s ease;
+}
+.next-btn[hidden] { display: none; }
+.next-btn:hover,
+.next-btn:focus-visible {
+  filter: drop-shadow(0 8px 13px var(--shadow-soft)) brightness(1.05);
+  outline: none;
+}
+.next-btn:focus-visible { outline: 3px solid var(--indigo-border); outline-offset: 3px; }
+.next-btn.is-3d { transition: filter .18s ease; }
+.next-btn svg { width: 100%; height: 100%; display: block; }
+
+/* ---- The mascot and its slots -------------------------------------------
+   One bird for the whole lesson. It is re-parented between slots and the move
+   is played as a Flip, so welcome screen -> its mark on the field -> board
+   header reads as one continuous character rather than three. */
+.slot {
+  position: absolute;
+  pointer-events: none;
+}
+.slot--hero {
+  z-index: var(--z-hero);          /* under the board, on purpose */
+  left: 27%;
+  bottom: 9%;
+  height: 44%;
+  aspect-ratio: 1;
+  transform: translateX(-50%);
+}
+
+.mascot {
+  width: 100%;
+  height: 100%;
+  background-repeat: no-repeat;
+  background-position: 0 0;
+}
+.mascot[hidden] { display: none; }
+
+/* Away: behind the board, between one line and the next. Opacity rather
+   than [hidden]: the jump has to MEASURE the bird's resting box while it
+   is away, and the row is centred as a pair. */
+.mascot.is-away { opacity: 0; }
+
+/* ---- The hopper ---------------------------------------------------------
+   The bird's stand-in for the half of every jump that happens BEHIND the
+   board (see mascotJumpIn in pages.js). */
+.hopper {
+  position: fixed;
+  display: none;
+  z-index: var(--z-hero);
+  pointer-events: none;
+  background-repeat: no-repeat;
+  background-position: 0 0;
+}
+.hopper.on { display: block; will-change: transform; }
+
+/* ---- The hero speech bubble ---------------------------------------------
+   Parked on the mascot's slot rather than in the board, so the greeting can
+   happen before the board exists. Anchored BY ITS TAIL on the bird's head. */
+.bubble {
+  --bub-u:       1em;
+  --bub-corner:  calc(var(--bub-u) * .62);
+  --bub-light-w: calc(var(--bub-u) * .5);
+  --bub-light-h: calc(var(--bub-u) * .2);
+  --bub-light-x: calc(var(--bub-u) * .42);
+  --bub-light-y: calc(var(--bub-u) * .34);
+  --bub-tail-w:  calc(var(--bub-u) * .76);
+  --bub-tail-x:  calc(var(--bub-u) * .78);
+  --note-edge: var(--bubble-rim);
+
+  position: absolute;
+  --bub-tip-x: 66%;
+  --bub-tip-y: 79%;
+  left:   calc(var(--bub-tip-x) - 4px - .815em);
+  bottom: calc(var(--bub-tip-y) + .725em - 8px);
+  width: max-content;
+  max-width: min(1000px, calc(100vw - 24px));
+
+  padding: .5em .8em;
+  border: 4px solid var(--note-edge);
+  border-radius: var(--bub-corner);
+  background: var(--bubble-bg);
+  box-shadow:
+    0 0 14px 2px var(--glow-board-soft),
+    0 0 34px 10px var(--glow-board-dim),
+    0 10px 26px var(--shadow-soft);
+
+  font-family: var(--font-display);
+  font-weight: 700;
+  font-size: clamp(14px, calc(var(--board-w) * .0236), 44px);
+  line-height: 1.2;
+  letter-spacing: .2px;
+  text-align: left;
+  color: var(--bubble-ink);
+  pointer-events: none;
+}
+.bubble[hidden] { display: none; }
+
+/* The catch-light in the top-left corner. */
+.bubble::before {
+  content: "";
+  position: absolute;
+  left: var(--bub-light-x);
+  top: var(--bub-light-y);
+  width: var(--bub-light-w);
+  height: var(--bub-light-h);
+  border-radius: 999px;
+  background: var(--bubble-sheen);
+  transform: rotate(-22deg);
+  opacity: .95;
+}
+
+.bubble .type-wrap { display: inline-block; vertical-align: top; }
+
+/* The tail hangs off the bottom-left corner and reaches back down toward the
+   bird. It starts INSIDE the border so its fill covers the box's edge. */
+.bubble-tail {
+  position: absolute;
+  left: var(--bub-tail-x);
+  top: calc(100% - 4px);
+  width: var(--bub-tail-w);
+  height: auto;
+  overflow: visible;
+}
+
+/* ---- Welcome ------------------------------------------------------------
+   The title and a waving bird are painted into the artwork (welcome.png):
+   the title high over the lake, the bird on the grass at the lower left,
+   where the live bird is already standing on its mark under this screen.
+   The one live thing on it is Start, low and centred over the water. */
+.welcome {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-welcome);
+  display: grid;
+  grid-template-rows: 1fr auto;
+  justify-items: center;
+  padding: 0 clamp(16px, 5vw, 80px) clamp(28px, 13vh, 150px);
+
+  /* Covering the viewport at its own proportions -- a stretch squashes the
+     painted title on any screen that is not exactly 16:9. The title and bird
+     sit well inside the edges, so what cover trims is sky and grass. Over
+     the token gradient for the first frame and any decode failure. */
+  background:
+    var(--art-welcome) center / cover no-repeat,
+    linear-gradient(180deg, var(--page-bg) 0%, var(--page-bg-deep) 100%);
+}
+.welcome[hidden] { display: none; }
+
+/* On a tall screen a stretch would squash the painted title, so the art is
+   fitted whole instead, over a blurred copy of itself that fills the rest. */
+@media (max-aspect-ratio: 4/3) {
+  /* Both layers are pseudo-elements: a negative z-index paints above the
+     section's own background, so the fitted art cannot live there. */
+  .welcome {
+    overflow: hidden;
+    background: linear-gradient(180deg, var(--page-bg) 0%, var(--page-bg-deep) 100%);
+  }
+  .welcome::before,
+  .welcome::after {
+    content: "";
+    position: absolute;
+    z-index: -1;
+    pointer-events: none;
+  }
+  .welcome::before {
+    inset: -40px;
+    background: var(--art-welcome) center / cover no-repeat;
+    filter: blur(24px) brightness(.9);
+  }
+  .welcome::after {
+    inset: 0;
+    background: var(--art-welcome) center / contain no-repeat;
+  }
+}
+
+/* Painted into the artwork; kept in the tree for assistive tech only. */
+.welcome__title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip: rect(0 0 0 0);
+  white-space: nowrap;
+  border: 0;
+}
+
+/* ---- the loading line, where Start will stand --------------------------- */
+.loader {
+  grid-row: 2;
+  grid-column: 1;
+  align-self: center;
+  justify-self: center;
+  position: relative;
+  width: clamp(240px, 32vw, 440px);
+  font-family: inherit;
+  font-weight: 700;
+  font-size: clamp(30px, 5vh, 40px);
+  color: var(--board-highlight);
+  padding: clamp(8px, 1.8vh, 18px) 0;
+  border: 4px solid transparent;
+  animation: loader-in .4s cubic-bezier(.2, .8, .3, 1) backwards;
+  transition: opacity .26s cubic-bezier(.5, 0, .75, 0),
+              transform .26s cubic-bezier(.5, 0, .75, 0);
+}
+.loader::before { content: "\200b"; }
+.loader[hidden] { display: none; }
+.loader.is-done {
+  opacity: 0;
+  transform: translateY(-6px);
+}
+.loader__body {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  gap: clamp(6px, 1.2vh, 10px);
+}
+.loader__text {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 0 2px;
+  font-size: .5em;
+  letter-spacing: .6px;
+  white-space: nowrap;
+  text-shadow:
+    0 2px 0 var(--indigo-border),
+    0 0 10px color-mix(in srgb, var(--indigo-border) 60%, transparent);
+}
+.loader__pct { font-variant-numeric: tabular-nums; }
+.loader__line {
+  position: relative;
+  overflow: hidden;
+  height: clamp(6px, 1.1vh, 9px);
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--board-highlight) 28%, transparent);
+  box-shadow:
+    inset 0 1px 2px color-mix(in srgb, var(--indigo-border) 50%, transparent),
+    0 0 0 1px color-mix(in srgb, var(--board-highlight) 30%, transparent);
+}
+.loader__fill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  transform: translateX(-100%);
+  background: linear-gradient(90deg, var(--amber-fill) 0%, var(--board-highlight) 100%);
+  transition: transform .3s cubic-bezier(.2, .8, .3, 1);
+}
+@keyframes loader-in {
+  from { opacity: 0; transform: translateY(12px) scale(.96); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .loader, .loader__fill { animation: none; transition: none; }
+}
+
+.start-btn {
+  grid-row: 2;
+
+  --edge: 5px;
+  --sink: 0px;
+  translate: 0 var(--sink);
+
+  align-self: center;
+  justify-self: center;
+  font-family: inherit;
+  font-weight: 700;
+  font-size: clamp(30px, 5vh, 40px);
+  letter-spacing: 1px;
+  color: var(--button-text);
+  padding: clamp(8px, 1.8vh, 18px) clamp(28px, 5vw, 55px);
+  border: 4px solid var(--board-highlight);
+  border-radius: 999px;
+  background: linear-gradient(180deg, var(--board-highlight) 0%, var(--button-bg) 55%, var(--board-decoration) 100%);
+  box-shadow:
+    0 var(--edge) 0 var(--horizon),
+    0 0 14px 2px var(--glow-board-soft),
+    0 0 36px 12px var(--glow-board-dim),
+    0 calc(var(--edge) + 1px) 2px var(--shadow-soft),
+    0 calc(var(--edge) + 5px) calc(var(--edge) * 2 + 16px) var(--shadow-deep);
+  cursor: pointer;
+
+  opacity: 0;
+  transform: translateY(16px) scale(.9);
+  transition: opacity .42s ease,
+              transform .42s cubic-bezier(.2, .9, .3, 1.4),
+              box-shadow .18s ease,
+              filter .18s ease;
+}
+.start-btn[hidden] { display: none; }
+.start-btn.in {
+  opacity: 1;
+  transform: none;
+  animation: start-pulse 2.1s ease-in-out .5s infinite;
+}
+.start-btn.in:hover,
+.start-btn.in:focus-visible {
+  animation-play-state: paused;
+  filter: brightness(1.04);
+  outline: none;
+}
+.start-btn.is-3d {
+  transition: opacity .42s ease,
+              transform .42s cubic-bezier(.2, .9, .3, 1.4),
+              filter .18s ease;
+}

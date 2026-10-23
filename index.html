@@ -1,0 +1,207 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
+  <title data-i18n="uiTitle">Exploring Trigonometric Ratios</title>
+
+  <link rel="stylesheet" href="css/style.css" />
+  <link rel="stylesheet" href="css/trig.css" />
+  <link rel="stylesheet" href="css/animations.css" />
+  <link rel="stylesheet" href="css/responsive.css" />
+</head>
+<body>
+  <!-- The point every line end wears where the figure has no point of its
+       own: one marker, referenced by the .pt-end / .pt-ends classes. -->
+  <svg class="pt-defs" width="0" height="0" aria-hidden="true" focusable="false">
+    <defs>
+      <marker id="ptMark" viewBox="-6 -6 12 12" refX="0" refY="0"
+              markerWidth="12" markerHeight="12" markerUnits="userSpaceOnUse"
+              overflow="visible">
+        <circle class="pt-mark" r="5.5" />
+      </marker>
+    </defs>
+  </svg>
+
+  <main id="app">
+    <!-- The 16:9 box the whole lesson is staged in. The board, the mascot and
+         the Next control are all positioned against THIS. -->
+    <div class="frame" id="frame">
+
+      <!-- The mascot's centre-stage slot. It sits BEHIND the board on purpose:
+           when the board arrives it covers the mascot, and the mascot's next
+           entrance rises back out of the board's own surface. -->
+      <div class="slot slot--hero" id="slotHero">
+        <div class="bubble" id="bubble" hidden>
+          <span class="type-wrap" id="bubbleType">
+            <span class="type-ghost"></span>
+            <span class="type" aria-live="polite"><span class="txt"></span></span>
+          </span>
+          <svg class="bubble-tail" viewBox="0 0 44 42" aria-hidden="true">
+            <path d="M4 0 H42 V8 C36 20 24 30 2 42 C8 32 8 20 4 8 Z"
+                  fill="var(--bubble-bg)" />
+            <path d="M42 8 C36 20 24 30 2 42 C8 32 8 20 4 8" fill="none"
+                  stroke="var(--note-edge)" stroke-width="4"
+                  stroke-linecap="round" stroke-linejoin="round"
+                  vector-effect="non-scaling-stroke" />
+          </svg>
+        </div>
+      </div>
+
+      <!-- The bird's stand-in for the half of every jump that happens BEHIND
+           the board (see mascotJumpIn in pages.js). -->
+      <div class="hopper" id="hopper" aria-hidden="true"></div>
+
+      <section class="board" id="board" aria-hidden="true">
+        <header class="board__top" id="boardTop">
+          <div class="prompt" id="prompt">
+            <div class="prompt__mascot" id="slotHeader"></div>
+            <p class="prompt__line">
+              <span class="type-wrap" id="promptType">
+                <span class="type-ghost"></span>
+                <span class="type" aria-live="polite"><span class="txt"></span></span>
+              </span>
+            </p>
+          </div>
+        </header>
+
+        <div class="board__stage" id="boardStage">
+          <!-- The whole lesson's picture, in ONE svg. Wide rather than
+               square -- 1000 x 420 -- so a triangle standing in the left
+               half leaves the right half to the working. Each section
+               builds its own triangle into a group of its own. -->
+          <svg class="figure" id="figure" viewBox="0 0 1000 420"
+               role="img" data-i18n-attr="aria-label:a11yFigure" aria-label="A right-angled triangle">
+            <defs>
+              <!-- The bloom under a mark while it is being named: a
+                   blurred copy of the mark itself, so the glow is always in
+                   the mark's OWN ink. -->
+              <filter id="partGlow" filterUnits="userSpaceOnUse"
+                      x="-200" y="-200" width="1400" height="820">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="bloom" />
+                <feMerge>
+                  <feMergeNode in="bloom" />
+                  <feMergeNode in="bloom" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+            </defs>
+
+            <!-- Section 1: the right-angled triangle and its sides -->
+            <g id="figS1" hidden></g>
+            <g id="figS1b" hidden></g>
+            <!-- Section 2: the ratios and the 45° triangle -->
+            <g id="figS2" hidden></g>
+            <!-- Section 3: the equilateral triangle and its halves -->
+            <g id="figS3" hidden></g>
+            <g id="figS3L" hidden></g>
+            <g id="figS3R" hidden></g>
+            <!-- Section 4: the 60° angle, on the same half -->
+            <g id="figS4" hidden></g>
+            <!-- Section 5: towards 0° -->
+            <g id="figS5" hidden></g>
+            <!-- Section 6: towards 90° -->
+            <g id="figS6" hidden></g>
+
+            <!-- Where the activity hangs its boxes and leaders -->
+            <g id="figBoxes" hidden></g>
+            <!-- Where a burst of confetti is thrown over the figure -->
+            <g id="figBurst" aria-hidden="true"></g>
+            <g id="figNudges" aria-hidden="true"></g>
+          </svg>
+
+          <!-- The right half of the stage, for the working: the equations,
+               the dropdown blanks, the pills and the slider (js/widgets.js). -->
+          <div class="pane" id="pane" hidden data-i18n-attr="aria-label:a11yPane" aria-label="The working">
+            <div class="pane__body" id="paneBody"></div>
+          </div>
+
+          <!-- The table of values, centred over the stage when it is shown. -->
+          <div class="table-wrap" id="tableWrap" hidden></div>
+        </div>
+
+        <!-- The footer holds whatever the learner has to reach for: the names
+             they drag onto the boxes, or the one control a page asks to be
+             pressed. Never both at once, so they share the band. -->
+        <footer class="board__bottom" id="boardBottom">
+          <div class="tray" id="tray" hidden data-i18n-attr="aria-label:a11yNamesTray" aria-label="Names to drag"></div>
+          <div class="tray tray--choice" id="choices" hidden
+               role="group" data-i18n-attr="aria-label:a11yAnswers" aria-label="Choose your answer"></div>
+        </footer>
+      </section>
+
+      <!-- Not drawn, not focusable, and not a control: one element for a
+           beat finished by SEVERAL actions to announce itself on. -->
+      <span id="gate" hidden></span>
+
+      <!-- Where a burst of confetti is thrown, over everything in the frame. -->
+      <svg class="burst-layer" id="burst" aria-hidden="true"></svg>
+
+      <!-- The round Next disc: a rim set a little low so it reads as the
+           thickness of a disc, a face lit from the top, and a rounded arrow. -->
+      <button class="next-btn" id="nextBtn" type="button" hidden data-i18n-attr="aria-label:a11yNext" aria-label="Next">
+        <svg viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+          <defs>
+            <linearGradient id="icoNextFace" x1="50" y1="8" x2="50" y2="92" gradientUnits="userSpaceOnUse">
+              <stop offset="0" stop-color="var(--next-face-1)" />
+              <stop offset=".55" stop-color="var(--next-face-2)" />
+              <stop offset="1" stop-color="var(--next-face-3)" />
+            </linearGradient>
+          </defs>
+          <circle cx="50" cy="51.5" r="45" fill="var(--next-rim)" />
+          <circle cx="50" cy="50" r="41.5" fill="url(#icoNextFace)" />
+          <path d="M31.25 43.125 H52.5 V31.25 L77.5 50 L52.5 68.75 V56.875 H31.25 Z"
+                fill="var(--next-arrow)" stroke="var(--next-arrow)" stroke-width="8.75"
+                stroke-linejoin="round" stroke-linecap="round" />
+        </svg>
+      </button>
+    </div>
+
+    <!-- Welcome, over everything until Start is pressed. The title and the
+         bird are painted into the artwork (welcome.png), so the heading is
+         there for screen readers only. -->
+    <section class="welcome" id="welcome">
+      <h1 class="welcome__title" data-i18n="uiTitle">Exploring Trigonometric Ratios</h1>
+      <div class="loader" id="loader" role="progressbar" aria-valuemin="0" aria-valuemax="100"
+           aria-valuenow="0" data-i18n-attr="aria-label:loadingAria">
+        <span class="loader__body">
+          <span class="loader__text"><span data-i18n="loadingLabel"></span><span class="loader__pct" id="loaderPct"></span></span>
+          <span class="loader__line"><span class="loader__fill" id="loaderFill"></span></span>
+        </span>
+      </div>
+      <button class="start-btn" id="startBtn" type="button" hidden data-i18n="btnStart">Start</button>
+    </section>
+  </main>
+
+  <script src="js/libs/gsap.min.js"></script>
+  <script src="js/libs/Flip.min.js"></script>
+  <!-- Words by key (js/i18n.js, T('key')) from locales/locales.json; the
+       .js copy is read in first so file:// works too. -->
+  <script src="locales/locales.js"></script>
+  <script src="js/audio.js"></script>
+  <script src="js/i18n.js"></script>
+  <script src="js/motion.js"></script>
+  <script src="js/flow.js"></script>
+  <script src="js/mathtext.js"></script>
+  <script src="js/typer.js"></script>
+  <script src="js/mascot.js"></script>
+  <script src="js/animations.js"></script>
+  <script src="js/pages.js"></script>
+  <script src="js/tri.js"></script>
+  <script src="js/widgets.js"></script>
+  <!-- The seven sections of the lesson, in playing order. Each joins the
+       lesson in load order (Pages.addSection). -->
+  <script src="js/s1-sides.js"></script>
+  <script src="js/s2-ratios.js"></script>
+  <script src="js/s3-thirty.js"></script>
+  <script src="js/s4-sixty.js"></script>
+  <script src="js/s5-zero.js"></script>
+  <script src="js/s6-ninety.js"></script>
+  <script src="js/s7-table.js"></script>
+  <script src="js/loader.js"></script>
+  <script src="js/script.js"></script>
+  <!-- TEMPORARY: the Back / Skip / Replay page bar. Delete this line and
+       js/devnav.js to remove it; nothing else refers to it. -->
+  <script src="js/devnav.js"></script>
+</body>
+</html>

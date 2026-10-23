@@ -1,0 +1,26 @@
+/* ==========================================================================
+   Responsive tweaks. The board keeps its 16:9 ratio everywhere -- only the
+   caps that feed --board-w change.
+   ========================================================================== */
+
+/* Tall/narrow screens (portrait phones and tablets): let the board use nearly
+   the full width; height is never the binding constraint here. */
+@media (orientation: portrait) {
+  :root { --board-w: min(1500px, 94vw, 160vh); }
+}
+
+/* Short landscape (phones on their side): height binds first, so trade the
+   height cap up to ~94vh (94 x 16/9 = 167vh) and shrink the padding. */
+@media (orientation: landscape) and (max-height: 520px) {
+  :root { --board-w: min(1500px, 96vw, 167vh); }
+
+  .board {
+    padding: clamp(8px, 3vh, 20px) clamp(12px, 3.5%, 28px);
+    border-width: 2px;
+  }
+}
+
+/* Very wide desktops: stop the board growing past its art's comfortable size. */
+@media (min-width: 1800px) {
+  :root { --board-w: min(1600px, 92vw, 160vh); }
+}

@@ -1,0 +1,526 @@
+/* ==========================================================================
+   Exploring Trigonometric Ratios -- the lesson's own layer
+   What the triangle pages draw that the shell does not: the triangle and
+   its marks, the right pane and the working set in it (equations, the
+   dropdown blank, pills, the slider), and the table of values. Everything
+   is picked out of the palette in style.css.
+   ========================================================================== */
+
+/* ==========================================================================
+   The triangle
+   ========================================================================== */
+/* The wash inside: a soft periwinkle of the board's own family, poured in
+   once the outline is drawn. Rests invisible. */
+.tri__fill {
+  fill: var(--tri-fill);
+  opacity: 0;
+}
+/* The outline the pen draws: one closed path, at the sides' weight, in
+   the plain line ink. Hidden once the three sides take over from it. */
+.tri__outline {
+  fill: none;
+  stroke: var(--tri-line);
+  stroke-width: var(--part-weight);
+  stroke-linecap: round;
+  stroke-linejoin: round;
+  opacity: 0;
+}
+/* The three sides. The colour is transitioned rather than tweened: it is
+   the one property in the figure GSAP does not drive, and the beats
+   change it with a class. */
+.tri__side {
+  fill: none;
+  stroke: var(--tri-line);
+  stroke-width: var(--part-weight);
+  stroke-linecap: round;
+  opacity: 0;
+  transition: stroke .55s ease;
+}
+.tri__side--opp { stroke: var(--side-opp); }
+.tri__side--adj { stroke: var(--side-adj); }
+.tri__side--hyp { stroke: var(--side-hyp); }
+/* A side spoken of, lit: its own ink bloomed under it. */
+.tri__side.is-lit { filter: url(#partGlow); }
+
+/* The right angle's square and the angle arcs: the annotation ink, thin. */
+.tri__right {
+  fill: none;
+  stroke: var(--right-ink);
+  stroke-width: 2.6;
+  stroke-linejoin: miter;
+  opacity: 0;
+}
+.tri__arc {
+  fill: none;
+  stroke: var(--angle-ink);
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  opacity: 0;
+}
+/* The pen that draws the outline: a dot in the line ink with a white
+   edge, so it reads as a point over the line it is leaving behind. */
+.tri__tip {
+  fill: var(--tri-line);
+  stroke: var(--board-highlight);
+  stroke-width: 2.4;
+  opacity: 0;
+}
+/* The words. A side's name in its side's ink; a length in the plain ink;
+   the angle's word in the angle's amber; a vertex's letter in the ink. */
+.tri__word {
+  font-size: 24px;
+  fill: var(--tri-line);
+  opacity: 0;
+}
+.tri__word--opp { fill: var(--side-opp); }
+.tri__word--adj { fill: var(--side-adj); }
+.tri__word--hyp { fill: var(--side-hyp); }
+.tri__val {
+  font-size: 25px;
+  fill: var(--text-primary);
+  opacity: 0;
+}
+.tri__angle {
+  font-size: 24px;
+  fill: var(--angle-ink);
+  opacity: 0;
+}
+.tri__name {
+  font-size: 24px;
+  fill: var(--text-primary);
+  opacity: 0;
+}
+/* The caption over a figure -- "Right-angled triangle". */
+.tri-caption {
+  font-size: 26px;
+  fill: var(--text-primary);
+  opacity: 0;
+}
+/* The perpendicular that splits the equilateral: dashed, the softer ink,
+   drawn through a mask (dashedIn). */
+.tri-perp {
+  fill: none;
+  stroke: var(--text-secondary);
+  stroke-width: 2.6;
+  stroke-dasharray: 7 8;
+  stroke-linecap: butt;
+  opacity: 0;
+}
+.tri-perp-mask {
+  fill: none;
+  stroke: #FFFFFF;
+  stroke-width: 12;
+}
+/* A side carrying a point marker at its ends, where the figure has no
+   vertex dot of its own. */
+.figure__tri .pt-end { marker-end: url(#ptMark); }
+
+/* Nothing on a triangle is a target: a name goes to a box beside it, a
+   value to a slot in the pane, never onto the picture. */
+.figure__tri,
+.figure__tri * { pointer-events: none; }
+
+/* ==========================================================================
+   The right pane
+   The right half of the stage while the triangle stands left: a column of
+   rows, centred, each brought in as the lesson reaches it. A container, so
+   everything in it is measured against THIS half (cqw / cqh) and fits it
+   with the header open or closed, at every board size. The pane itself is
+   glass -- only its controls are ever live.
+   ========================================================================== */
+.pane {
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 50%;
+  width: 50%;
+  z-index: 2;
+  pointer-events: none;
+  container-type: size;
+  font-family: var(--font-display);
+  font-size: var(--pane-fs);
+  font-weight: 700;
+  color: var(--text-primary);
+}
+.pane[hidden] { display: none; }
+.pane__body {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  flex-direction: column;
+  justify-content: center;
+  align-items: center;
+  gap: clamp(8px, 4.5cqh, 26px);
+  padding: 2cqh 3cqw;
+}
+/* The rows arrive at the top when a slider has to stand clear of the
+   triangle's labels, or low when the figure's caption is above. */
+.pane--top .pane__body { justify-content: flex-start; padding-top: 8cqh; }
+.pane--low .pane__body { justify-content: flex-end; padding-bottom: 10cqh; }
+
+.pane__row {
+  position: relative;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-wrap: wrap;
+  gap: .25em .4em;
+  max-width: 100%;
+  pointer-events: none;
+}
+/* A row whose menu is open sits over the rows around it. */
+.pane__row.has-open { z-index: 6; }
+.pane__row > * { pointer-events: auto; }
+
+/* ---- An equation row ----------------------------------------------------
+   lhs  [n/d]  =  [n/d]  =  value. The fraction is a stack with the bar
+   between, tall enough for a dropdown in each half. */
+.eq {
+  font-size: clamp(14px, 6.2cqw, 36px);
+  line-height: 1.2;
+  white-space: nowrap;
+  flex-wrap: nowrap;
+}
+.eq__lhs { color: var(--text-primary); }
+.eq__eq { color: var(--text-secondary); padding: 0 .1em; }
+.eq__frac {
+  display: inline-flex;
+  flex-direction: column;
+  align-items: stretch;
+  vertical-align: middle;
+  text-align: center;
+  line-height: 1.1;
+}
+.eq__frac[hidden], .eq__eq[hidden], .eq__val[hidden] { display: none; }
+.eq__n, .eq__d {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-width: 1.6em;
+  min-height: 1.3em;
+  padding: .08em .3em;
+}
+.eq__d { border-top: .09em solid currentColor; }
+/* A fraction stood up inside a slot (1⁄√2 as the value) at the slot's
+   own size, its halves a touch larger than a prose fraction's. */
+.eq .frac { height: auto; margin: 0 .1em; }
+.eq .frac__n, .eq .frac__d { font-size: .78em; padding: 0 .22em; }
+.eq .frac__d { padding-top: .1em; border-top-width: .1em; }
+.eq__val { color: var(--text-primary); }
+/* A word in a slot takes its side's ink, so the equation points back at
+   the picture. */
+.c-opp { color: var(--side-opp); }
+.c-adj { color: var(--side-adj); }
+.c-hyp { color: var(--side-hyp); }
+.c-ang { color: var(--angle-ink); }
+/* A row answered right: the value pulses green and stays so. */
+.eq .is-right { color: var(--right-border); }
+/* A row the lesson has finished with, standing back a little while the
+   next is worked. */
+.eq.is-done { opacity: .72; }
+
+/* ---- The dropdown blank -------------------------------------------------
+   A dashed slot, with a chevron: tap it and the choices drop out under
+   it. Waiting, it breathes, so the eye finds it; answered, it is a solid
+   green box with a tick, as the activity's name boxes are. */
+.dd {
+  position: relative;
+  display: inline-flex;
+  vertical-align: middle;
+  margin: 0 .1em;
+  z-index: 3;
+  font-size: .72em;
+}
+.dd.is-open { z-index: 6; }
+.dd__face {
+  appearance: none;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  gap: .35em;
+  min-width: 5.2em;
+  min-height: 1.9em;
+  padding: .12em .5em .12em .65em;
+  border: .13em dashed var(--pill-border);
+  border-radius: .55em;
+  background: color-mix(in srgb, var(--blue-fill) 12%, #FFFFFF);
+  font: inherit;
+  color: var(--text-primary);
+  cursor: pointer;
+  pointer-events: auto;
+  transition: border-color .25s ease, background .25s ease, box-shadow .25s ease;
+}
+.dd__face:focus-visible { outline: 3px solid color-mix(in srgb, var(--blue-fill) 70%, transparent); outline-offset: 2px; }
+.dd__val { min-width: 2.2em; text-align: center; }
+.dd__val.is-placeholder { color: var(--text-secondary); font-weight: 600; }
+.dd__caret {
+  width: .7em;
+  height: .7em;
+  flex: 0 0 auto;
+  transition: transform .25s ease;
+}
+.dd__caret path { fill: none; stroke: var(--pill-border); stroke-width: 2.4; stroke-linecap: round; stroke-linejoin: round; }
+.dd.is-open .dd__caret { transform: rotate(180deg); }
+.dd.is-asking .dd__face { animation: dd-call 1.8s ease-in-out infinite; }
+@keyframes dd-call {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--blue-fill) 0%, transparent); }
+  50%      { box-shadow: 0 0 0 .28em color-mix(in srgb, var(--blue-fill) 50%, transparent); }
+}
+.dd.is-open .dd__face { animation: none; background: color-mix(in srgb, var(--blue-fill) 20%, #FFFFFF); }
+
+.dd__menu {
+  position: absolute;
+  top: calc(100% + .3em);
+  left: 50%;
+  min-width: 100%;
+  display: flex;
+  flex-direction: column;
+  gap: .12em;
+  padding: .28em;
+  border: .09em solid color-mix(in srgb, var(--blue-fill) 55%, #FFFFFF);
+  border-radius: .62em;
+  background: linear-gradient(180deg, #FFFFFF 0%, #F6F8FF 100%);
+  box-shadow: 0 .5em 1.2em var(--shadow-deep), 0 .1em .2em var(--shadow-soft);
+  translate: -50% 0;
+  white-space: nowrap;
+  pointer-events: auto;
+}
+.dd--up .dd__menu { top: auto; bottom: calc(100% + .3em); }
+.dd__menu[hidden] { display: none; }
+.dd__opt {
+  appearance: none;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.1em;
+  padding: .26em .9em;
+  border: 0;
+  border-radius: .42em;
+  background: transparent;
+  font: inherit;
+  color: var(--text-primary);
+  cursor: pointer;
+  transition: background .18s ease, opacity .2s ease;
+}
+.dd__opt:hover,
+.dd__opt:focus-visible { background: color-mix(in srgb, var(--blue-fill) 22%, #FFFFFF); outline: none; }
+.dd__opt.is-out { opacity: .4; pointer-events: none; text-decoration: line-through; }
+
+.dd.is-wrong .dd__face {
+  border-style: solid;
+  border-color: var(--wrong-border);
+  background: color-mix(in srgb, var(--wrong-fill) 26%, #FFFFFF);
+}
+.dd.is-right .dd__face {
+  border-style: solid;
+  border-color: var(--right-border);
+  background: color-mix(in srgb, var(--right-fill) 26%, #FFFFFF);
+  color: color-mix(in srgb, var(--right-border) 78%, #0B5A1E);
+  cursor: default;
+  padding-right: .65em;
+}
+.dd.is-right .dd__caret { display: none; }
+.dd__tick {
+  position: absolute;
+  top: -.42em;
+  right: -.42em;
+  width: .95em;
+  height: .95em;
+  opacity: 0;
+  pointer-events: none;
+}
+.dd__tick circle { fill: var(--right-border); stroke: #FFFFFF; stroke-width: 2.5; }
+.dd__tick path { fill: none; stroke: #FFFFFF; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+/* An open menu reaches below its row: the stage lifts over the footer. */
+.board__stage:has(.dd.is-open) { z-index: 5; }
+
+/* ---- Pills in the pane -------------------------------------------------- */
+.pane__pills {
+  gap: clamp(6px, 1.8cqw, 16px);
+}
+.pane__pills .choice {
+  font-size: clamp(13px, 4.6cqw, 28px);
+  padding: .3em 1.1em .36em;
+  min-width: 2.8em;
+}
+.pane__pills .choice.is-done { pointer-events: none; }
+/* The one big control: the split button. */
+.choice--big {
+  font-size: clamp(15px, 5.2cqw, 30px);
+  padding: .36em 1.4em .42em;
+}
+.choice--big.is-asking { animation: dd-call 1.8s ease-in-out infinite; }
+
+/* ---- A line of words in the pane --------------------------------------- */
+.fact {
+  font-size: clamp(14px, 5.4cqw, 32px);
+  color: var(--text-primary);
+}
+/* The three distances of a collapsed triangle: one under another. */
+.facts {
+  flex-direction: column;
+  align-items: flex-start;
+  gap: .05em;
+}
+.facts .fact { font-size: clamp(13px, 4.6cqw, 28px); line-height: 1.25; }
+.fact--opp { color: var(--side-opp); }
+.fact--adj { color: var(--side-adj); }
+.fact--hyp { color: var(--side-hyp); }
+
+/* ---- The slider ----------------------------------------------------------
+   A track with a thumb, a label and a readout over it. The thumb follows
+   the finger with no tween; the fill is scaled, never widened. */
+.slider {
+  flex-direction: column;
+  align-items: stretch;
+  width: min(84cqw, 26em);
+  gap: .5em;
+  font-size: clamp(13px, 5cqw, 28px);
+}
+.slider__head {
+  display: flex;
+  justify-content: space-between;
+  align-items: baseline;
+  padding: 0 .2em;
+}
+.slider__label { color: var(--text-secondary); font-weight: 700; }
+.slider__value {
+  color: var(--angle-ink);
+  font-variant-numeric: tabular-nums;
+  min-width: 2.4em;
+  text-align: right;
+}
+.slider__track {
+  position: relative;
+  height: .62em;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--blue-fill) 32%, #FFFFFF);
+  box-shadow: inset 0 .08em .18em color-mix(in srgb, var(--blue-border) 30%, transparent);
+  cursor: pointer;
+  pointer-events: auto;
+  touch-action: none;
+  outline: none;
+}
+.slider__track:focus-visible { box-shadow: 0 0 0 .18em color-mix(in srgb, var(--blue-fill) 55%, transparent); }
+.slider__fill {
+  position: absolute;
+  inset: 0;
+  border-radius: inherit;
+  background: linear-gradient(90deg, var(--amber-fill), var(--angle-ink));
+  transform-origin: left center;
+  transform: scaleX(0);
+}
+/* The target, marked on the track: a small tick the thumb is carried to. */
+.slider__mark {
+  position: absolute;
+  top: -.42em;
+  width: .16em;
+  height: 1.46em;
+  margin-left: -.08em;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--angle-ink) 55%, #FFFFFF);
+  pointer-events: none;
+}
+.slider__mark[hidden] { display: none; }
+.slider__thumb {
+  position: absolute;
+  left: 0;
+  top: 50%;
+  width: 1.5em;
+  height: 1.5em;
+  margin-left: -.75em;
+  border-radius: 50%;
+  border: .14em solid var(--angle-ink);
+  background: linear-gradient(180deg, #FFFFFF 0%, var(--amber-fill) 100%);
+  box-shadow: 0 .2em .5em var(--shadow-deep);
+  transform: translate(0, -50%);
+  pointer-events: none;
+  transition: box-shadow .18s ease, border-color .25s ease;
+}
+.slider.is-asking .slider__thumb { animation: thumb-call 1.6s ease-in-out infinite; }
+@keyframes thumb-call {
+  0%, 100% { box-shadow: 0 .2em .5em var(--shadow-deep), 0 0 0 0 color-mix(in srgb, var(--angle-ink) 0%, transparent); }
+  50%      { box-shadow: 0 .2em .5em var(--shadow-deep), 0 0 0 .4em color-mix(in srgb, var(--angle-ink) 40%, transparent); }
+}
+.slider__thumb.is-held { box-shadow: 0 .3em .8em var(--shadow-deep); animation: none; }
+.slider.is-done .slider__thumb { border-color: var(--right-border); animation: none; }
+.slider.is-done .slider__fill { background: linear-gradient(90deg, var(--right-fill), var(--right-border)); }
+.slider.is-done .slider__value { color: var(--right-border); }
+.slider.is-done .slider__track { cursor: default; pointer-events: none; }
+
+/* ==========================================================================
+   The table of values
+   Centred on the stage, the whole width: a head row and three rows, the
+   cells filled in over the lesson.
+   ========================================================================== */
+.table-wrap {
+  position: absolute;
+  inset: 0;
+  z-index: 3;
+  display: grid;
+  place-items: center;
+  padding: 2% 4%;
+  pointer-events: none;
+}
+.table-wrap[hidden] { display: none; }
+.ttable {
+  display: grid;
+  grid-template-columns: 1.25fr repeat(5, 1fr);
+  width: min(100%, 980px);
+  font-family: var(--font-display);
+  font-size: clamp(13px, calc(var(--board-w) * .021), 32px);
+  font-weight: 700;
+  color: var(--text-primary);
+  border-radius: 1em;
+  overflow: hidden;
+  border: .12em solid var(--pill-border);
+  background: var(--board-highlight);
+  box-shadow: 0 .6em 1.6em var(--shadow-deep), 0 .1em .25em var(--shadow-soft);
+  pointer-events: auto;
+}
+.ttable__row { display: contents; }
+.ttable__cell {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 2.6em;
+  padding: .3em .4em;
+  border-right: .06em solid color-mix(in srgb, var(--blue-fill) 45%, #FFFFFF);
+  border-bottom: .06em solid color-mix(in srgb, var(--blue-fill) 45%, #FFFFFF);
+  position: relative;
+  transition: background .25s ease, box-shadow .25s ease;
+}
+.ttable__row > .ttable__cell:last-child { border-right: 0; }
+.ttable__row:last-child > .ttable__cell { border-bottom: 0; }
+.ttable__cell--head {
+  background: color-mix(in srgb, var(--blue-fill) 28%, #FFFFFF);
+  color: var(--text-primary);
+}
+.ttable__cell--head:not(.ttable__cell--lhs) { color: var(--angle-ink); }
+.ttable__cell--lhs { background: color-mix(in srgb, var(--blue-fill) 14%, #FFFFFF); justify-content: center; }
+.ttable__v { display: inline-flex; align-items: center; }
+.ttable .frac { height: auto; }
+.ttable .frac__n, .ttable .frac__d { font-size: .8em; padding: 0 .2em; }
+/* A value just landed: lit for a moment. */
+.ttable__cell.is-new { background: color-mix(in srgb, var(--amber-fill) 36%, #FFFFFF); }
+/* The cells a question is asked about are live: a hand over one lifts it. */
+.ttable__cell.is-live { cursor: pointer; }
+.ttable__cell.is-live:hover,
+.ttable__cell.is-live:focus-visible { background: color-mix(in srgb, var(--blue-fill) 22%, #FFFFFF); outline: none; }
+.ttable.is-asking .ttable__cell--val:not(.is-live) { color: color-mix(in srgb, var(--text-primary) 35%, transparent); }
+.ttable__cell.is-right {
+  background: color-mix(in srgb, var(--right-fill) 32%, #FFFFFF);
+  box-shadow: inset 0 0 0 .14em var(--right-border);
+  color: var(--right-border);
+}
+.ttable__cell.is-wrong {
+  background: color-mix(in srgb, var(--wrong-fill) 30%, #FFFFFF);
+  box-shadow: inset 0 0 0 .14em var(--wrong-border);
+}
+.ttable__cell.is-undef .ttable__v { font-size: .78em; }
+
+/* ---- Reduced motion ------------------------------------------------------- */
+@media (prefers-reduced-motion: reduce) {
+  .tri__side, .dd__face, .dd__caret, .slider__thumb, .ttable__cell { transition: none !important; }
+  .dd.is-asking .dd__face, .slider.is-asking .slider__thumb, .choice--big.is-asking { animation: none !important; }
+}

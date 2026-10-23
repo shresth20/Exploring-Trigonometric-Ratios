@@ -1,0 +1,243 @@
+/* ==========================================================================
+   Motion layer. Transform/opacity/filter only -- never width, height, top or
+   left, with one deliberate exception: the speech bubble's box morph, which
+   is a Flip and so is measured rather than guessed.
+   ========================================================================== */
+
+/* Compositor hint, added for the length of a move and dropped after. */
+.is-animating { will-change: transform, opacity; }
+
+/* While GSAP drives opacity frame by frame, a CSS transition on the same
+   property would re-transition every one of those writes and smear the move. */
+.board.is-animating { transition: none; }
+
+/* ==========================================================================
+   Words ease in -- the text reveal (see typer.js)
+   ========================================================================== */
+.type-wrap  { position: relative; display: inline-block; }
+.type-ghost { visibility: hidden; }
+.type {
+  position: absolute;
+  inset: 0;
+  text-align: left;
+  white-space: nowrap;
+}
+.heading .type { text-align: center; }
+.bubble  .type { text-align: left; }
+
+.wd { opacity: 0; }
+.wd.in { animation: wd-in .46s cubic-bezier(.2, .7, .3, 1) both; }
+@keyframes wd-in {
+  from { opacity: 0; filter: blur(4px); }
+  to   { opacity: 1; filter: blur(0); }
+}
+
+/* ==========================================================================
+   Scene motion
+   ========================================================================== */
+
+/* The Start button, breathing. */
+@keyframes start-pulse {
+  0%, 100% {
+    box-shadow: 0 var(--edge) 0 var(--horizon),
+                0 0 14px 2px var(--glow-board-soft),
+                0 0 36px 12px var(--glow-board-dim),
+                0 calc(var(--edge) + 1px) 2px var(--shadow-soft),
+                0 calc(var(--edge) + 5px) calc(var(--edge) * 2 + 16px) var(--shadow-deep);
+  }
+  50% {
+    box-shadow: 0 var(--edge) 0 var(--horizon),
+                0 0 26px 8px var(--glow-board),
+                0 0 62px 24px var(--glow-board-soft),
+                0 calc(var(--edge) + 1px) 2px var(--shadow-soft),
+                0 calc(var(--edge) + 5px) calc(var(--edge) * 2 + 16px) var(--shadow-deep);
+  }
+}
+
+/* ==========================================================================
+   The pulse -- a mark, picked out while it is being named
+   --------------------------------------------------------------------------
+   A LINE swells and settles, the way a hand goes back over a stroke to
+   press it home; a POINT pings instead: a ring in its own ink opens out of
+   it and fades. Both wear the bloom (#partGlow in index.html), a blurred
+   copy of the mark itself, so the glow is always in the mark's own colour.
+   Beats.partPulse turns the class on and off; Beats.pulseHold leaves it on
+   (--pulse-times infinite) until Beats.pulseRelease. */
+.is-pulsing {
+  filter: url(#partGlow);
+  animation: part-pulse-line 1.05s ease-in-out var(--pulse-times, 3);
+  --pulse-w0: var(--part-weight);
+  --pulse-w1: 7;
+}
+@keyframes part-pulse-line {
+  0%, 100% { stroke-width: var(--pulse-w0); }
+  50%      { stroke-width: var(--pulse-w1); }
+}
+
+.end-dot.is-pulsing {
+  stroke: var(--pulse-ink);
+  animation-name: part-pulse-ring;
+}
+@keyframes part-pulse-ring {
+  0%   { stroke-width: 0;  stroke-opacity: .72; }
+  70%  { stroke-width: 15; stroke-opacity: 0; }
+  100% { stroke-width: 0;  stroke-opacity: 0; }
+}
+.end-dot.is-pulsing { --pulse-ink: var(--tri-point); }
+
+/* A word on the figure or in a pane lit while it is spoken of: a slow
+   breath of scale, once per beat. */
+.is-glowing-text {
+  animation: text-breathe 1.05s ease-in-out var(--pulse-times, 2);
+}
+@keyframes text-breathe {
+  0%, 100% { opacity: 1; }
+  50%      { opacity: .55; }
+}
+
+/* A name picked up by a tap, waiting for its box: it breathes so it is
+   plainly the one in hand. */
+.chip.is-picked { animation: chip-pick 1.3s ease-in-out infinite; }
+@keyframes chip-pick {
+  0%, 100% { transform: translateY(0); }
+  50%      { transform: translateY(-4px); }
+}
+
+/* The ripple motion.js draws where a finger landed. */
+.mo-ripple {
+  position: fixed;
+  z-index: 999;
+  width: 84px;
+  height: 84px;
+  margin: -42px 0 0 -42px;
+  border-radius: 50%;
+  background: radial-gradient(circle,
+              color-mix(in srgb, var(--blue-fill) 70%, transparent) 0%,
+              transparent 68%);
+  pointer-events: none;
+}
+
+/* The light shower an activity ends on (confettiRain, animations.js). */
+.confetti {
+  position: absolute;
+  inset: 0;
+  z-index: 5;
+  overflow: hidden;
+  border-radius: inherit;
+  pointer-events: none;
+}
+.confetti__bit {
+  position: absolute;
+  left: 0;
+  top: 0;
+  width: 9px;
+  height: 5px;
+  border-radius: 1.5px;
+  opacity: 0;
+}
+.confetti__bit--round { width: 6px; height: 6px; border-radius: 50%; }
+.confetti__bit--blue   { background: var(--blue-fill); }
+.confetti__bit--teal   { background: var(--teal-fill); }
+.confetti__bit--indigo { background: var(--indigo-fill); }
+.confetti__bit--rose   { background: var(--rose-fill); }
+.confetti__bit--amber  { background: var(--amber-fill); }
+
+/* The small burst a right answer sets off (confetti, animations.js):
+   pieces drawn in the picture or in the frame's own burst layer. */
+.qz-bit { pointer-events: none; }
+.qz-bit--blue   { fill: var(--blue-fill); }
+.qz-bit--teal   { fill: var(--teal-fill); }
+.qz-bit--indigo { fill: var(--indigo-fill); }
+.qz-bit--rose   { fill: var(--rose-fill); }
+.qz-bit--amber  { fill: var(--amber-fill); }
+
+/* Where a burst is thrown over the whole frame, in the viewport's units. */
+.burst-layer {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-next);
+  overflow: visible;
+  pointer-events: none;
+}
+
+/* ---- The drag, shown (dragGuide in pages.js) ----------------------------
+   A blank card the size of a name, and a hand on it, carried from the tray
+   to a box while the instruction is said. */
+.drag-guide {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: var(--z-next);
+  pointer-events: none;
+  opacity: 0;
+}
+.drag-guide__card {
+  position: absolute;
+  border-radius: 999px;
+  background: #fff;
+  border: 3px solid var(--pill-border);
+  box-shadow: 0 6px 14px var(--shadow-soft);
+}
+.drag-guide__hand {
+  position: absolute;
+  left: -13px;
+  top: 4px;
+  width: 36px;
+  height: 43px;
+  overflow: visible;
+}
+.drag-guide__hand path {
+  fill: #fff;
+  stroke: var(--text-secondary);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ---- The hand, over a control (handNudge in pages.js) -------------------
+   The lesson's pointing hand, faint, tapping or sliding on the thing the
+   learner is being asked to use; laid over the board in the viewport's own
+   units, never a target. Its motion is Beats.nudgeTap / nudgeSlide. */
+.nudge {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 100vw;
+  height: 100vh;
+  overflow: visible;
+  z-index: var(--z-next);
+  pointer-events: none;
+  opacity: .55;
+}
+.nudge__hand { opacity: 0; }
+.nudge__hand path {
+  fill: #fff;
+  stroke: var(--text-secondary);
+  stroke-width: 2.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.nudge__ring { fill: none; stroke: var(--pill-border); stroke-width: 2.5; opacity: 0; }
+
+/* ==========================================================================
+   Reduced motion
+   ========================================================================== */
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    animation-duration: .01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: .01ms !important;
+  }
+  .wd.in {
+    animation: wd-in .08s linear both !important;
+  }
+  .chip.is-picked { animation: none !important; }
+  .is-pulsing {
+    animation: none !important;
+    stroke-width: var(--pulse-w1);
+  }
+  .end-dot.is-pulsing { stroke-width: 0; }
+  .is-glowing-text { animation: none !important; }
+}
