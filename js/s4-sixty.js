@@ -96,7 +96,7 @@
       .then(function () { return Flow.wait(BEAT); })
       /* ---- aside, and the ratios ----------------------------------------- */
       .then(function () {
-        return Flow.anim(Beats.slideGroup(dom.g, K.SHIFT, 0.9));
+        return Flow.anim(Beats.moveGroup(dom.g, K.aside(dom.g), 0.9));
       })
       .then(function () {
         W.pane.show();
@@ -193,7 +193,7 @@
     triInstant();
     t.setTheta('C');
     t.colourRoles(true);
-    M.set(dom.g, { x: K.SHIFT });
+    M.set(dom.g, K.aside(dom.g));
   }
 
   Pages.addSection({

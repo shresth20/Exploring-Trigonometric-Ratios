@@ -158,7 +158,8 @@
 /* ==========================================================================
    The right pane
    The right half of the stage while the triangle stands left: a column of
-   rows, centred, each brought in as the lesson reaches it. A container, so
+   rows on one left edge, the column itself centred in the half, across
+   and down, each row brought in as the lesson reaches it. A container, so
    everything in it is measured against THIS half (cqw / cqh) and fits it
    with the header open or closed, at every board size. The pane itself is
    glass -- only its controls are ever live.
@@ -184,10 +185,13 @@
 .pane__body {
   position: absolute;
   inset: 0;
+  width: max-content;
+  max-width: 100%;
+  margin-inline: auto;
   display: flex;
   flex-direction: column;
   justify-content: center;
-  align-items: center;
+  align-items: flex-start;
   gap: clamp(8px, 4.5cqh, 26px);
   padding: 2cqh 3cqw;
 }
@@ -219,12 +223,11 @@
   white-space: nowrap;
   flex-wrap: nowrap;
 }
-/* Equations stand on one left edge, so sin, cos and tan read down a
-   column, and a row growing as its fractions arrive never shifts its
-   start. Pills and other rows stay centred. */
+/* Equations stand on the column's left edge, so sin, cos and tan read
+   down it. */
 .pane__row.eq { align-self: flex-start; justify-content: flex-start; }
 /* ...except a question answered from the pills under it (hypotenuse = ?,
-   b = ?): it stands centred, right over its answers. */
+   b = ?): it and its answers stand centred, one over the other. */
 .pane__row.eq--ask { align-self: center; justify-content: center; }
 .eq__lhs { color: var(--text-primary); }
 .eq__eq { color: var(--text-secondary); padding: 0 .1em; }
@@ -382,6 +385,7 @@
 
 /* ---- Pills in the pane -------------------------------------------------- */
 .pane__pills {
+  align-self: center;
   gap: clamp(6px, 1.8cqw, 16px);
 }
 .pane__pills .choice {
@@ -647,10 +651,58 @@
 }
 .ttable__cell.is-undef .ttable__v { font-size: .78em; }
 
+/* ---- The rows added once the first three are complete ------------------
+   cosec, sec and cot stay out of the table until the lesson adds them;
+   with them in, the table is set closer, so all seven rows and the foot
+   still stand clear of the header. */
+.ttable__row[hidden] { display: none; }
+.ttable--long {
+  font-size: clamp(12px, calc(var(--board-w) * .0172), 27px);
+  padding: .6em .8em .7em;
+}
+.ttable--long .ttable__cell { min-height: 1.95em; padding: .14em .35em; }
+/* A row being asked: a blank in every cell, its list over the rows near it. */
+.ttable__cell.is-pick { padding: .14em .2em; }
+.ttable__cell:has(.dd.is-open) { z-index: 5; }
+.ttable .dd { font-size: .78em; margin: 0; }
+.ttable .dd__face { min-width: 4.2em; min-height: 1.7em; }
+.ttable .dd__opt { min-height: 1.9em; }
+
+/* The foot: the formula a new row is worked from, on a parchment plate
+   like the table's own, and the Check beside it. */
+.table-wrap { align-content: center; row-gap: clamp(8px, 2.2%, 18px); }
+.ttable-foot {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(10px, 2.4%, 28px);
+  font-family: var(--font-display);
+  font-size: clamp(13px, calc(var(--board-w) * .019), 30px);
+  pointer-events: auto;
+}
+.ttable-foot[hidden] { display: none; }
+.ttable-note {
+  display: inline-flex;
+  align-items: center;
+  gap: .3em;
+  padding: .2em .9em;
+  color: var(--brown-ink);
+  border: .16em solid var(--orange-fill);
+  border-radius: .7em;
+  background: linear-gradient(180deg, var(--cream) 0%, var(--cream-deep) 100%);
+  box-shadow: 0 0 0 .07em var(--orange-deep), 0 .3em .8em var(--shadow-deep);
+}
+.ttable-note .frac { height: auto; font-size: 1.3em; }
+.ttable-note .frac__n, .ttable-note .frac__d { font-size: .62em; padding-left: .3em; padding-right: .3em; }
+.ttable-check { font-size: inherit; min-height: 2.2em; }
+.ttable-check:disabled { cursor: default; filter: grayscale(.85); opacity: .6; }
+.ttable-check.is-asking { animation: dd-call 1.8s ease-in-out infinite; }
+
 /* ---- Reduced motion ------------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
   .tri__side, .dd__face, .dd__caret, .slider__thumb, .ttable__cell,
   .ttable__cell--lhs::before { transition: none !important; }
   .dd.is-asking .dd__face, .slider.is-asking .slider__thumb, .choice--big.is-asking,
+  .ttable-check.is-asking,
   .grab.is-asking .grab__halo { animation: none !important; }
 }

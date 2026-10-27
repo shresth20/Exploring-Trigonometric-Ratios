@@ -10,7 +10,7 @@
  * lines said on the header and its opening and closing around them, the
  * Next control, the tray of names and the drag that puts them in boxes,
  * the pacing constants, and the registry the sections join. The sections themselves are in
- * js/s1-sides.js ... js/s7-table.js, and the right pane's widgets -- the
+ * js/s1-sides.js ... js/s8-more.js, and the right pane's widgets -- the
  * dropdown, the slider, the equations, the table -- in js/widgets.js.
  *
  * Load order: motion.js -> flow.js -> mathtext.js -> typer.js -> mascot.js
@@ -38,13 +38,58 @@
 
   /* The figure's own coordinates: the picture is 1000 x 420, from y = 45
      (the viewBox in index.html), so centred on (500, 255). SHIFT is how far
-     a figure slides to stand in the left half. */
+     a figure slides to stand in the left half when it cannot be measured;
+     aside() below says where it really goes. */
   var VB_W = 1000, VB_H = 420;
   var CX = 500, CY = 255;
   var SHIFT = -250;
   var SVG_NS = 'http://www.w3.org/2000/svg';
 
   function round2(n) { return Math.round(n * 100) / 100; }
+
+  /* Where a figure group stands while the pane has the right half: the x
+     and y that put the middle of what it shows -- the words beside it
+     too -- on the middle of the left half, level with the middle of the
+     pane. Measured, not fixed, so a triangle with a long word out to one
+     side is centred as it is seen. Read in the group's own units, before
+     its own move, so the answer is the same however far it has slid. */
+  function aside(g) {
+    var box = shownBox(g);
+    var fig = dom.figure, stage = fig.parentNode;
+    var fw = fig.clientWidth, fh = fig.clientHeight;
+    var s = Math.min(fw / VB_W, fh / VB_H);
+    if (!box || !s) return { x: SHIFT, y: 0 };
+    /* the stage's corner, in the picture's units (it is drawn centred) */
+    var left = (stage.clientWidth - fw) / 2 + (fw - VB_W * s) / 2;
+    var top = parseFloat(getComputedStyle(fig).top) + (fh - VB_H * s) / 2;
+    var cx = (stage.clientWidth / 4 - left) / s;
+    var cy = (stage.clientHeight / 2 - top) / s + (CY - VB_H / 2);
+    return {
+      x: round2(cx - (box.x + box.width / 2)),
+      y: round2(cy - (box.y + box.height / 2))
+    };
+  }
+  /* The box round every mark of a group that can be seen, in the group's
+     own units: nothing faded out, empty, or a drag handle's halo. */
+  function shownBox(g) {
+    var own = g.getCTM();
+    if (!own || g.hasAttribute('hidden')) return null;
+    own = own.inverse();
+    var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
+    g.querySelectorAll('path, line, circle, ellipse, rect, polygon, polyline, text').forEach(function (e) {
+      if (e.closest('[hidden], .grab, defs, mask, clipPath, marker')) return;
+      if (parseFloat(getComputedStyle(e).opacity) === 0) return;
+      var b = e.getBBox();
+      if (!b.width && !b.height) return;
+      var m = own.multiply(e.getCTM());
+      [[b.x, b.y], [b.x + b.width, b.y], [b.x, b.y + b.height], [b.x + b.width, b.y + b.height]].forEach(function (c) {
+        var p = new DOMPoint(c[0], c[1]).matrixTransform(m);
+        x0 = Math.min(x0, p.x); y0 = Math.min(y0, p.y);
+        x1 = Math.max(x1, p.x); y1 = Math.max(y1, p.y);
+      });
+    });
+    return x0 < x1 ? { x: x0, y: y0, width: x1 - x0, height: y1 - y0 } : null;
+  }
 
   /* The activity's boxes: the same proportions as a name in the tray. */
   var BOX_W = 210, BOX_H = 42;
@@ -1311,7 +1356,7 @@
   var kit = {
     BEAT: BEAT, SHORT: SHORT, HOLD_ASK: HOLD_ASK, AUTO_TURN: AUTO_TURN, LOOK: LOOK,
     TAP_SLOP: TAP_SLOP,
-    CX: CX, CY: CY, VB_W: VB_W, VB_H: VB_H, SHIFT: SHIFT,
+    CX: CX, CY: CY, VB_W: VB_W, VB_H: VB_H, SHIFT: SHIFT, aside: aside,
     BOX_W: BOX_W, BOX_H: BOX_H, LEAD_STUB: LEAD_STUB, HAND_D: HAND_D,
     dom: function () { return dom; },
     el: el, seg: seg, round2: round2,

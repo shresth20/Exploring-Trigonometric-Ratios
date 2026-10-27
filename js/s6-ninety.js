@@ -83,7 +83,7 @@
       .then(function () {
         shapeAt(START_DEG);
         quiet(K.onPhrase('s6Explore90', 'slider', function () {
-          return Flow.anim(Beats.slideGroup(dom.g, K.SHIFT, 0.9)).then(function () {
+          return Flow.anim(Beats.slideGroup(dom.g, K.aside(dom.g).x, 0.9)).then(function () {
             W.pane.show();
             slider = W.slider({
               min: START_DEG, max: 90, value: START_DEG, target: 90, snap: 1.5,
@@ -116,7 +116,7 @@
       .then(function () {
         if (!slider) {
           /* the slider's cue never fired (the line was skipped): put it up */
-          return Flow.anim(Beats.slideGroup(dom.g, K.SHIFT, 0.9)).then(function () {
+          return Flow.anim(Beats.slideGroup(dom.g, K.aside(dom.g).x, 0.9)).then(function () {
             W.pane.show();
             slider = W.slider({
               min: START_DEG, max: 90, value: START_DEG, target: 90, snap: 1.5,

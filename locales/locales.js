@@ -87,7 +87,17 @@ window.GAME_LOCALES={
         "s6At90": "s6At90.webm",
         "s6Line": "s6Line.webm",
         "s6Undefined": "s6Undefined.webm",
-        "s7Complete": "s7Complete.webm"
+        "s7Complete": "s7Complete.webm",
+        "s8CosecRecall": "s8CosecRecall.webm",
+        "s8CosecAsk": "s8CosecAsk.webm",
+        "s8CosecDone": "s8CosecDone.webm",
+        "s8SecRecall": "s8SecRecall.webm",
+        "s8SecAsk": "s8SecAsk.webm",
+        "s8SecDone": "s8SecDone.webm",
+        "s8CotRecall": "s8CotRecall.webm",
+        "s8CotAsk": "s8CotAsk.webm",
+        "s8CotDone": "s8CotDone.webm",
+        "s8AllDone": "s8AllDone.webm"
       },
       "cues": {}
     }
@@ -95,6 +105,7 @@ window.GAME_LOCALES={
   "en": {
     "uiTitle": "Exploring Trigonometric Ratios",
     "btnStart": "Start",
+    "btnCheck": "Check",
     "loadingLabel": "Loading",
     "loadPercent": "{n}%",
     "loadingAria": "Loading the lesson",
@@ -110,6 +121,7 @@ window.GAME_LOCALES={
     "a11yApex": "The top corner of the triangle. Drag it up or down, or use the arrow keys, to change the angle.",
     "a11ySplit": "The left corner of the triangle. Drag from here along the dotted line, or press Enter, to split the triangle.",
     "a11yCell": "{ratio} at {angle}",
+    "a11yCellPick": "Choose {ratio} at {angle}",
     "a11yPane": "The working",
 
     "fbNotQuite": "Not quite!",
@@ -165,12 +177,18 @@ window.GAME_LOCALES={
     "lblSinTheta": "sin θ",
     "lblCosTheta": "cos θ",
     "lblTanTheta": "tan θ",
+    "lblCosecTheta": "cosec θ",
+    "lblSecTheta": "sec θ",
+    "lblCotTheta": "cot θ",
     "lblUndefined": "Undefined",
     "symEq": "=",
 
     "eqSinTheta": "sin θ =",
     "eqCosTheta": "cos θ =",
     "eqTanTheta": "tan θ =",
+    "eqCosecTheta": "cosec θ =",
+    "eqSecTheta": "sec θ =",
+    "eqCotTheta": "cot θ =",
     "eqSinDeg": "sin {a}° =",
     "eqCosDeg": "cos {a}° =",
     "eqTanDeg": "tan {a}° =",
@@ -189,6 +207,7 @@ window.GAME_LOCALES={
     "valOneOverRoot2": "1⁄√2",
     "valRoot3Over2": "√3⁄2",
     "valOneOverRoot3": "1⁄√3",
+    "valTwoOverRoot3": "2⁄√3",
     "valOneOverOne": "1⁄1",
     "valRoot3Over1": "√3⁄1",
     "val4Over4": "4⁄4",
@@ -268,7 +287,18 @@ window.GAME_LOCALES={
     "s6Line": "Again, we have a line. Let’s use these distances to extend the ratios to 90°.",
     "s6Undefined": "We can’t divide by zero, so tan 90° is undefined.",
 
-    "s7Complete": "Our table is complete! You’ve found the sine, cosine and tangent values for all five angles."
+    "s7Complete": "Our table is complete! You’ve found the sine, cosine and tangent values for all five angles.",
+
+    "s8CosecRecall": "Remember, cosec is the reciprocal of sine.",
+    "s8CosecAsk": "Can you use the sine values to complete this new row?",
+    "s8CosecDone": "That’s right! Each cosec value is the reciprocal of the sine value.",
+    "s8SecRecall": "Remember, sec is the reciprocal of cosine.",
+    "s8SecAsk": "Can you use the cosine values to complete this new row?",
+    "s8SecDone": "That’s right! Each sec value is the reciprocal of the cosine value.",
+    "s8CotRecall": "Remember, cot is cosine divided by sine.",
+    "s8CotAsk": "Can you use the cosine and sine values to complete this new row?",
+    "s8CotDone": "That’s right! Our table is now complete.",
+    "s8AllDone": "There we go! Our table is complete."
   }
 }
 ;

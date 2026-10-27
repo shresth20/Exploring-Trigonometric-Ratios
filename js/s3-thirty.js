@@ -340,7 +340,7 @@
       .then(function () { return Flow.wait(SHORT); })
       /* ---- aside, and b by Pythagoras ------------------------------------ */
       .then(function () {
-        return Flow.anim(Beats.moveGroup(dom.gL, { x: K.SHIFT, y: CENTRE_Y }, 0.9));
+        return Flow.anim(Beats.moveGroup(dom.gL, K.aside(dom.gL), 0.9));
       })
       .then(function () {
         W.pane.show();
@@ -511,7 +511,7 @@
     if (local === 1) { halvesInstant(); return; }
     /* scene 3 opens on the kept half aside, with the rows found */
     halfWritten();
-    M.set(dom.gL, { x: K.SHIFT, y: CENTRE_Y });
+    M.set(dom.gL, K.aside(dom.gL));
   }
 
   Pages.addSection({

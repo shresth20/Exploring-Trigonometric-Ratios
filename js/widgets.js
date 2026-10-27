@@ -11,11 +11,13 @@
  *   W.pane.show() / clear() / row(cls, html)   the pane and its rows
  *   W.eqRow(lhs)                               sin θ = [a]/[b] = [c]/[d] = v
  *   W.dropdown(host, options, right, o).ask()  the blank
+ *     ... .choose(fn) / settle() / refuse()      the blank, judged later
  *   W.pills(labels)                            answer pills in the pane
  *   W.slider(opts).ask()                       the angle slider
  *   W.handNudge(el) / W.handSlide(track, ...)  the pointing hand
  *   W.handDrag(from, to, size)                 ... carrying a point
  *   W.table.show() / fill() / ask() / hide()   the table
+ *   W.table.addRow() / note() / askRow()       ... and the rows added to it
  *
  * Load order: js/pages.js -> js/tri.js -> js/widgets.js -> the sections
  * ========================================================================== */
@@ -116,12 +118,14 @@
     show: function () {
       var d = dom();
       d.pane.removeAttribute('hidden');
+      watchColumn(d.paneBody);
       return d.paneBody;
     },
     /* Empty it and shut it, with no animation. */
     clear: function () {
       var d = dom();
       d.paneBody.textContent = '';
+      M.set(d.paneBody, { clearProps: 'transform' });
       d.pane.setAttribute('hidden', '');
       d.pane.classList.remove('pane--low', 'pane--top');
     },
@@ -148,6 +152,25 @@
       return Flow.anim(Beats.rowOut(list, { remove: true }));
     }
   };
+  /* The column of rows is centred in the half, so a row growing wider --
+     a fraction arriving -- or one taken away moves every row across. The
+     move is glided, not jumped: the column is held where it stood and let
+     go. An empty column has nowhere it stood, so the first row just lands. */
+  var colWatch = null, colAt = null;
+  function watchColumn(body) {
+    if (colWatch || !global.ResizeObserver) return;
+    colWatch = new ResizeObserver(function () {
+      var at = body.childElementCount ? body.offsetLeft : null;
+      if (colAt != null && at != null && at !== colAt && !M.reducedMotion()) {
+        var from = colAt - at + (global.gsap.getProperty(body, 'x') || 0);
+        var tl = M.timeline({ willChange: body, willChangeValue: 'transform' });
+        tl.fromTo(body, { x: from }, { x: 0, duration: M.dur(0.4), ease: 'power2.out' });
+      }
+      colAt = at;
+    });
+    colWatch.observe(body);
+  }
+
   function wipePane() {
     var d = dom();
     var out = [];
@@ -222,15 +245,18 @@
    * drop out under it. Waiting, it breathes; a wrong one shows red in the
    * slot for a moment, shakes, and is struck off the list; the right one
    * stays, green, with a tick on the corner.
+   *   Or a free choice (choose): a pick is only set in the slot, and a
+   * Check judges it later -- settle() for right, refuse() for wrong.
    * ====================================================================== */
   function dropdown(host, opts, right, o) {
     o = o || {};
+    var hold = o.placeholder != null ? o.placeholder : T('lblChooseSide');
     var dd = h('span', 'dd' + (o.up ? ' dd--up' : ''), host);
     var face = h('button', 'dd__face', dd);
     face.type = 'button';
-    face.setAttribute('aria-label', T('a11yDropdown'));
+    face.setAttribute('aria-label', o.label || T('a11yDropdown'));
     var val = h('span', 'dd__val is-placeholder', face);
-    val.textContent = o.placeholder || T('lblChooseSide');
+    val.textContent = hold;
     var caret = svgEl('svg', { 'class': 'dd__caret', viewBox: '0 0 12 8', 'aria-hidden': 'true' }, face);
     svgEl('path', { d: 'M1.5 1.5 6 6.5 10.5 1.5' }, caret);
     var menu = h('span', 'dd__menu', dd);
@@ -249,6 +275,7 @@
     svgEl('circle', { cx: 12, cy: 12, r: 10.5 }, tick);
     svgEl('path', { d: 'M7 12.5 10.5 16 17 8.5' }, tick);
     var good = items[right];
+    var chosen = null;
 
     var row = dd.closest('.pane__row');
     function open(on) {
@@ -278,13 +305,14 @@
       val.classList.remove('is-placeholder');
       write(val, text);
     }
-    function win() {
+    /* `hush`: no chime of its own -- one is rung for a Check's whole row */
+    function win(hush) {
       open(false);
       dd.classList.remove('is-asking', 'is-wrong');
       setVal(good.dataset.name);
       dd.classList.add('is-right');
       face.disabled = true;
-      Beats.sfx('correct');
+      if (!hush) Beats.sfx('correct');
       quiet(Flow.anim(M.correct(face)));
       return Flow.anim(M.fromTo(tick, { opacity: 0, scale: 0, transformOrigin: 'center center' },
         { opacity: 1, scale: 1, duration: M.dur(0.4), ease: M.POP }));
@@ -337,7 +365,7 @@
                 if (dd.classList.contains('is-right')) return;
                 dd.classList.remove('is-wrong');
                 val.classList.add('is-placeholder');
-                val.textContent = o.placeholder || T('lblChooseSide');
+                val.textContent = hold;
               });
             }));
             if (q.onWrong) q.onWrong(items.indexOf(b), b.dataset.name);
@@ -348,6 +376,64 @@
           document.removeEventListener('pointerdown', onDoc, true);
           throw err;
         });
+      },
+
+      /* A free choice: the face opens the list, and an option pressed is
+         set in the slot and the list shut -- right or wrong is not said
+         until a Check judges it. `fn(name)` hears every pick, `onOpen` the
+         list being opened. Hands back the function that stops listening. */
+      choose: function (fn, onOpen) {
+        dd.classList.add('is-asking');
+        function onFace() {
+          if (dd.classList.contains('is-right')) return;
+          if (onOpen) onOpen();
+          open(menu.hidden);
+        }
+        function onItem(ev) {
+          var b = ev.currentTarget;
+          if (b.__out || dd.classList.contains('is-right')) return;
+          chosen = b;
+          setVal(b.dataset.name);
+          dd.classList.remove('is-asking', 'is-wrong');
+          open(false);
+          fn(b.dataset.name);
+        }
+        face.addEventListener('click', onFace);
+        items.forEach(function (b) { b.addEventListener('click', onItem); });
+        document.addEventListener('pointerdown', onDoc, true);
+        return function off() {
+          face.removeEventListener('click', onFace);
+          items.forEach(function (b) { b.removeEventListener('click', onItem); });
+          document.removeEventListener('pointerdown', onDoc, true);
+          open(false);
+          dd.classList.remove('is-asking');
+        };
+      },
+      /* What is in the slot now, and whether it is the right one. */
+      value: function () { return chosen ? chosen.dataset.name : null; },
+      isRight: function () { return chosen === good; },
+      /* Judged right -- or set right for the learner, under a skip: green,
+         with the tick, and shut for good. */
+      settle: function () {
+        chosen = good;
+        return win(true);
+      },
+      /* Judged wrong: red in the slot and a shake, that choice struck off
+         the list, and the slot empty again for another go. */
+      refuse: function () {
+        var b = chosen;
+        chosen = null;
+        if (b) { b.__out = true; b.classList.add('is-out'); }
+        dd.classList.add('is-wrong');
+        return Flow.anim(M.incorrect(face))
+          .then(function () { return Flow.wait(350); })
+          .then(function () {
+            if (chosen || dd.classList.contains('is-right')) return;
+            dd.classList.remove('is-wrong');
+            val.classList.add('is-placeholder');
+            val.textContent = hold;
+            dd.classList.add('is-asking');
+          });
       }
     };
   }
@@ -620,16 +706,24 @@
 
   /* ======================================================================
    * The table of values
-   * Ratio | 0° | 30° | 45° | 60° | 90°, three rows. Built once; the values
-   * filled in over the lesson are remembered, so each time the table is
-   * shown it carries what has been found so far. While a value lands, its
-   * row is lit and the other two step back.
+   * Ratio | 0° | 30° | 45° | 60° | 90°, three rows -- and, once those are
+   * complete, three more (cosec, sec, cot), each kept out of the table
+   * until the lesson adds it. Built once; the values filled in over the
+   * lesson are remembered, so each time the table is shown it carries what
+   * has been found so far. While a value lands, its row is lit and the
+   * others step back. Under the table, a foot: the formula a new row is
+   * worked from, and the Check that judges it.
    * ====================================================================== */
   var ANGLES = [0, 30, 45, 60, 90];
   var RATIOS = ['sin', 'cos', 'tan'];
-  var RATIO_LBL = { sin: 'lblSinTheta', cos: 'lblCosTheta', tan: 'lblTanTheta' };
+  var MORE = ['cosec', 'sec', 'cot'];
+  var ROWS = RATIOS.concat(MORE);
+  var RATIO_LBL = { sin: 'lblSinTheta', cos: 'lblCosTheta', tan: 'lblTanTheta',
+                    cosec: 'lblCosecTheta', sec: 'lblSecTheta', cot: 'lblCotTheta' };
   var filled = {};          /* 'sin:45' -> text */
+  var added = {};           /* 'cosec' -> true, once the lesson has added it */
   var tableEl = null;
+  var footEl = null;
   var cells = {};
   var rows = {};
 
@@ -645,7 +739,7 @@
       var c = h('div', 'ttable__cell ttable__cell--head', head);
       c.textContent = T('lblDegVal', { n: a });
     });
-    RATIOS.forEach(function (r) {
+    ROWS.forEach(function (r) {
       var row = h('div', 'ttable__row', tableEl);
       rows[r] = row;
       var lhs = h('div', 'ttable__cell ttable__cell--lhs', row);
@@ -659,13 +753,28 @@
         cells[r + ':' + a] = { el: c, v: inner };
       });
     });
+    footEl = h('div', 'ttable-foot', d.tableWrap);
+    footEl.hidden = true;
     paintTable();
   }
+  /* The added rows in, the rest out; a table of more than three rows is
+     set closer, so it still stands clear of the header. */
+  function syncRows() {
+    MORE.forEach(function (r) { rows[r].hidden = !added[r]; });
+    tableEl.classList.toggle('ttable--long', MORE.some(function (r) { return added[r]; }));
+  }
+  function clearFoot() {
+    if (!footEl) return;
+    footEl.textContent = '';
+    footEl.hidden = true;
+    M.set(footEl, { clearProps: 'opacity,transform' });
+  }
   function paintTable() {
+    syncRows();
     focusRow(null);
     Object.keys(cells).forEach(function (k) {
       var c = cells[k];
-      c.el.classList.remove('is-new', 'is-ask', 'is-right', 'is-wrong');
+      c.el.classList.remove('is-new', 'is-ask', 'is-right', 'is-wrong', 'is-pick');
       c.el.removeAttribute('tabindex');
       if (filled[k]) {
         write(c.v, filled[k]);
@@ -677,10 +786,26 @@
       }
     });
   }
-  /* One row lit and the others stepped back; null brings them all back. */
+  /* One row lit -- or several, given a list -- and the others stepped
+     back; null brings them all back. */
   function focusRow(r) {
-    tableEl.classList.toggle('has-focus', !!r);
-    RATIOS.forEach(function (k) { rows[k].classList.toggle('is-focus', k === r); });
+    var on = [].concat(r || []);
+    tableEl.classList.toggle('has-focus', on.length > 0);
+    ROWS.forEach(function (k) { rows[k].classList.toggle('is-focus', on.indexOf(k) >= 0); });
+  }
+  function rowCells(r) {
+    return Array.prototype.slice.call(rows[r].children);
+  }
+
+  /* The Check under the table: pressable once every blank of the row is
+     set. */
+  function checkButton() {
+    var b = h('button', 'choice ttable-check', footEl);
+    b.type = 'button';
+    b.textContent = T('btnCheck');
+    b.disabled = true;
+    M.button3d(b, { edge: 4 });
+    return b;
   }
 
   var table = {
@@ -703,10 +828,152 @@
     hide: function () {
       var d = dom();
       if (d.tableWrap.hasAttribute('hidden') || !tableEl) { d.tableWrap.setAttribute('hidden', ''); return Promise.resolve(); }
-      return Flow.anim(Beats.rowOut(tableEl)).then(function () {
+      var going = footEl.hidden ? [tableEl] : [tableEl, footEl];
+      return Flow.anim(Beats.rowOut(going)).then(function () {
         d.tableWrap.setAttribute('hidden', '');
         M.set(tableEl, { clearProps: 'opacity,transform' });
+        clearFoot();
       });
+    },
+    /* Rows lit, by name or a list of names; null for none. */
+    focus: function (r) { if (tableEl) focusRow(r); },
+
+    /* A new row taken into the table: the rows already there close up to
+       make room for it, and its cells come in after. */
+    addRow: function (r) {
+      if (!tableEl) buildTable();
+      if (added[r]) return Promise.resolve();
+      var fresh = rowCells(r);
+      var standing = Array.prototype.slice.call(tableEl.querySelectorAll('.ttable__cell'))
+        .filter(function (c) { return !c.parentNode.hidden; });
+      M.set(fresh, { opacity: 0 });
+      var move = M.flip([tableEl].concat(standing), function () {
+        added[r] = true;
+        syncRows();
+      }, { nested: true });
+      return Flow.anim(move).then(function () {
+        return Flow.anim(Beats.rowIn(fresh, { y: 10, stagger: 0.06 }));
+      });
+    },
+    /* ...or written straight in, for a page staged from the level bar. */
+    rememberRow: function (r) {
+      added[r] = true;
+      if (tableEl) syncRows();
+    },
+
+    /* The formula under the table: `lhs` and a fraction n over d, the way
+       cosec θ = 1 over sin θ is written -- whole words either side of the
+       bar, which a value's fraction slash cannot carry. */
+    note: function (lhs, n, d) {
+      if (!tableEl) buildTable();
+      clearFoot();
+      var el = h('div', 'ttable-note', footEl);
+      write(h('span', 'ttable-note__lhs', el), lhs);
+      var f = h('span', 'frac', el);
+      f.setAttribute('role', 'img');
+      f.setAttribute('aria-label', n + '/' + d);
+      write(h('span', 'frac__n', f), n);
+      write(h('span', 'frac__d', f), d);
+      footEl.hidden = false;
+      return Flow.anim(Beats.rowIn(el, { y: 10 }));
+    },
+    noteOut: function () {
+      if (!footEl || footEl.hidden) return Promise.resolve();
+      return Flow.anim(Beats.rowOut(footEl)).then(clearFoot);
+    },
+
+    /* A whole row asked at once: a blank in each of its five cells, all
+       chosen from one list, and a Check beside the formula that judges the
+       five together once every one is set. A right one is kept, green; a
+       wrong one is struck off its list and emptied for another go, and
+       `spec.onWrong(n)` is told how many were wrong. Once the whole row is
+       right, the blanks give way to the values, which are remembered.
+         spec: { answers: { 0: text, 30: text, ... }, options: [text, ...],
+                 onWrong(n) }.
+       Under a skip, the right values are set in for the learner. */
+    askRow: function (r, spec) {
+      var opts = spec.options;
+      var picks = ANGLES.map(function (a) {
+        var c = cells[r + ':' + a];
+        c.v.textContent = '';
+        c.el.classList.add('is-pick');
+        var dd = dropdown(c.v, opts, opts.indexOf(spec.answers[a]), {
+          keepOrder: true, placeholder: '',
+          label: T('a11yCellPick', { ratio: T(RATIO_LBL[r]), angle: T('lblDegVal', { n: a }) })
+        });
+        return { a: a, c: c, dd: dd, ok: false };
+      });
+      footEl.hidden = false;
+      var btn = checkButton();
+      M.set(btn, { opacity: 0 });
+
+      var touched = false, stopHand = null;
+      function hush() {
+        touched = true;
+        if (stopHand) { stopHand(); stopHand = null; }
+      }
+      function ready() {
+        btn.disabled = picks.some(function (p) { return !p.dd.value(); });
+        btn.classList.toggle('is-asking', !btn.disabled);
+      }
+      var offs = picks.map(function (p) { return p.dd.choose(ready, hush); });
+      function off() {
+        hush();
+        offs.forEach(function (f) { f(); });
+        btn.disabled = true;
+        btn.classList.remove('is-asking');
+      }
+
+      function round() {
+        ready();
+        return waitPick([btn], btn).then(function () {
+          if (Flow.isFast()) picks.forEach(function (p) { if (!p.ok && !p.dd.isRight()) p.dd.settle(); });
+          btn.disabled = true;
+          btn.classList.remove('is-asking');
+          var open = picks.filter(function (p) { return !p.ok; });
+          var right = open.filter(function (p) { return p.dd.isRight(); });
+          var wrong = open.filter(function (p) { return !p.dd.isRight(); });
+          var landed = right.map(function (p) { p.ok = true; return p.dd.settle(); });
+          if (!wrong.length) {
+            Beats.sfx('correct');
+            return Promise.all(landed);
+          }
+          Beats.sfx('wrong');
+          if (spec.onWrong) spec.onWrong(wrong.length);
+          return Promise.all(landed.concat(wrong.map(function (p) { return p.dd.refuse(); })))
+            .then(round);
+        });
+      }
+
+      return Flow.anim(Beats.rowIn(btn, { y: 10 }))
+        .then(function () {
+          quiet(Flow.wait(K.SHORT * 3).then(function () {
+            if (!touched) stopHand = handNudge(picks[0].dd.face);
+          }));
+          return round();
+        })
+        .then(function () {
+          off();
+          burstAt(cells[r + ':45'].el);
+          return Flow.wait(K.SHORT);
+        })
+        /* the row as the table keeps it: the blanks give way to the values */
+        .then(function () {
+          return Flow.anim(Beats.rowOut(btn, { remove: true }));
+        })
+        .then(function () {
+          return Promise.all(picks.map(function (p, i) {
+            var text = spec.answers[p.a];
+            filled[r + ':' + p.a] = text;
+            return Flow.wait(i * 60).then(function () {
+              return Flow.anim(Beats.swapIn(p.c.v, function () {
+                write(p.c.v, text);
+                p.c.el.classList.remove('is-pick');
+                p.c.el.classList.add('is-filled');
+              }));
+            });
+          }));
+        }, function (err) { off(); throw err; });
     },
     /* One value landing in its cell, and remembered. */
     fill: function (r, a, text) {
@@ -767,10 +1034,12 @@
     },
     reset: function () {
       filled = {};
+      added = {};
       if (tableEl) paintTable();
+      clearFoot();
       dom().tableWrap.setAttribute('hidden', '');
     },
-    ANGLES: ANGLES, RATIOS: RATIOS
+    ANGLES: ANGLES, RATIOS: RATIOS, MORE: MORE
   };
 
   /* ======================================================================

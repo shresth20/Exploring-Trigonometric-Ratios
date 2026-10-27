@@ -231,7 +231,7 @@
       .then(function () { return Flow.wait(SHORT); })
       .then(function () {
         return K.say('s2Back', function () {
-          return Flow.anim(Beats.slideGroup(dom.g, K.SHIFT, 0.9));
+          return Flow.anim(Beats.moveGroup(dom.g, K.aside(dom.g), 0.9));
         });
       })
       .then(function () {
@@ -331,7 +331,7 @@
       .then(function () {
         return Promise.all([
           Flow.anim(Beats.trayOut(dom.choices, K.choices())).then(function () { K.resetFooter(); }),
-          Flow.anim(Beats.moveGroup(dom.g, { x: K.SHIFT, y: DROP }, 0.9))
+          Flow.anim(Beats.moveGroup(dom.g, K.aside(dom.g), 0.9))
         ]);
       })
       .then(function () {
@@ -491,7 +491,7 @@
     t.colourRoles(true);
     t.writeWord('opp', T('lblOpposite')); t.writeWord('adj', T('lblAdjacent')); t.writeWord('hyp', T('lblHypotenuse'));
     M.set(Object.keys(t.words).map(function (s) { return t.words[s]; }), { opacity: 1 });
-    M.set(dom.g, { x: K.SHIFT });
+    M.set(dom.g, K.aside(dom.g));
     rowsInstant();
     return Promise.resolve();
   }
@@ -543,7 +543,7 @@
     if (local === 1) { ensureRows(); return; }
     shapeAt(45);
     Tri.instant(t);
-    M.set(dom.g, { x: K.SHIFT, y: DROP });
+    M.set(dom.g, K.aside(dom.g));
   }
 
   Pages.addSection({

@@ -1,10 +1,10 @@
 /* ==========================================================================
  * s7-table.js -- Section 7: the complete table
  * --------------------------------------------------------------------------
- * Storyboard pages 80-89. One scene: the 90° values go into the table, and
+ * Storyboard page 79. One scene: the 90° values go into the table, and
  * "Our table is complete! You've found the sine, cosine and tangent values
- * for all five angles." -- said under a shower of confetti. Next takes the
- * board away and leaves the swamp.
+ * for all five angles." -- said under a shower of confetti. Next. The
+ * table stays up for js/s8-more.js, which adds its last three rows.
  * ========================================================================== */
 (function (global) {
   'use strict';
@@ -57,10 +57,7 @@
         });
       })
       .then(function () { return Flow.wait(SHORT); })
-      .then(function () { return K.handOver(); })
-      /* ---- the lesson closes: the board goes, and the swamp is left ---- */
-      .then(function () { return K.wipeBoard(); })
-      .then(function () { return Flow.anim(Beats.boardOut(dom.board)); });
+      .then(function () { return K.handOver(); });
   }
 
   function parts() { return []; }

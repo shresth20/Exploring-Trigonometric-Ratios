@@ -126,7 +126,7 @@
       })
       .then(function () { return Flow.wait(SHORT); })
       .then(function () {
-        return Flow.anim(Beats.slideGroup(dom.g, K.SHIFT, 0.9));
+        return Flow.anim(Beats.slideGroup(dom.g, K.aside(dom.g).x, 0.9));
       })
       .then(function () {
         W.pane.show();
@@ -239,7 +239,7 @@
     shapeAt(0);
     Tri.instant(t);
     t.colourRoles(true);
-    M.set(dom.g, { x: K.SHIFT });
+    M.set(dom.g, { x: K.aside(dom.g).x });
   }
 
   Pages.addSection({
