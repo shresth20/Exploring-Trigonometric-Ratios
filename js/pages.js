@@ -211,15 +211,18 @@
     }, []);
   }
 
-  /* Back to an empty stage: every section's groups hidden, every inline
-     write handed back -- and the dash patterns with them. */
+  /* Back to an empty stage: every inline write handed back -- and the dash
+     patterns with them -- and then every section's groups hidden. The
+     sections lay out after the clear, not before: a word beside a slanted
+     side is turned by its own transform, and clearing it would leave the
+     word level and lying across the side. */
   function resetFigure() {
     dom.figure.querySelectorAll('.is-lit, .is-pulsing, .is-glowing-text').forEach(function (l) {
       l.classList.remove('is-lit', 'is-pulsing', 'is-glowing-text');
     });
-    sections.forEach(function (s) { if (s.reset) s.reset(); });
     clearInline([dom.figure].concat(
       Array.prototype.slice.call(dom.figure.querySelectorAll('*'))));
+    sections.forEach(function (s) { if (s.reset) s.reset(); });
   }
 
   function clearInline(els) {

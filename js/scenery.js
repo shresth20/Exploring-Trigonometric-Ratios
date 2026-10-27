@@ -48,8 +48,8 @@
      at most, over a period of its own in seconds, so the light on the
      water glints rather than only slides. */
   var WATER = [
-    { speed: 1 / 260, dim: 0.12, every: 11 },
-    { speed: 1 / 100, dim: 0.1,  every: 7 }
+    { speed: 1 / 400, dim: 0.12, every: 11 },
+    { speed: 1 / 160, dim: 0.1,  every: 7 }
   ];
   /* ms: a gap between frames longer than this -- a hidden tab, a stall --
      counts as this long, so the sky carries on from where it was. */

@@ -46,6 +46,31 @@
 .tri__side--hyp { stroke: var(--side-hyp); }
 /* A side spoken of, lit: its own ink bloomed under it. */
 .tri__side.is-lit { filter: url(#partGlow); }
+.end-dot.is-lit { filter: url(#partGlow); }
+
+/* A point the learner drags -- the 45° triangle's corner (s2-ratios.js),
+   the start of the split (s3-thirty.js): a gold halo breathing round it,
+   and a wider ring of nothing for a finger to catch. */
+.grab { outline: none; }
+.grab__halo {
+  fill: color-mix(in srgb, var(--tri-point) 35%, transparent);
+  stroke: var(--tri-point);
+  stroke-width: 2.5;
+  filter: url(#partGlow);
+  pointer-events: none;
+  transform-box: fill-box;
+  transform-origin: center;
+}
+.grab.is-asking .grab__halo { animation: grab-call 1.6s ease-in-out infinite; }
+.grab.is-held .grab__halo { animation: none; transform: scale(1.3); opacity: .9; }
+.grab:focus-visible .grab__halo { stroke: var(--amber-fill); stroke-width: 4; }
+@keyframes grab-call {
+  0%, 100% { transform: scale(1);    opacity: 1; }
+  50%      { transform: scale(1.45); opacity: .45; }
+}
+.grab__hit { fill: transparent; pointer-events: none; }
+.grab.is-asking .grab__hit { pointer-events: all; cursor: grab; }
+.grab.is-held .grab__hit { cursor: grabbing; }
 
 /* The right angle's square and the angle arcs: the annotation ink, thin. */
 .tri__right {
@@ -102,20 +127,24 @@
   fill: var(--text-primary);
   opacity: 0;
 }
-/* The perpendicular that splits the equilateral: dashed, the softer ink,
-   drawn through a mask (dashedIn). */
-.tri-perp {
+/* The line that splits the equilateral (s3-thirty.js): where to draw it,
+   dotted and faint, and the learner's own stroke over it, in the angle
+   ink, grown from the corner it starts at by a scale. */
+.split-guide {
   fill: none;
   stroke: var(--text-secondary);
-  stroke-width: 2.6;
-  stroke-dasharray: 7 8;
-  stroke-linecap: butt;
+  stroke-width: 5;
+  stroke-dasharray: .1 11;
+  stroke-linecap: round;
   opacity: 0;
 }
-.tri-perp-mask {
+.split-ink {
   fill: none;
-  stroke: #FFFFFF;
-  stroke-width: 12;
+  stroke: var(--angle-ink);
+  stroke-width: 4;
+  stroke-linecap: round;
+  filter: url(#neon);
+  opacity: 0;
 }
 /* A side carrying a point marker at its ends, where the figure has no
    vertex dot of its own. */
@@ -190,6 +219,13 @@
   white-space: nowrap;
   flex-wrap: nowrap;
 }
+/* Equations stand on one left edge, so sin, cos and tan read down a
+   column, and a row growing as its fractions arrive never shifts its
+   start. Pills and other rows stay centred. */
+.pane__row.eq { align-self: flex-start; justify-content: flex-start; }
+/* ...except a question answered from the pills under it (hypotenuse = ?,
+   b = ?): it stands centred, right over its answers. */
+.pane__row.eq--ask { align-self: center; justify-content: center; }
 .eq__lhs { color: var(--text-primary); }
 .eq__eq { color: var(--text-secondary); padding: 0 .1em; }
 .eq__frac {
@@ -473,7 +509,7 @@
    Centred on the stage, the whole width: a head row and three rows, the
    cells filled in over the lesson. A parchment card in a gold rim, each
    cell a tile of its own: the angles on orange keys, the corner on a
-   violet one, the ratios on lime, the values on cream, all in the
+   gold one, the ratios on lime, the values on cream, all in the
    parchment's brown. While a value lands, its row is lit and the other
    two step back, faded to tan.
    ========================================================================== */
@@ -483,7 +519,7 @@
   z-index: 3;
   display: grid;
   place-items: center;
-  padding: 2% 4%;
+  padding: 2% 10%;
   pointer-events: none;
 }
 .table-wrap[hidden] { display: none; }
@@ -492,9 +528,9 @@
   --head-top: var(--orange-fill);
   --head-low: color-mix(in srgb, var(--orange-fill) 55%, var(--orange-border));
   --head-rim: var(--orange-deep);
-  --corner-top: color-mix(in srgb, var(--indigo-border) 78%, var(--indigo-fill));
-  --corner-low: color-mix(in srgb, var(--indigo-border) 82%, var(--text-outline));
-  --corner-rim: color-mix(in srgb, var(--indigo-border) 50%, var(--text-outline));
+  --corner-top: var(--amber-fill);
+  --corner-low: color-mix(in srgb, var(--amber-fill) 55%, var(--amber-border));
+  --corner-rim: color-mix(in srgb, var(--amber-border) 55%, var(--orange-deep));
   --lhs-top: color-mix(in srgb, var(--teal-fill) 80%, var(--amber-fill));
   --lhs-low: color-mix(in srgb, var(--teal-fill) 50%, var(--teal-border));
   --lhs-rim: var(--brown);
@@ -548,10 +584,14 @@
   color: var(--white);
   text-shadow: 0 .07em 0 var(--head-rim);
 }
+/* The corner: a gold key between the orange angles and the cream cells,
+   lettered in brown as the lime keys are -- white would wash out on it. */
 .ttable__cell--head.ttable__cell--lhs {
   --head-top: var(--corner-top);
   --head-low: var(--corner-low);
   --head-rim: var(--corner-rim);
+  color: var(--brown-ink);
+  text-shadow: none;
 }
 /* The ratios: lime keys, the name in brown. The tan a row steps back to
    is a layer over the lime, faded in rather than painted over it. */
@@ -577,7 +617,8 @@
 .ttable.has-focus .ttable__row:not(.ttable__row--head):not(.is-focus) > .ttable__cell--lhs::before { opacity: 1; }
 .ttable__v { display: inline-flex; align-items: center; }
 .ttable .frac { height: auto; }
-.ttable .frac__n, .ttable .frac__d { font-size: .8em; padding: 0 .2em; }
+/* the sides only: the gaps either side of the bar are kept (css/style.css) */
+.ttable .frac__n, .ttable .frac__d { font-size: .8em; padding-left: .2em; padding-right: .2em; }
 /* A value just landed: its tile warmed with the moon's gold. */
 .ttable__cell.is-new {
   border-color: var(--amber-border);
@@ -610,5 +651,6 @@
 @media (prefers-reduced-motion: reduce) {
   .tri__side, .dd__face, .dd__caret, .slider__thumb, .ttable__cell,
   .ttable__cell--lhs::before { transition: none !important; }
-  .dd.is-asking .dd__face, .slider.is-asking .slider__thumb, .choice--big.is-asking { animation: none !important; }
+  .dd.is-asking .dd__face, .slider.is-asking .slider__thumb, .choice--big.is-asking,
+  .grab.is-asking .grab__halo { animation: none !important; }
 }

@@ -370,12 +370,14 @@
     }, Promise.resolve());
   }
 
-  /* The words beside the sides taken off. */
+  /* The words beside the sides taken off. Clearing the transform clears a
+     slanted side's turn with it, so the layout is written again. */
   function unname(t) {
     var list = Object.keys(t.words).map(function (s) { return t.words[s]; });
     return Flow.anim(Beats.labelsOut(list)).then(function () {
       list.forEach(function (w) { w.textContent = ''; });
       M.set(list, { clearProps: 'opacity,transform' });
+      t.layout();
     });
   }
 

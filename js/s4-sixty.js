@@ -30,7 +30,7 @@
     dom = Object.create(K.dom());
     dom.g = document.getElementById('figS4');
     /* the names stand further out than the lengths, so both can show */
-    t = Tri.create(dom.g, { A: S3.HALF.A, B: S3.HALF.B, C: S3.HALF.C, right: 'B', theta: 'C', wordOff: 70 });
+    t = Tri.create(dom.g, { A: S3.HALF.A, B: S3.HALF.B, C: S3.HALF.C, right: 'B', theta: 'A', wordOff: 70 });
     reset();
   }
 
@@ -42,10 +42,10 @@
   function triInstant() {
     Tri.instant(t);
     t.writeVal('CA', T('val2'));
-    t.writeVal('AB', T('val1'));
-    t.writeVal('BC', T('lblRoot3Units'));
-    t.writeAngle('C', T('lblDeg30'));
-    t.writeAngle('A', T('lblDeg60'));
+    t.writeVal('BC', T('val1'));
+    t.writeVal('AB', T('lblRoot3Units'));
+    t.writeAngle('A', T('lblDeg30'));
+    t.writeAngle('C', T('lblDeg60'));
     M.set(vals().concat([t.arcs.C, t.angles.C, t.arcs.A, t.angles.A]), { opacity: 1 });
   }
   function ensureTri() {
@@ -69,18 +69,18 @@
       .then(function () { return Flow.wait(SHORT); })
       .then(function () {
         quiet(K.onPhrase('s4Use60', '60°', function () {
-          t.setTheta('A');
+          t.setTheta('C');
           return Promise.all([
-            Flow.anim(Beats.textPulse([t.angles.A], 2)),
-            Flow.anim(Beats.linePulse(t.arcs.A, 3.2)),
-            Flow.anim(M.to([t.arcs.C, t.angles.C], { opacity: 0.4, duration: M.dur(0.5), ease: 'power2.inOut' }))
+            Flow.anim(Beats.textPulse([t.angles.C], 2)),
+            Flow.anim(Beats.linePulse(t.arcs.C, 3.2)),
+            Flow.anim(M.to([t.arcs.A, t.angles.A], { opacity: 0.4, duration: M.dur(0.5), ease: 'power2.inOut' }))
           ]);
         }));
         return K.say('s4Use60');
       })
       .then(function () { return Flow.wait(SHORT); })
       .then(function () {
-        t.setTheta('A');
+        t.setTheta('C');
         t.colourRoles(true);
         quiet(K.onPhrase('s4Roles', 'opposite', function () {
           return Flow.anim(Beats.labelIn(t.writeWord('opp', T('lblOpposite'))));
@@ -178,7 +178,7 @@
   function wipe() { return []; }
   function reset() {
     t.reset();
-    t.setTheta('C');
+    t.setTheta('A');
     dom.g.setAttribute('hidden', '');
     rows = {};
   }
@@ -191,7 +191,7 @@
       return;
     }
     triInstant();
-    t.setTheta('A');
+    t.setTheta('C');
     t.colourRoles(true);
     M.set(dom.g, { x: K.SHIFT });
   }

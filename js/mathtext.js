@@ -68,7 +68,7 @@
      bar whatever the size; its top stroke sits exactly on the bar. One
      inline-flex, so it never breaks between the two. */
   var SVG_NS = 'http://www.w3.org/2000/svg';
-  var SIGN_PATH = 'M3 72 L13 65 L29 110 L54 4 L58 4';
+  var SIGN_PATH = 'M3 72 L13 65 L29 110 L54 5 L58 5';
 
   function radical(n) {
     var el = document.createElement('span');
@@ -182,8 +182,8 @@
    *
    *   MathText.watch(textEl)  -- keep any root in this label drawn
    * ====================================================================== */
-  var SIGN_W = 58, SIGN_TOP = 4, SIGN_FOOT = 110;
-  var SIGN_PTS = [[3, 72], [13, 65], [29, 110], [54, 4], [58, 4]];
+  var SIGN_W = 58, SIGN_TOP = 5, SIGN_FOOT = 110;
+  var SIGN_PTS = [[3, 72], [13, 65], [29, 110], [54, 5], [58, 5]];
   var watched = [];
   var measurer = null;
 
@@ -223,13 +223,15 @@
   }
 
   /* The ink takes on the label's look: its classes (so its opacity and
-     its pulse), its transform and inline style, and its colour as stroke. */
-  function mirror(text, ink) {
+     its pulse), its transform and inline style, and its colour as stroke.
+     Its width is set inline too: the label's class carries the lettering's
+     outline width, which would otherwise win over an attribute. */
+  function mirror(text, ink, width) {
     ink.setAttribute('class', (text.getAttribute('class') || '') + ' rad-ink');
     var tf = text.getAttribute('transform');
     if (tf) ink.setAttribute('transform', tf); else ink.removeAttribute('transform');
     ink.setAttribute('style', (text.getAttribute('style') || '') +
-      ';stroke:' + global.getComputedStyle(text).fill);
+      ';stroke:' + global.getComputedStyle(text).fill + ';stroke-width:' + width + 'px');
   }
 
   /* The sign and bar for every root in the label; false while the label
@@ -265,8 +267,7 @@
       return false;
     }
     ink.setAttribute('d', d);
-    ink.setAttribute('stroke-width', round2(0.08 * fs));
-    mirror(text, ink);
+    mirror(text, ink, round2(0.08 * fs));
     return true;
   }
 

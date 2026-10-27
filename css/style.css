@@ -11,13 +11,25 @@
    a single weight, so every rule below sets weight 400 and the browser is
    told never to fake a bold (font-synthesis on body): a smeared, synthetic
    bold of a face this heavy is the one way it could look wrong. It has no
-   θ and no √ -- θ falls back to the system face, and √ is drawn
+   θ and no √ -- θ comes from Trig Theta below, and √ is drawn
    (mathtext.js) rather than set. */
 @font-face {
   font-family: "Lilita One";
   src: url("../assets/fonts/lilita_one/lilitaone-regular.woff2") format("woff2");
   font-weight: 400;
   font-display: swap;
+}
+/* The θ Lilita One lacks, cut from its own digit zero with a bar through
+   the counter, so it stands at the face's weight (the system θ it would
+   fall back to is a hairline beside it). One glyph, OFL like the face it
+   is cut from, and named apart from it as that licence asks. Every font
+   stack lists it straight after Lilita One. */
+@font-face {
+  font-family: "Trig Theta";
+  src: url("../assets/fonts/trig_theta/trigtheta-regular.woff2") format("woff2");
+  font-weight: 400;
+  font-display: swap;
+  unicode-range: U+03B8;
 }
 
 /* ==========================================================================
@@ -152,9 +164,9 @@
   --ink: var(--text-primary);
   --ink-soft: var(--text-secondary);
 
-  --font-display: "Lilita One", system-ui, sans-serif;
-  --font-body: "Lilita One", system-ui, sans-serif;
-  --font-title: "Lilita One", system-ui, sans-serif;
+  --font-display: "Lilita One", "Trig Theta", system-ui, sans-serif;
+  --font-body: "Lilita One", "Trig Theta", system-ui, sans-serif;
+  --font-title: "Lilita One", "Trig Theta", system-ui, sans-serif;
 
   /* ---- artwork (script.js preloads the same files) ----------------------
      The swamp is behind everything; the board is the same night, dimmed.
@@ -811,7 +823,7 @@ body {
    √2, √3 as they are typeset: the sign drawn (mathtext.js), its last
    stroke running up into the bar -- the vinculum -- which is the top edge
    of the figure it covers. The sign's box is 1.18em tall, the same as the
-   figure's (.08em bar + .1em gap + a 1em line), so the two meet exactly.
+   figure's (.1em bar + .08em gap + a 1em line), so the two meet exactly.
    The sign stands out of the flow, so the root sits on the line by the
    figure's own baseline. */
 .rad {
@@ -832,15 +844,18 @@ body {
 .rad__sign path {
   fill: none;
   stroke: currentColor;
-  stroke-width: 8;
+  stroke-width: 10;
   stroke-linecap: butt;
   stroke-linejoin: round;
 }
 .rad__x {
-  padding: .1em .08em 0 .04em;
-  border-top: .08em solid currentColor;
+  padding: .08em .08em 0 .04em;
+  border-top: .1em solid currentColor;
   line-height: 1;
 }
+/* Under a fraction bar the root's own bar stands clear of it, so the two
+   read as two lines, not one thick one. */
+.frac__d .rad { margin-top: .12em; }
 /* The same sign and bar beside a label on the figure (an SVG <text>
    cannot hold them), stroked in the label's colour. */
 .rad-ink {

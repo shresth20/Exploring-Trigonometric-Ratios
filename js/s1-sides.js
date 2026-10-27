@@ -14,11 +14,15 @@
  *      name?" -- the drag is shown, and each name dropped right colours
  *      its side. "That's correct! These are the opposite side, adjacent
  *      side and hypotenuse." -- each side lit as it is named. Next.
- *   3. "What if we look at the triangle from this angle instead?" -- θ
- *      travels from A to C and the words swap places. "Did you notice?"
- *      Two labelled views stand side by side: the first angle's and this
- *      one's. "The opposite and adjacent swap roles. The hypotenuse stays
- *      the same." -- the sides lit in both as they are named. Next.
+ *   3. The boxes go and the sides lose their colours. "What if we look at
+ *      the triangle from this angle instead?" -- θ travels from A to C.
+ *      Then the match of page 2 again, for θ at C: the same boxes on the
+ *      same sides, but the opposite's and adjacent's have changed places.
+ *      Once the names are in, they are written beside the sides. "Did you
+ *      notice?" Two labelled views stand side by side: the first angle's
+ *      and this one's. "The opposite and adjacent swap roles. The
+ *      hypotenuse stays the same." -- the sides lit in both as they are
+ *      named. Next.
  * ========================================================================== */
 (function (global) {
   'use strict';
@@ -43,16 +47,24 @@
      way. The hypotenuse's midpoint is nearly under its box's corner, and a
      leader to it would drop almost straight down; it lands higher up the
      side instead (HYP_AT of the way from A to C), at the same shallow
-     slant as the adjacent's. */
+     slant as the adjacent's. The boxes stay on their sides wherever θ is;
+     the name each one wants is its side's role for θ where it is now. */
   var HYP_AT = 0.63;
   function boxSpecs(t) {
+    var r = t.roles();
+    function nameOn(side) {
+      return Object.keys(ROLE).filter(function (n) { return r[ROLE[n]] === side; })[0];
+    }
     return [
-      { name: 'lblHypotenuse', x: 220, y: 160,
+      { name: nameOn('CA'), x: 220, y: 160,
         anchor: { x: A.x + (C.x - A.x) * HYP_AT, y: A.y + (C.y - A.y) * HYP_AT } },
-      { name: 'lblOpposite',   x: 720, y: 219, anchor: t.midOf('BC') },
-      { name: 'lblAdjacent',   x: 160, y: 366, anchor: t.midOf('AB') }
+      { name: nameOn('BC'), x: 720, y: 219, anchor: t.midOf('BC') },
+      { name: nameOn('AB'), x: 160, y: 366, anchor: t.midOf('AB') }
     ];
   }
+
+  /* The side a name is for: the box names a role, the role a side. */
+  var ROLE = { lblOpposite: 'opp', lblAdjacent: 'adj', lblHypotenuse: 'hyp' };
 
   var dom = null;
   var t = null, t2 = null;
@@ -90,8 +102,66 @@
     return boxes.filter(function (b) { return b.name === name; })[0];
   }
 
-  /* The side a name is for: the box names a role, the role a side. */
-  var ROLE = { lblOpposite: 'opp', lblAdjacent: 'adj', lblHypotenuse: 'hyp' };
+  /* The match, for θ where it is now. The boxes arrive on the ends of
+     their leaders, the names in the tray, and the instruction is said --
+     with the drag shown, if `guided`. Each name dropped right colours its
+     side; once all three are in, the confetti, and each side lit as it is
+     named. */
+  function matchSides(guided) {
+    buildBoxes();
+    dom.boxes.removeAttribute('hidden');
+    return boxes.reduce(function (chain, b) {
+      return chain.then(function () {
+        return Flow.anim(Beats.boxIn(b)).then(function () { return Flow.wait(160); });
+      });
+    }, Promise.resolve())
+      .then(function () {
+        var chips = K.buildChips(dom.tray, K.shuffle(['lblOpposite', 'lblAdjacent', 'lblHypotenuse']));
+        K.chips(chips);
+        return Flow.anim(Beats.trayIn(dom.tray, chips));
+      })
+      .then(function () {
+        var guide = null;
+        return K.say('s1Match', function () {
+          if (guided) guide = K.dragGuide(boxes[0].rect);
+        }).then(function () {
+          return K.armQuiz({ boxes: boxes }, K.chips(), {
+            group: dom.boxes,
+            onWrong: function () { quiet(K.speak(K.keyed('fbNotQuite'))); },
+            onRight: function (box) {
+              var role = ROLE[box.name];
+              t.side(role).classList.add('tri__side--' + role);
+              quiet(Flow.anim(Beats.linePulse(t.side(role))));
+            }
+          }).then(function () { if (guide) guide.stop(); });
+        });
+      })
+      .then(function () { return Flow.wait(SHORT); })
+      .then(function () {
+        K.celebrate();
+        ['opposite', 'adjacent', 'hypotenuse'].forEach(function (w) {
+          quiet(K.onPhrase('s1MatchDone', w, function () {
+            return Flow.anim(Beats.linePulse(t.side(ROLE['lbl' + w.charAt(0).toUpperCase() + w.slice(1)])));
+          }));
+        });
+        return Flow.wait(Beats.ringing()).then(function () {
+          return K.speakBySentence('s1MatchDone');
+        });
+      });
+  }
+
+  /* The boxes and the tray taken away. */
+  function boxesOut() {
+    return Promise.all([
+      Flow.anim(Beats.trayOut(dom.tray, K.chips())),
+      Flow.anim(Beats.marksOut(boxes.map(function (b) { return b.g; }).concat(
+        boxes.map(function (b) { return b.leader; }))))
+    ]).then(function () {
+      dom.boxes.setAttribute('hidden', '');
+      clearBoxes();
+      K.resetFooter();
+    });
+  }
 
   /* ======================================================================
    * The scene
@@ -145,76 +215,36 @@
       .then(function () { return K.say('s1Recall'); })
       .then(function () { return Flow.anim(Beats.marksOut([caption])); })
       .then(function () { return Flow.wait(SHORT); })
-      .then(function () {
-        buildBoxes();
-        dom.boxes.removeAttribute('hidden');
-        return boxes.reduce(function (chain, b) {
-          return chain.then(function () {
-            return Flow.anim(Beats.boxIn(b)).then(function () { return Flow.wait(160); });
-          });
-        }, Promise.resolve());
-      })
-      .then(function () {
-        var chips = K.buildChips(dom.tray, K.shuffle(['lblOpposite', 'lblAdjacent', 'lblHypotenuse']));
-        K.chips(chips);
-        return Flow.anim(Beats.trayIn(dom.tray, chips));
-      })
-      .then(function () {
-        var guide = null;
-        return K.say('s1Match', function () {
-          guide = K.dragGuide(boxes[0].rect);
-        }).then(function () {
-          return K.armQuiz({ boxes: boxes }, K.chips(), {
-            group: dom.boxes,
-            onWrong: function () { quiet(K.speak(K.keyed('fbNotQuite'))); },
-            onRight: function (box) {
-              var role = ROLE[box.name];
-              t.side(role).classList.add('tri__side--' + role);
-              quiet(Flow.anim(Beats.linePulse(t.side(role))));
-            }
-          }).then(function () { if (guide) guide.stop(); });
-        });
-      })
-      .then(function () { return Flow.wait(SHORT); })
-      .then(function () {
-        K.celebrate();
-        /* each side lit as it is named */
-        ['opposite', 'adjacent', 'hypotenuse'].forEach(function (w) {
-          quiet(K.onPhrase('s1MatchDone', w, function () {
-            return Flow.anim(Beats.linePulse(t.side(ROLE['lbl' + w.charAt(0).toUpperCase() + w.slice(1)])));
-          }));
-        });
-        return Flow.wait(Beats.ringing()).then(function () {
-          return K.speakBySentence('s1MatchDone');
-        });
-      })
+      .then(function () { return matchSides(true); })
       .then(function () { return Flow.wait(BEAT); })
       .then(function () { return K.handOver(); })
 
       /* ---- 3. From the other angle ------------------------------------------ */
+      /* the first angle's boxes go, and the colours with them: they are
+         the answers, and two of them are wrong for C */
       .then(function () {
-        /* the boxes and the tray go; the names are written beside the
-           sides themselves, in their colours, so the triangle stays named */
-        var jobs = [
-          Flow.anim(Beats.trayOut(dom.tray, K.chips())),
-          Flow.anim(Beats.marksOut(boxes.map(function (b) { return b.g; }).concat(
-            boxes.map(function (b) { return b.leader; }))))
-        ];
-        return Promise.all(jobs).then(function () {
-          dom.boxes.setAttribute('hidden', '');
-          clearBoxes();
-          K.resetFooter();
-          return Tri.nameSides(t, ['opp', 'adj', 'hyp'], 120);
-        });
+        t.colourRoles(false);
+        return boxesOut();
       })
       .then(function () { return Flow.wait(SHORT); })
       .then(function () {
-        quiet(K.onPhrase('s1Other', 'this angle', function () {
-          return Tri.moveTheta(t, 'A', 'C', 1.2).then(swapWords);
-        }));
-        return K.say('s1Other');
+        var moved = null;
+        function moveIt() {
+          if (!moved) moved = Tri.moveTheta(t, 'A', 'C', 1.2);
+          return moved;
+        }
+        quiet(K.onPhrase('s1Other', 'this angle', moveIt));
+        return K.say('s1Other').then(moveIt);
       })
+      .then(function () { return Flow.wait(SHORT); })
+      /* the learner has done it once: no drag shown this time */
+      .then(function () { return matchSides(false); })
       .then(function () { return Flow.wait(BEAT); })
+      /* the boxes and the tray go; the names are written beside the
+         sides themselves, in their colours, so the triangle stays named */
+      .then(boxesOut)
+      .then(function () { return Tri.nameSides(t, ['opp', 'adj', 'hyp'], 120); })
+      .then(function () { return Flow.wait(SHORT); })
       .then(function () { return K.say('s1Notice'); })
       .then(function () { return Flow.wait(SHORT); })
       /* the two views, side by side: the first angle's on the left, this
@@ -250,20 +280,6 @@
       })
       .then(function () { return Flow.wait(BEAT); })
       .then(function () { return K.handOver(); });
-  }
-
-  /* θ has moved: the words swap places -- the opposite's slot becomes the
-     adjacent's and the other way about -- and the sides take their new
-     colours (the stylesheet transitions them). */
-  function swapWords() {
-    var oppSide = t.sideKey('opp'), adjSide = t.sideKey('adj');
-    var wo = t.words[oppSide], wa = t.words[adjSide];
-    return Promise.all([
-      Flow.anim(Beats.relabel(wo, function () { wo.textContent = T('lblOpposite'); })),
-      Flow.anim(Beats.relabel(wa, function () { wa.textContent = T('lblAdjacent'); }))
-    ]).then(function () {
-      t.colourRoles(true);
-    });
   }
 
   /* ---- the hooks ---------------------------------------------------------- */

@@ -14,6 +14,7 @@
  *   W.pills(labels)                            answer pills in the pane
  *   W.slider(opts).ask()                       the angle slider
  *   W.handNudge(el) / W.handSlide(track, ...)  the pointing hand
+ *   W.handDrag(from, to, size)                 ... carrying a point
  *   W.table.show() / fill() / ask() / hide()   the table
  *
  * Load order: js/pages.js -> js/tri.js -> js/widgets.js -> the sections
@@ -255,9 +256,23 @@
       if (row) row.classList.toggle('has-open', on);
       menu.hidden = !on;
       if (on) {
-        quiet(Flow.anim(M.fromTo(menu, { opacity: 0, y: o.up ? 6 : -6 },
+        var up = opensUp();
+        dd.classList.toggle('dd--up', up);
+        quiet(Flow.anim(M.fromTo(menu, { opacity: 0, y: up ? 6 : -6 },
           { opacity: 1, y: 0, duration: M.dur(0.22), ease: 'power2.out' })));
       }
+    }
+    /* Which way the menu opens, worked out as it opens: the side `o.up`
+       asks for, unless the list would run off the window there and the
+       other side has more room -- a blank low on the board opens upward
+       rather than have its last choices cut off. */
+    var MENU_EDGE = 12;
+    function opensUp() {
+      var f = face.getBoundingClientRect();
+      var need = menu.offsetHeight + MENU_EDGE;
+      var below = global.innerHeight - f.bottom, above = f.top;
+      if (o.up) return need <= above || above >= below;
+      return need > below && above > below;
     }
     function setVal(text) {
       val.classList.remove('is-placeholder');
@@ -427,6 +442,21 @@
       var y = r.top + r.height / 2 + gap * 0.6;
       var s = Math.max(28, r.height * 2.2) / HAND_H;
       L.hand.setAttribute('transform', 'translate(' + round2(x) + ' ' + round2(y) + ') scale(' + round2(s) + ')');
+    });
+    return stopper(tl, L);
+  }
+
+  /* Carry it there, anywhere: the hand slides from point `from` to point
+     `to` -- each a function handing back client coordinates, read every
+     frame -- drawn `size` px tall. */
+  function handDrag(from, to, size) {
+    if (Flow.isFast() || M.reducedMotion()) return function () {};
+    var L = handLayer();
+    var tl = Beats.nudgeSlide(L.hand, function (t, gap) {
+      var a = from(), b = to();
+      var x = a.x + (b.x - a.x) * t;
+      var y = a.y + (b.y - a.y) * t + gap * 0.6;
+      L.hand.setAttribute('transform', 'translate(' + round2(x) + ' ' + round2(y) + ') scale(' + round2(size / HAND_H) + ')');
     });
     return stopper(tl, L);
   }
@@ -794,6 +824,7 @@
     slider: slider,
     handNudge: handNudge,
     handSlide: handSlide,
+    handDrag: handDrag,
     waitPick: waitPick,
     burstAt: burstAt,
     table: table,
