@@ -1,178 +1,183 @@
 /* ==========================================================================
    Exploring Trigonometric Ratios -- base layer
    Screen shell: full-bleed night-sky artwork + a 16:9 board floating on it.
-   The shell, the bird, the bubbles, the pills and the Next disc are the
+   The shell, the plates, the bubble, the pills and the Next key are the
    lesson's common kit; everything the triangle pages draw of their own is
    in css/trig.css.
    ========================================================================== */
 
 /* ---- Fonts (bundled, offline only -- no CDN) ---------------------------- */
-/* Baloo 2 is the game's one typeface for the lesson. Lilita One is the face
-   the welcome title is lettered in; the title is painted into the welcome
-   artwork now, so the face is kept for --font-title only. Poppins stays
-   registered purely as the fallback for the frame or two before the
-   variable font has decoded. */
-@font-face {
-  font-family: "Baloo 2";
-  src: url("../assets/fonts/baloo_2/baloo2-variablefont_wght.woff2") format("woff2-variations");
-  font-weight: 400 800;
-  font-display: swap;
-}
+/* Lilita One is the game's one typeface, for every word in it. It comes in
+   a single weight, so every rule below sets weight 400 and the browser is
+   told never to fake a bold (font-synthesis on body): a smeared, synthetic
+   bold of a face this heavy is the one way it could look wrong. It has no
+   θ and no √ -- θ falls back to the system face, and √ is drawn
+   (mathtext.js) rather than set. */
 @font-face {
   font-family: "Lilita One";
   src: url("../assets/fonts/lilita_one/lilitaone-regular.woff2") format("woff2");
   font-weight: 400;
   font-display: swap;
 }
-@font-face {
-  font-family: "Poppins";
-  src: url("../assets/fonts/poppins/poppins-regular.woff2") format("woff2");
-  font-weight: 400;
-  font-display: swap;
-}
-@font-face {
-  font-family: "Poppins";
-  src: url("../assets/fonts/poppins/poppins-semibold.woff2") format("woff2");
-  font-weight: 600;
-  font-display: swap;
-}
-@font-face {
-  font-family: "Poppins";
-  src: url("../assets/fonts/poppins/poppins-bold.woff2") format("woff2");
-  font-weight: 700;
-  font-display: swap;
-}
 
 /* ==========================================================================
    Tokens
    The palette block is the game's shared colour set, mixed from the
-   artwork it sits on: a moonlit indigo sky behind, a pale periwinkle board
-   with blue waves in its corners. Everything below the palette is DERIVED
-   from it: no scene, and no rule in any other file, writes a raw hex value.
+   artwork it sits on: a moonlit swamp at night (background.png), and the mossy
+   stone plates the words are set on (header2.png, box1.png, box2.png).
+   Everything below the palette is DERIVED from it: no scene, and no rule
+   in any other file, writes a raw hex value.
    ========================================================================== */
 :root {
   /* ---- palette ---------------------------------------------------------- */
-  /* Common text: the sky's indigo taken down to an ink */
-  --text-primary: #262A7A;
-  --text-secondary: #5A5E9E;
+  /* Common text: moonlight, on the dark of the swamp and the plates */
+  --text-primary: #F3F8FF;
+  --text-secondary: #9EC2D8;
+  /* The ink every word on the artwork is outlined in, so it reads over
+     the water and the trees alike: the plates' own near-black. */
+  --text-outline: #07121B;
 
-  /* Board: the pale face, and the blue wave painted into its corners */
-  --board-bg: #F4F6FF;
-  --board-decoration: #DDE4FF;
+  /* Surfaces: the plates' slate interior, and a lifted step of it */
+  --surface: #0D1A24;
+  --surface-hi: #18303F;
+  --white: #FFFFFF;
 
-  /* Sky blue -- the board's waves */
-  --blue-fill: #8FB8FF;
-  --blue-border: #3A6FD8;
+  /* The plates' frame: worn stone, and the moss growing over it */
+  --stone: #5F6B55;
+  --moss: #8DD12C;
 
-  /* Teal */
-  --teal-fill: #7FE0D2;
-  --teal-border: #1FA393;
+  /* Cyan -- the neon of the lines */
+  --blue-fill: #5FDCFF;
+  --blue-border: #1FA6DC;
 
-  /* Indigo -- the sky */
-  --indigo-fill: #A6A4FF;
-  --indigo-border: #5B55D6;
+  /* Lime -- the moss */
+  --teal-fill: #A6EB55;
+  --teal-border: #62B21F;
+
+  /* Violet */
+  --indigo-fill: #CF97FF;
+  --indigo-border: #9A4DFF;
 
   /* Rose */
-  --rose-fill: #FFA3B5;
-  --rose-border: #D9456B;
+  --rose-fill: #FF8DBE;
+  --rose-border: #E8478A;
 
-  /* Amber -- the moon */
-  --amber-fill: #FFD58A;
-  --amber-border: #D1922A;
+  /* Gold -- the moon */
+  --amber-fill: #FFE066;
+  --amber-border: #E3A514;
+
+  /* Orange -- the game's buttons */
+  --orange-fill: #FFB347;
+  --orange-border: #E0670E;
+  --orange-deep: #8C3A06;
+
+  /* Parchment -- the table of values: its card and cells, the faded tan a
+     row steps back to, and the brown it is written in */
+  --cream: #FFF4D8;
+  --cream-deep: #F5DDA8;
+  --tan: #B39A7B;
+  --brown: #5C3A1A;
+  --brown-ink: #3A2412;
 
   /* ---- the triangle: the marks themselves --------------------------------
      One ink per side ROLE, for the mark on the board and the word that
      names it alike: the three sides and the three names are the one idea
-     seen twice, so they share a colour. Before a side has a role it is
-     drawn in the plain line ink. */
-  --tri-line:   #3F43B5;      /* a side before it is named              */
-  --tri-fill:   #E3E8FF;      /* the wash inside                        */
-  --side-opp:   #E0457B;      /* opposite                               */
-  --side-adj:   #1FA393;      /* adjacent                               */
-  --side-hyp:   #5B55D6;      /* hypotenuse                             */
-  --angle-ink:  #E8921A;      /* θ: its arc and its letter              */
+     seen twice, so they share a colour. Neon on the night: cyan for the
+     hypotenuse, violet for the opposite, gold for the adjacent. Before a
+     side has a role it is drawn in the plain line ink -- neon gold, the
+     whole triangle glowing like the moon over the swamp. */
+  --tri-line:   #FFCF33;      /* a side before it is named              */
+  --tri-fill:   color-mix(in srgb, var(--tri-line) 20%, transparent); /* the wash inside */
+  --side-opp:   #C98BFF;      /* opposite                               */
+  --side-adj:   #FFD84D;      /* adjacent                               */
+  --side-hyp:   #5FDCFF;      /* hypotenuse                             */
+  --angle-ink:  #FF9E45;      /* θ: its arc and its letter              */
   --right-ink:  var(--text-primary);  /* the right angle's small square  */
-  --tri-point:  #262A7A;      /* the vertices                           */
+  --tri-point:  #FFE680;      /* the vertices: the line's gold, lit     */
   /* One weight for every side of every triangle, lesson and activity alike. */
   --part-weight: 4;
 
   /* ---- right and wrong --------------------------------------------------
      A true green and a true red for answers, read in the quarter-second a
-     verdict is on screen. */
-  --right-fill:   #7EE08A;
-  --right-border: #2FB84B;
-  --wrong-fill:   #FF7B7B;
-  --wrong-border: #E8323A;
-
-  /* ---- derived: surfaces ------------------------------------------------ */
-  --board-highlight: #FFFFFF;
-  --board-border: #FFFFFF;
+     verdict is on screen -- bright enough to read on the dark. */
+  --right-fill:   #6BEA84;
+  --right-border: #34CF5A;
+  --wrong-fill:   #FF8080;
+  --wrong-border: #FF4D57;
 
   /* ---- derived: the speech bubble ---------------------------------------
-     The bubble is the board's own surface, lifted off the page and given a
-     tail: same panel colour, same white rim, same ink. */
-  --bubble-bg: var(--board-decoration);
-  --bubble-rim: var(--board-highlight);
+     The bubble is a plate like the prompt's: the same slate, the same ink. */
+  --bubble-bg: var(--surface);
   --bubble-ink: var(--text-primary);
-  --bubble-sheen: #FFFFFF;
 
-  /* The page behind the board, in the sky's own indigo. */
-  --page-bg: #2F2DA6;
-  --page-bg-deep: #1B1A66;
+  /* The page behind the board, in the swamp's own night blue. */
+  --page-bg: #123A5C;
+  --page-bg-deep: #06182A;
 
   /* ---- derived: raised controls ----------------------------------------
      --horizon is the wall a 3D control stands on: the same hue as the
      surface, dropped far enough to read as a side rather than as a shadow. */
-  --horizon: color-mix(in srgb, var(--blue-fill) 40%, var(--board-decoration));
-  --button-bg: var(--board-decoration);
-  --button-text: var(--text-primary);
+  --horizon: var(--orange-deep);
+  --button-bg: var(--orange-fill);
+  --button-text: var(--white);
 
   /* ---- derived: the pills -------------------------------------------------
      One face, one rim and one wall for every pill in the game -- the names
      in the tray, the answers under a question, the values in a sentence --
-     so the same object reads the same wherever it stands. */
-  --pill-border: var(--blue-border);
-  --pill-face-mid: color-mix(in srgb, var(--blue-fill) 18%, #FFFFFF);
-  --pill-face-low: color-mix(in srgb, var(--blue-fill) 36%, #FFFFFF);
-  --pill-wall: color-mix(in srgb, var(--blue-border) 78%, var(--horizon));
+     so the same object reads the same wherever it stands: a slate tag with
+     a neon edge, as the reference labels its sides. */
+  --pill-border: var(--blue-fill);
+  --pill-face-top: var(--surface-hi);
+  --pill-face-mid: color-mix(in srgb, var(--surface-hi) 60%, var(--surface));
+  --pill-face-low: var(--surface);
+  --pill-wall: color-mix(in srgb, var(--blue-border) 55%, var(--text-outline));
 
-  /* ---- derived: the round Next disc --------------------------------------
-     A rim, a face lit from the top, and a rounded arrow -- in the moon's
-     amber, so it is the one warm thing on the cool board. */
-  --next-rim:    var(--amber-border);
-  --next-face-1: color-mix(in srgb, var(--amber-fill) 55%, #FFFFFF);
-  --next-face-2: var(--amber-fill);
-  --next-face-3: color-mix(in srgb, var(--amber-fill) 72%, var(--amber-border));
-  --next-arrow:  var(--board-highlight);
+  /* ---- derived: the Next button --------------------------------------------
+     A rim, a face lit from the top, and a rounded arrow -- in the buttons'
+     orange, so it is the one warm thing on the cool board. */
+  --next-rim:    var(--orange-deep);
+  --next-face-1: color-mix(in srgb, var(--orange-fill) 45%, var(--amber-fill));
+  --next-face-2: var(--orange-fill);
+  --next-face-3: var(--orange-border);
+  --next-arrow:  var(--white);
 
   /* ---- derived: glow and shadow ----------------------------------------- */
-  --glow-board: color-mix(in srgb, #FFFFFF 55%, transparent);
-  --glow-board-soft: color-mix(in srgb, var(--blue-fill) 40%, transparent);
-  --glow-board-dim: color-mix(in srgb, var(--indigo-border) 28%, transparent);
-  --shadow-soft: color-mix(in srgb, var(--text-primary) 18%, transparent);
-  --shadow-deep: color-mix(in srgb, var(--text-primary) 30%, transparent);
+  --glow-start: color-mix(in srgb, var(--orange-fill) 40%, transparent);
+  --glow-start-dim: color-mix(in srgb, var(--orange-fill) 18%, transparent);
+  --glow-start-hi: color-mix(in srgb, var(--orange-fill) 60%, transparent);
+  --shadow-soft: color-mix(in srgb, var(--text-outline) 45%, transparent);
+  --shadow-deep: color-mix(in srgb, var(--text-outline) 70%, transparent);
 
   /* ---- derived: the ink names the rest of the game uses ------------------ */
   --ink: var(--text-primary);
   --ink-soft: var(--text-secondary);
 
-  --font-display: "Baloo 2", "Poppins", system-ui, sans-serif;
-  --font-body: "Baloo 2", "Poppins", system-ui, sans-serif;
-  --font-title: "Lilita One", "Baloo 2", system-ui, sans-serif;
+  --font-display: "Lilita One", system-ui, sans-serif;
+  --font-body: "Lilita One", system-ui, sans-serif;
+  --font-title: "Lilita One", system-ui, sans-serif;
 
-  /* ---- artwork (script.js preloads the same files) ---------------------- */
-  --art-page: url("../assets/images/background.png");
-  --art-board: url("../assets/images/board.png");
-  --art-welcome: url("../assets/images/welcome.png");
+  /* ---- artwork (script.js preloads the same files) ----------------------
+     The swamp is behind everything; the board is the same night, dimmed.
+     The plates are 9-sliced (border-image), so they take any size and keep
+     their bolts and moss at the corners. --plate-s is how many CSS pixels
+     one pixel of plate artwork becomes, keyed to the board like the type. */
+  --art-page: url("../assets/new/scenery/sky.png");
+  --art-page-ar: 1671 / 941;
+  --art-water-far: url("../assets/new/scenery/water-far.png");
+  --art-water-near: url("../assets/new/scenery/water-near.png");
+  --art-plate: url("../assets/new/header2.png");
+  --art-box: url("../assets/new/box1.png");
+  --art-box-alt: url("../assets/new/box2.png");
+  --plate-s: calc(var(--board-w) / 4600);
 
   /* ---- stacking ---------------------------------------------------------
      One ladder for the whole frame, so "behind the board" and "on the header"
      are the same idea expressed twice rather than two piles of magic numbers. */
-  --z-hero: 1;        /* the mascot out on the field -- UNDER the board      */
+  --z-bubble: 1;      /* the welcome's first line, before the board exists  */
   --z-board: 2;
   --z-stage: 1;       /* inside the board: the figure                        */
   --z-footer: 2;      /* inside the board: the names to drag                 */
-  --z-header: 3;      /* inside the board: the prompt row and its mascot     */
+  --z-header: 3;      /* inside the board: the prompt row                    */
   --z-next: 6;        /* over the board, under the welcome screen            */
   --z-welcome: 9;
 
@@ -182,9 +187,21 @@
 
   /* The three board bands, as fractions of the board's own height. Fixed
      rather than content-sized: the header has to hold its height on the
-     beats where it is empty, or the figure below it would shift. */
-  --row-top: 16%;
+     beats where it is empty, or the figure below it would shift. The top
+     band gives back the height its plate is raised by (--head-raise), so
+     the stage starts right under the plate. */
+  --row-top: calc(19% - var(--head-raise));
   --row-bottom: 11%;
+  /* How far the header's plate stands above the floor of its band, so it
+     sits up near the top of the frame rather than down by the figure. */
+  --prompt-lift: calc(var(--board-w) * .024);
+  /* How far the header is raised out of the board, into the margin the
+     16:9 board leaves above it, so the plate sits just under the top of
+     the screen. Capped, so on a tall portrait screen it stays with the
+     board rather than flying off to the top. */
+  --head-raise: clamp(0px,
+    calc((100dvh - var(--board-w) * 9 / 16) / 2 + var(--board-pad-y) - 1.6vh),
+    calc(var(--board-w) * .035));
 
   /* The board's own padding, named so a section can work out the stage's
      full size. */
@@ -193,9 +210,6 @@
   --stage-full-h: calc(var(--board-w) * 9 / 16 - 2 * var(--board-pad-y) - 6px);
   --stage-full-w: calc(var(--board-w) - 2 * var(--board-pad-x) - 6px);
 
-  /* The bird beside the figure, and the type of the pane it speaks from. */
-  --bird-beside: calc(var(--stage-full-h) * .36);
-  --bubble-beside-fs: calc(var(--stage-full-w) * .5 * .053);
   /* The type size of everything set in the right pane -- the equations,
      the table, the slider -- keyed to the board itself as the bubble's is,
      so the pane and the figure beside it scale as one. */
@@ -217,17 +231,108 @@ body {
   min-height: 100dvh;
   overflow: hidden;
   font-family: var(--font-body);
+  font-weight: 400;
+  font-synthesis: none;
   color: var(--ink);
   -webkit-font-smoothing: antialiased;
   -webkit-tap-highlight-color: transparent;
 
-  /* Artwork over the full viewport, over a token gradient that carries the
-     first frame and any decode failure. Covered at its own proportions. */
-  background:
-    var(--art-page) center / cover no-repeat,
-    linear-gradient(180deg, var(--page-bg) 0%, var(--page-bg-deep) 100%);
+  /* A token gradient under the artwork (.scenery), carrying the first
+     frame and any decode failure. */
+  background: linear-gradient(180deg, var(--page-bg) 0%, var(--page-bg-deep) 100%);
   background-color: var(--page-bg);
 }
+
+/* ---- Scenery ------------------------------------------------------------
+   The swamp, behind everything, in three depths. The sky and the water are
+   one box at the artwork's own proportions, covering the window and centred
+   in it, so the clouds -- and the far mist on the water -- can be placed in
+   the artwork's own percentages and stay where they belong on it. The
+   trees stand at the bottom corners of the WINDOW instead, so they frame
+   the screen at any shape rather than being cropped away with the art; and
+   the near mist lies across the bottom of the window, over their roots.
+   Before #app in the page, so the lesson paints over all of it. */
+.scenery {
+  position: fixed;
+  inset: 0;
+  overflow: hidden;
+  pointer-events: none;
+
+  /* How tall the trees stand: most of the way up the window's lower half,
+     but never so big on a narrow window that they close in on the board. */
+  --tree-h: min(52vh, 28vw);
+}
+.scenery__art {
+  position: absolute;
+  left: 50%;
+  top: 50%;
+  width: max(100vw, 100dvh * var(--art-page-ar));
+  aspect-ratio: var(--art-page-ar);
+  translate: -50% -50%;
+  background: var(--art-page) center / 100% 100% no-repeat;
+}
+
+/* Each cloud where it was painted (its box in background.png); scenery.js
+   drifts it from there with a transform. */
+.cloud {
+  position: absolute;
+  display: block;
+  height: auto;
+}
+.cloud--1 { left: 0.898%;  top: 10.521%; width: 16.996%; }
+.cloud--2 { left: 10.952%; top: 21.679%; width: 16.876%; }
+.cloud--3 { left: 76.122%; top: 21.360%; width: 13.824%; }
+.cloud--4 { left: 81.508%; top: 11.690%; width: 16.158%; }
+
+/* The water, flowing. Its ripples are lifted off the painted water into
+   two seamless strips -- the far water's and the near water's -- lying
+   exactly where they were painted, over the water smoothed to its glow in
+   sky.png; still, the two add back up to the painting. Each is two strips
+   long and starts one strip to the left, so as scenery.js slides it a
+   strip's width to the right it can start over unseen. */
+.water {
+  position: absolute;
+  left: 0;
+  top: 88.523%;
+  width: 200%;
+  height: 11.477%;
+  translate: -50% 0;
+  background-position: 0 0;
+  background-size: 50% 100%;
+  background-repeat: repeat-x;
+}
+.water--far  { background-image: var(--art-water-far); }
+.water--near { background-image: var(--art-water-near); }
+
+/* The trees: anchored to the window's bottom corners and pushed partly off
+   it, so each shows a trunk and the crown leaning in over the water -- a
+   frame for the board, not something stood beside it. */
+.tree {
+  position: absolute;
+  bottom: calc(var(--tree-h) * -.05);
+  display: block;
+  height: var(--tree-h);
+  width: auto;
+  max-width: none;
+}
+.tree--left  { left: 0;  translate: -36% 0; }
+.tree--right { right: 0; translate: 34% 0; }
+
+/* The mist: wider than what it lies across, and centred on it, so its soft
+   ends stay out of sight as scenery.js sways it to and fro. The far bank
+   lies on the water along the horizon, in the artwork's own terms; the
+   near one along the bottom of the window, over the trees' roots. Faint,
+   both of them: the board is read through this. */
+.mist {
+  position: absolute;
+  left: 50%;
+  display: block;
+  height: auto;
+  max-width: none;
+  translate: -50% 0;
+}
+.mist--far  { width: 130%; bottom: 4%; opacity: .32; }
+.mist--near { width: max(150vw, 230vh); bottom: -6vh; opacity: .42; }
 
 /* ---- Shell -------------------------------------------------------------- */
 #app {
@@ -256,19 +361,10 @@ body {
   display: grid;
   grid-template-rows: var(--row-top) minmax(0, 1fr) var(--row-bottom);
   padding: var(--board-pad-y) var(--board-pad-x);
-  border-radius: clamp(18px, 3.4vh, 34px);
-  border: 3px solid var(--board-border);
-  background:
-    var(--art-board) center / 100% 100% no-repeat,
-    radial-gradient(72% 58% at 50% 42%, var(--board-highlight) 0%, var(--board-bg) 70%);
-  background-color: var(--board-bg);
-  /* The halo the board sits in. Every layer is blurred: a spread with no blur
-     paints a solid ring, and a solid ring has a visible edge. */
-  box-shadow:
-    0 0 12px 0 var(--glow-board),
-    0 0 32px 8px var(--glow-board-soft),
-    0 0 68px 22px var(--glow-board-dim),
-    0 18px 44px var(--shadow-deep);
+  /* No surface of its own: the lesson is set straight onto the swamp, the
+     words on their plates and the lines in neon. The board is only the
+     three bands everything is laid out in. */
+  background: none;
 
   /* Laid out from the first frame but invisible until the scene reveals it. */
   opacity: 0;
@@ -276,8 +372,8 @@ body {
 }
 .board.show { opacity: 1; visibility: visible; }
 
-/* The top band, closed: nothing is in it -- the bird has gone and the line
-   has been cleared -- so the row is taken away and the stage below takes
+/* The top band, closed: nothing is in it -- the line has been cleared --
+   so the row is taken away and the stage below takes
    the room (see collapseHeader in pages.js). */
 .board.is-headless { --row-top: 0%; }
 /* Both bands closed: the picture has the whole board. */
@@ -293,6 +389,7 @@ body {
   min-height: 0;
   display: grid;
   align-items: end;
+  translate: 0 calc(-1 * var(--head-raise));
 }
 .board__bottom {
   position: relative;
@@ -308,42 +405,57 @@ body {
 }
 
 /* ---- The prompt row (header) -------------------------------------------
-   Mascot, then the line it is saying. The row is laid out from the first
-   frame and holds its height whether or not there is text in it. The pair
-   is centred in the header on the words' own width. */
+   The line being said, on its plate (header2.png), centred in the row.
+   The row is laid out from the first frame and holds its height whether or
+   not there is text in it. The plate is one width for every line, so it
+   never shifts as the lines change. */
 .prompt {
   display: flex;
   align-items: flex-end;
   justify-content: center;
   height: 100%;
   padding-inline: clamp(8px, 2%, 28px);
+  padding-bottom: var(--prompt-lift);
 }
 
-/* The mascot's header slot. Taller than the band it sits in, so the bird
-   stands ON the header rather than inside it. */
-.prompt__mascot {
-  position: relative;
-  flex: 0 0 auto;
-  align-self: flex-end;
-  height: 120%;
-  aspect-ratio: 1;
-  pointer-events: none;
-}
+/* The plate (header2.png) is 9-sliced: its bolts, corner moss and drips
+   stay at the corners and only the stone and slate between them stretch.
+   The bottom slice is deep enough to take the lower bolts whole, so a
+   second row of words stretches only the plain stone sides. The plate
+   stands on the row's floor and grows UP for that second row. The padding
+   sets the words inside the slate, centred on it. An empty line has no
+   plate. */
 .prompt__line {
   margin: 0;
-  align-self: center;
+  align-self: flex-end;
   flex: 0 1 auto;
+  width: 64%;
   min-width: 0;
-  text-align: left;
+  padding:
+    calc(var(--plate-s) * 108) calc(var(--plate-s) * 132)
+    calc(var(--plate-s) * 186);
+  border: 0 solid transparent;
+  border-image: var(--art-plate) 130 420 217 400 fill /
+    calc(var(--plate-s) * 130) calc(var(--plate-s) * 420)
+    calc(var(--plate-s) * 217) calc(var(--plate-s) * 400);
+  text-align: center;
   font-family: var(--font-display);
-  font-weight: 700;
-  font-size: clamp(17px, 3.3vh, 32px);
-  line-height: 1.22;
+  font-weight: 400;
+  /* Keyed to the board, as the bubble's and the pane's type are, so the
+     line fits its plate on a board limited by width (portrait) too. */
+  font-size: clamp(11px, calc(var(--board-w) * .0222), 36px);
+  line-height: 1.16;
+  letter-spacing: .4px;
   color: var(--text-primary);
+  text-shadow: 0 .07em 0 var(--text-outline);
+  transition: opacity .22s ease-out;
 }
+.prompt__line:has(.type-ghost:empty) { opacity: 0; transition-timing-function: ease-in; }
 /* The typed line wraps where its box does: each word keeps its trailing
-   space, and a space at the end of a row hangs rather than breaking. */
-.prompt__line .type { white-space: pre-wrap; }
+   space, and a space at the end of a row hangs rather than breaking. Both
+   halves of the line are centred alike, so the live words land exactly on
+   the ghost's rows. */
+.prompt__line .type { white-space: pre-wrap; text-align: center; }
 
 /* ==========================================================================
    The figure
@@ -371,16 +483,22 @@ body {
 
 /* Every word set ON the figure is the same piece of lettering; only the
    colour is the mark's own. The size is in user units, so a word scales
-   with the shape it is naming. */
+   with the shape it is naming. Each wears a near-black outline drawn
+   UNDER its fill (paint-order), the way game lettering is, so a word
+   reads the same over the water, the trees and the moon. */
 .figure-label {
   font-family: var(--font-display);
-  font-weight: 800;
+  font-weight: 400;
   font-size: 27px;
-  letter-spacing: .3px;
+  letter-spacing: .5px;
+  paint-order: stroke fill;
+  stroke: var(--text-outline);
+  stroke-width: 5px;
+  stroke-linejoin: round;
 }
 
 /* ---- Points ---------------------------------------------------------------
-   Every vertex is the same mark, in the deep indigo ink. */
+   Every vertex is the same mark, in the triangle's own gold, lit. */
 .end-dot {
   fill: var(--tri-point);
   opacity: 0;
@@ -393,7 +511,8 @@ body {
 
 /* ---- The callout --------------------------------------------------------
    The board's own ink, not a colour off the figure: an annotation is not
-   part of the shape. */
+   part of the shape. (The arrow's mask stroke stays pure white: it is a
+   mask, not a colour.) */
 .mark__arrow,
 .mark__head {
   fill: none;
@@ -472,7 +591,7 @@ body {
   cursor: default;
 }
 .q-box__rect {
-  fill: var(--board-highlight);
+  fill: color-mix(in srgb, var(--surface) 88%, transparent);
   stroke: var(--pill-border);
   stroke-width: 2.4;
   stroke-dasharray: 8 6;
@@ -480,17 +599,17 @@ body {
 }
 .q-box.is-target .q-box__rect,
 .q-box.is-over .q-box__rect {
-  fill: color-mix(in srgb, var(--blue-fill) 24%, #FFFFFF);
+  fill: color-mix(in srgb, var(--blue-fill) 24%, var(--surface));
   stroke-width: 3.2;
 }
 .q-box.is-right .q-box__rect {
-  fill: color-mix(in srgb, var(--right-fill) 28%, #FFFFFF);
+  fill: color-mix(in srgb, var(--right-fill) 28%, var(--surface));
   stroke: var(--right-border);
   stroke-width: 3.2;
   stroke-dasharray: none;
 }
 .q-box.is-wrong .q-box__rect {
-  fill: color-mix(in srgb, var(--wrong-fill) 30%, #FFFFFF);
+  fill: color-mix(in srgb, var(--wrong-fill) 30%, var(--surface));
   stroke: var(--wrong-border);
   stroke-width: 3.2;
   stroke-dasharray: none;
@@ -510,7 +629,7 @@ body {
 .q-badge__ring { fill: var(--right-border); }
 .q-badge__tick {
   fill: none;
-  stroke: #FFFFFF;
+  stroke: var(--white);
   stroke-width: 3;
   stroke-linecap: round;
   stroke-linejoin: round;
@@ -544,25 +663,26 @@ body {
   padding: .32em 1.1em .38em;
   border: 3px solid var(--pill-border);
   border-radius: 999px;
-  background: linear-gradient(180deg, #FFFFFF 0%, var(--pill-face-mid) 55%, var(--pill-face-low) 100%);
+  background: linear-gradient(180deg, var(--pill-face-top) 0%, var(--pill-face-mid) 55%, var(--pill-face-low) 100%);
   box-shadow:
     0 var(--edge) 0 var(--pill-wall),
     0 calc(var(--edge) + 3px) 10px var(--shadow-soft);
 
   font-family: var(--font-display);
-  font-weight: 700;
+  font-weight: 400;
   font-size: clamp(12px, min(3vh, 1.9vw), 26px);
   line-height: 1.1;
-  letter-spacing: .3px;
+  letter-spacing: .5px;
   color: var(--text-primary);
+  text-shadow: 0 .06em 0 var(--text-outline);
   white-space: nowrap;
 
   transition: box-shadow .18s ease, border-color .18s ease, filter .18s ease;
 }
-.chip:hover { filter: brightness(1.03); }
+.chip:hover { filter: brightness(1.12); }
 .chip:focus-visible {
   outline: none;
-  border-color: var(--indigo-border);
+  border-color: var(--amber-fill);
 }
 .chip.is-lifted {
   cursor: grabbing;
@@ -572,10 +692,10 @@ body {
     0 16px 28px var(--shadow-deep);
 }
 .chip.is-picked {
-  border-color: var(--indigo-border);
+  border-color: var(--amber-fill);
   box-shadow:
     0 var(--edge) 0 var(--pill-wall),
-    0 0 0 4px color-mix(in srgb, var(--blue-fill) 45%, transparent),
+    0 0 0 4px color-mix(in srgb, var(--amber-fill) 40%, transparent),
     0 calc(var(--edge) + 3px) 10px var(--shadow-soft);
 }
 .chip.is-docked {
@@ -597,7 +717,7 @@ body {
   padding: .3em 1.5em .36em;
   border: 3px solid var(--pill-border);
   border-radius: 999px;
-  background: linear-gradient(180deg, #FFFFFF 0%, var(--pill-face-mid) 55%, var(--pill-face-low) 100%);
+  background: linear-gradient(180deg, var(--pill-face-top) 0%, var(--pill-face-mid) 55%, var(--pill-face-low) 100%);
   box-shadow:
     0 var(--edge) 0 var(--pill-wall),
     0 calc(var(--edge) + 3px) 10px var(--shadow-soft);
@@ -608,31 +728,34 @@ body {
   min-height: 2.6em;
 
   font-family: var(--font-display);
-  font-weight: 700;
+  font-weight: 400;
   font-size: clamp(14px, min(3vh, 2.2vw), 28px);
   line-height: 1.1;
-  letter-spacing: .3px;
+  letter-spacing: .5px;
   color: var(--text-primary);
+  text-shadow: 0 .06em 0 var(--text-outline);
   white-space: nowrap;
 
   transition: box-shadow .2s ease, border-color .2s ease,
               background .25s ease, filter .18s ease;
 }
-.choice:hover { filter: brightness(1.03); }
-.choice:focus-visible { outline: none; border-color: var(--indigo-border); }
+.choice:hover { filter: brightness(1.12); }
+.choice:focus-visible { outline: none; border-color: var(--amber-fill); }
 
 .choice.is-right {
   border-color: var(--right-border);
-  background: linear-gradient(180deg, #FFFFFF 0%,
-              color-mix(in srgb, var(--right-fill) 40%, #FFFFFF) 100%);
+  background: linear-gradient(180deg,
+              color-mix(in srgb, var(--right-fill) 46%, var(--surface)) 0%,
+              color-mix(in srgb, var(--right-fill) 22%, var(--surface)) 100%);
   box-shadow:
     0 var(--edge) 0 var(--right-border),
     0 calc(var(--edge) + 3px) 10px var(--shadow-soft);
 }
 .choice.is-wrong {
   border-color: var(--wrong-border);
-  background: linear-gradient(180deg, #FFFFFF 0%,
-              color-mix(in srgb, var(--wrong-fill) 40%, #FFFFFF) 100%);
+  background: linear-gradient(180deg,
+              color-mix(in srgb, var(--wrong-fill) 46%, var(--surface)) 0%,
+              color-mix(in srgb, var(--wrong-fill) 22%, var(--surface)) 100%);
   box-shadow:
     0 var(--edge) 0 var(--wrong-border),
     0 calc(var(--edge) + 3px) 10px var(--shadow-soft);
@@ -653,7 +776,7 @@ body {
   vertical-align: middle;
   height: .9em;
   margin: 0 .1em 0 .04em;
-  font-weight: 800;
+  font-weight: 400;
   line-height: 1;
   letter-spacing: 0;
   text-align: center;
@@ -729,7 +852,8 @@ body {
 
 /* ---- Next ---------------------------------------------------------------
    Anchored to the frame's bottom-right corner, which IS the board's
-   bottom-right corner, whether or not the board is there yet. */
+   bottom-right corner, whether or not the board is there yet. A rounded
+   orange key with a dark outline, as the game's buttons are drawn. */
 .next-btn {
   --edge: 5px;
   --sink: 0px;
@@ -745,7 +869,7 @@ body {
   aspect-ratio: 1;
   padding: 0;
   border: 0;
-  border-radius: 50%;
+  border-radius: 24%;
   background: none;
   filter: drop-shadow(0 5px 9px var(--shadow-soft));
   cursor: pointer;
@@ -758,28 +882,72 @@ body {
 .next-btn[hidden] { display: none; }
 .next-btn:hover,
 .next-btn:focus-visible {
-  filter: drop-shadow(0 8px 13px var(--shadow-soft)) brightness(1.05);
+  filter: drop-shadow(0 8px 13px var(--shadow-soft))
+          drop-shadow(0 0 10px color-mix(in srgb, var(--orange-fill) 45%, transparent))
+          brightness(1.06);
   outline: none;
 }
-.next-btn:focus-visible { outline: 3px solid var(--indigo-border); outline-offset: 3px; }
+.next-btn:focus-visible { outline: 3px solid var(--amber-fill); outline-offset: 3px; }
 .next-btn.is-3d { transition: filter .18s ease; }
 .next-btn svg { width: 100%; height: 100%; display: block; }
 
-/* ---- The mascot and its slots -------------------------------------------
-   One bird for the whole lesson. It is re-parented between slots and the move
-   is played as a Flip, so welcome screen -> its mark on the field -> board
-   header reads as one continuous character rather than three. */
-.slot {
+/* ---- The speech bubble --------------------------------------------------
+   The welcome's first line, said before the board exists, on a plate of its
+   own in the middle of the frame. Centred by margin rather than by a
+   transform, so the scale it pops in with (bubbleIn) has the transform to
+   itself. The box is a mossy plate (box1.png), 9-sliced in em so it scales
+   with the words and keeps its bolts at any size; the plate stands OUT of
+   the box by --bub-out on every side (border-image-outset). */
+.bubble {
+  --bub-u:       1em;
+  --bub-plate:   calc(var(--bub-u) * .0118);
+  --bub-out:     calc(var(--bub-u) * .42);
+
   position: absolute;
+  z-index: var(--z-bubble);
+  inset: 0;
+  margin: auto;
+  width: fit-content;
+  height: fit-content;
+  max-width: 72%;
+
+  padding: .5em .8em;
+  border: 4px solid transparent;
+  border-image: var(--art-box) 70 90 95 90 fill /
+    calc(var(--bub-plate) * 70) calc(var(--bub-plate) * 90)
+    calc(var(--bub-plate) * 95) calc(var(--bub-plate) * 90) /
+    var(--bub-out);
+  /* The shadow follows the plate's own outline, moss and all. */
+  filter: drop-shadow(0 .2em .35em var(--shadow-deep));
+
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(14px, calc(var(--board-w) * .0236), 44px);
+  line-height: 1.2;
+  letter-spacing: .5px;
+  text-align: center;
+  color: var(--bubble-ink);
+  text-shadow: 0 .06em 0 var(--text-outline);
   pointer-events: none;
 }
-.slot--hero {
-  z-index: var(--z-hero);          /* under the board, on purpose */
-  left: 27%;
-  bottom: 9%;
-  height: 44%;
-  aspect-ratio: 1;
-  transform: translateX(-50%);
+.bubble[hidden] { display: none; }
+
+.bubble .type-wrap { display: inline-block; vertical-align: top; }
+
+/* ---- The bird under the bubble ------------------------------------------
+   Swiftee appears on this screen only, standing on the field under the
+   plate's left end and speaking the line. A child of the plate, so it is
+   placed against the plate at any width and leaves with it (bubbleOut).
+   Its cell is square; the ink fills 11%-88% of it top to bottom, so the
+   head is lifted to just under the plate's outset edge. */
+.bubble__bird {
+  --bird-h: calc(var(--board-w) * 9 / 16 * .44);
+
+  position: absolute;
+  left: calc(-4px - var(--bub-out) - var(--bird-h) * .4);
+  top: calc(100% + 4px + var(--bub-out) + .1em - var(--bird-h) * .113);
+  width: var(--bird-h);
+  height: var(--bird-h);
 }
 
 .mascot {
@@ -788,100 +956,11 @@ body {
   background-repeat: no-repeat;
   background-position: 0 0;
 }
-.mascot[hidden] { display: none; }
-
-/* Away: behind the board, between one line and the next. Opacity rather
-   than [hidden]: the jump has to MEASURE the bird's resting box while it
-   is away, and the row is centred as a pair. */
-.mascot.is-away { opacity: 0; }
-
-/* ---- The hopper ---------------------------------------------------------
-   The bird's stand-in for the half of every jump that happens BEHIND the
-   board (see mascotJumpIn in pages.js). */
-.hopper {
-  position: fixed;
-  display: none;
-  z-index: var(--z-hero);
-  pointer-events: none;
-  background-repeat: no-repeat;
-  background-position: 0 0;
-}
-.hopper.on { display: block; will-change: transform; }
-
-/* ---- The hero speech bubble ---------------------------------------------
-   Parked on the mascot's slot rather than in the board, so the greeting can
-   happen before the board exists. Anchored BY ITS TAIL on the bird's head. */
-.bubble {
-  --bub-u:       1em;
-  --bub-corner:  calc(var(--bub-u) * .62);
-  --bub-light-w: calc(var(--bub-u) * .5);
-  --bub-light-h: calc(var(--bub-u) * .2);
-  --bub-light-x: calc(var(--bub-u) * .42);
-  --bub-light-y: calc(var(--bub-u) * .34);
-  --bub-tail-w:  calc(var(--bub-u) * .76);
-  --bub-tail-x:  calc(var(--bub-u) * .78);
-  --note-edge: var(--bubble-rim);
-
-  position: absolute;
-  --bub-tip-x: 66%;
-  --bub-tip-y: 79%;
-  left:   calc(var(--bub-tip-x) - 4px - .815em);
-  bottom: calc(var(--bub-tip-y) + .725em - 8px);
-  width: max-content;
-  max-width: min(1000px, calc(100vw - 24px));
-
-  padding: .5em .8em;
-  border: 4px solid var(--note-edge);
-  border-radius: var(--bub-corner);
-  background: var(--bubble-bg);
-  box-shadow:
-    0 0 14px 2px var(--glow-board-soft),
-    0 0 34px 10px var(--glow-board-dim),
-    0 10px 26px var(--shadow-soft);
-
-  font-family: var(--font-display);
-  font-weight: 700;
-  font-size: clamp(14px, calc(var(--board-w) * .0236), 44px);
-  line-height: 1.2;
-  letter-spacing: .2px;
-  text-align: left;
-  color: var(--bubble-ink);
-  pointer-events: none;
-}
-.bubble[hidden] { display: none; }
-
-/* The catch-light in the top-left corner. */
-.bubble::before {
-  content: "";
-  position: absolute;
-  left: var(--bub-light-x);
-  top: var(--bub-light-y);
-  width: var(--bub-light-w);
-  height: var(--bub-light-h);
-  border-radius: 999px;
-  background: var(--bubble-sheen);
-  transform: rotate(-22deg);
-  opacity: .95;
-}
-
-.bubble .type-wrap { display: inline-block; vertical-align: top; }
-
-/* The tail hangs off the bottom-left corner and reaches back down toward the
-   bird. It starts INSIDE the border so its fill covers the box's edge. */
-.bubble-tail {
-  position: absolute;
-  left: var(--bub-tail-x);
-  top: calc(100% - 4px);
-  width: var(--bub-tail-w);
-  height: auto;
-  overflow: visible;
-}
 
 /* ---- Welcome ------------------------------------------------------------
-   The title and a waving bird are painted into the artwork (welcome.png):
-   the title high over the lake, the bird on the grass at the lower left,
-   where the live bird is already standing on its mark under this screen.
-   The one live thing on it is Start, low and centred over the water. */
+   No artwork of its own: the welcome is the swamp the whole lesson is set
+   on. The title sits at the top on the prompt's own plate, and Start
+   stands low and centred over the water. */
 .welcome {
   position: absolute;
   inset: 0;
@@ -890,55 +969,51 @@ body {
   grid-template-rows: 1fr auto;
   justify-items: center;
   padding: 0 clamp(16px, 5vw, 80px) clamp(28px, 13vh, 150px);
-
-  /* Covering the viewport at its own proportions -- a stretch squashes the
-     painted title on any screen that is not exactly 16:9. The title and bird
-     sit well inside the edges, so what cover trims is sky and grass. Over
-     the token gradient for the first frame and any decode failure. */
-  background:
-    var(--art-welcome) center / cover no-repeat,
-    linear-gradient(180deg, var(--page-bg) 0%, var(--page-bg-deep) 100%);
+  background: none;
 }
 .welcome[hidden] { display: none; }
 
-/* On a tall screen a stretch would squash the painted title, so the art is
-   fitted whole instead, over a blurred copy of itself that fills the rest. */
-@media (max-aspect-ratio: 4/3) {
-  /* Both layers are pseudo-elements: a negative z-index paints above the
-     section's own background, so the fitted art cannot live there. */
-  .welcome {
-    overflow: hidden;
-    background: linear-gradient(180deg, var(--page-bg) 0%, var(--page-bg-deep) 100%);
-  }
-  .welcome::before,
-  .welcome::after {
-    content: "";
-    position: absolute;
-    z-index: -1;
-    pointer-events: none;
-  }
-  .welcome::before {
-    inset: -40px;
-    background: var(--art-welcome) center / cover no-repeat;
-    filter: blur(24px) brightness(.9);
-  }
-  .welcome::after {
-    inset: 0;
-    background: var(--art-welcome) center / contain no-repeat;
-  }
-}
-
-/* Painted into the artwork; kept in the tree for assistive tech only. */
+/* The title, on the prompt's plate (header2.png, 9-sliced as the
+   prompt's is), near the top of the screen, lettered in gold. Balanced over
+   two rows rather than broken wherever the width runs out. It drops in
+   from above and settles with a little give -- a CSS entrance like the
+   loader's, so it runs from the very first frame, before any script has
+   had the chance to: a scripted one would show the title at rest first. */
 .welcome__title {
-  position: absolute;
-  width: 1px;
-  height: 1px;
-  margin: -1px;
-  padding: 0;
-  overflow: hidden;
-  clip: rect(0 0 0 0);
-  white-space: nowrap;
-  border: 0;
+  --title-s: calc(var(--board-w) / 3350);
+
+  grid-row: 1;
+  align-self: start;
+  justify-self: center;
+  max-width: min(100%, 14em);
+  margin: clamp(10px, 3.5vh, 36px) 0 0;
+  padding:
+    calc(var(--title-s) * 112) calc(var(--title-s) * 150)
+    calc(var(--title-s) * 190);
+  border: 0 solid transparent;
+  border-image: var(--art-plate) 130 420 217 400 fill /
+    calc(var(--title-s) * 130) calc(var(--title-s) * 420)
+    calc(var(--title-s) * 217) calc(var(--title-s) * 400);
+
+  font-family: var(--font-title);
+  font-weight: 400;
+  font-size: clamp(30px, calc(var(--board-w) * .052), 80px);
+  line-height: 1.06;
+  letter-spacing: .02em;
+  text-align: center;
+  text-wrap: balance;
+  color: var(--amber-fill);
+  text-shadow:
+    0 .07em 0 var(--orange-deep),
+    0 0 .35em color-mix(in srgb, var(--amber-fill) 35%, transparent);
+  animation: title-drop .7s cubic-bezier(.34, 1.45, .64, 1) .1s backwards;
+}
+@keyframes title-drop {
+  from { opacity: 0; transform: translateY(-70%); }
+  to   { opacity: 1; transform: none; }
+}
+@media (prefers-reduced-motion: reduce) {
+  .welcome__title { animation: none; }
 }
 
 /* ---- the loading line, where Start will stand --------------------------- */
@@ -950,9 +1025,9 @@ body {
   position: relative;
   width: clamp(240px, 32vw, 440px);
   font-family: inherit;
-  font-weight: 700;
+  font-weight: 400;
   font-size: clamp(30px, 5vh, 40px);
-  color: var(--board-highlight);
+  color: var(--text-primary);
   padding: clamp(8px, 1.8vh, 18px) 0;
   border: 4px solid transparent;
   animation: loader-in .4s cubic-bezier(.2, .8, .3, 1) backwards;
@@ -982,8 +1057,8 @@ body {
   letter-spacing: .6px;
   white-space: nowrap;
   text-shadow:
-    0 2px 0 var(--indigo-border),
-    0 0 10px color-mix(in srgb, var(--indigo-border) 60%, transparent);
+    0 2px 0 var(--text-outline),
+    0 0 10px color-mix(in srgb, var(--text-outline) 70%, transparent);
 }
 .loader__pct { font-variant-numeric: tabular-nums; }
 .loader__line {
@@ -991,17 +1066,17 @@ body {
   overflow: hidden;
   height: clamp(6px, 1.1vh, 9px);
   border-radius: 999px;
-  background: color-mix(in srgb, var(--board-highlight) 28%, transparent);
+  background: color-mix(in srgb, var(--surface) 75%, transparent);
   box-shadow:
-    inset 0 1px 2px color-mix(in srgb, var(--indigo-border) 50%, transparent),
-    0 0 0 1px color-mix(in srgb, var(--board-highlight) 30%, transparent);
+    inset 0 1px 2px var(--shadow-deep),
+    0 0 0 2px color-mix(in srgb, var(--stone) 80%, transparent);
 }
 .loader__fill {
   position: absolute;
   inset: 0;
   border-radius: inherit;
   transform: translateX(-100%);
-  background: linear-gradient(90deg, var(--amber-fill) 0%, var(--board-highlight) 100%);
+  background: linear-gradient(90deg, var(--moss) 0%, var(--amber-fill) 100%);
   transition: transform .3s cubic-bezier(.2, .8, .3, 1);
 }
 @keyframes loader-in {
@@ -1022,18 +1097,20 @@ body {
   align-self: center;
   justify-self: center;
   font-family: inherit;
-  font-weight: 700;
+  font-weight: 400;
   font-size: clamp(30px, 5vh, 40px);
   letter-spacing: 1px;
   color: var(--button-text);
+  text-shadow: 0 .07em 0 var(--orange-deep);
   padding: clamp(8px, 1.8vh, 18px) clamp(28px, 5vw, 55px);
-  border: 4px solid var(--board-highlight);
-  border-radius: 999px;
-  background: linear-gradient(180deg, var(--board-highlight) 0%, var(--button-bg) 55%, var(--board-decoration) 100%);
+  border: 4px solid var(--text-outline);
+  border-radius: clamp(16px, 2.6vh, 24px);
+  background: linear-gradient(180deg, var(--next-face-1) 0%, var(--button-bg) 50%, var(--orange-border) 100%);
   box-shadow:
+    inset 0 3px 0 color-mix(in srgb, var(--white) 35%, transparent),
     0 var(--edge) 0 var(--horizon),
-    0 0 14px 2px var(--glow-board-soft),
-    0 0 36px 12px var(--glow-board-dim),
+    0 0 14px 2px var(--glow-start),
+    0 0 36px 12px var(--glow-start-dim),
     0 calc(var(--edge) + 1px) 2px var(--shadow-soft),
     0 calc(var(--edge) + 5px) calc(var(--edge) * 2 + 16px) var(--shadow-deep);
   cursor: pointer;
@@ -1054,7 +1131,7 @@ body {
 .start-btn.in:hover,
 .start-btn.in:focus-visible {
   animation-play-state: paused;
-  filter: brightness(1.04);
+  filter: brightness(1.08);
   outline: none;
 }
 .start-btn.is-3d {

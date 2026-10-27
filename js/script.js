@@ -36,13 +36,24 @@
     function add(name, weight, run, queued) {
       tasks.push({ name: name, weight: weight, run: run, queued: !!queued });
     }
-    /* The artwork, decoded as well as fetched. */
-    ['assets/images/welcome.png', 'assets/images/background.png',
-     'assets/images/board.png'].forEach(function (src) {
+    /* The artwork, decoded as well as fetched: the swamp, its clouds, trees
+       and mist (index.html), and the plates the words are set on (the same
+       files css/style.css names). */
+    ['assets/new/scenery/sky.png', 'assets/new/scenery/cloud-1.png',
+     'assets/new/scenery/cloud-2.png', 'assets/new/scenery/cloud-3.png',
+     'assets/new/scenery/cloud-4.png', 'assets/new/scenery/tree-big-a.png',
+     'assets/new/scenery/tree-big-b.png', 'assets/new/scenery/fog-a.png',
+     'assets/new/scenery/fog-b.png', 'assets/new/scenery/water-far.png',
+     'assets/new/scenery/water-near.png', 'assets/new/header2.png',
+     'assets/new/box1.png', 'assets/new/box2.png'].forEach(function (src) {
       add(src, 3, function () { return imageReady(src); });
     });
-    Object.keys(global.Mascot.SHEETS).forEach(function (clip) {
-      add('sheet ' + clip, 8, function () { return global.Mascot.preload([clip]); });
+    /* The bird's sheets: only the two states it plays under the bubble. */
+    ['idle', 'talking'].forEach(function (name) {
+      var st = global.Mascot.STATES[name];
+      [st.start, st.loop, st.stop].filter(Boolean).forEach(function (clip) {
+        add('sheet ' + clip, 8, function () { return global.Mascot.preload([clip]); });
+      });
     });
     if (document.fonts && document.fonts.forEach) {
       document.fonts.forEach(function (face) {

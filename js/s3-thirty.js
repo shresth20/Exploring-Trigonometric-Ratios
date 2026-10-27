@@ -36,14 +36,13 @@
   var HALF = { A: { x: 413, y: 355 }, B: { x: 563, y: 355 }, C: { x: 563, y: 95 } };
   var CENTRE_X = 63;            /* the left half's slide to the middle      */
 
-  var dom = null, mascot = null;
+  var dom = null;
   var tE = null, tL = null, tR = null;
   var perp = null, perpMask = null;
   var rows = {};
 
   function build() {
     dom = Object.create(K.dom());
-    mascot = K.mascot();
     dom.g = document.getElementById('figS3');
     dom.gL = document.getElementById('figS3L');
     dom.gR = document.getElementById('figS3R');
@@ -62,7 +61,7 @@
     reset();
   }
 
-  function notQuite() { quiet(K.speak(K.keyed('fbNotQuite'), 'confused')); }
+  function notQuite() { quiet(K.speak(K.keyed('fbNotQuite'))); }
   function vals(t) { return Object.keys(t.vals).map(function (s) { return t.vals[s]; }); }
 
   /* The halves written in whole as the split leaves them: the lengths on
@@ -93,7 +92,7 @@
     return K.wipeBoard()
       .then(function () { return Flow.wait(BEAT); })
       .then(function () {
-        return K.say('s3Equi', null, function () {
+        return K.say('s3Equi', function () {
           return Tri.draw(tE, { time: 1.8, hold: 160, square: false });
         });
       })
@@ -267,7 +266,7 @@
         quiet(K.onPhrase('s3Root3', 'three', function () {
           return Flow.anim(Beats.textPulse(vals(tL), 2));
         }));
-        return K.speakBySentence('s3Root3', 'happy');
+        return K.speakBySentence('s3Root3');
       })
       .then(function () { return Flow.wait(SHORT); })
       .then(function () { return W.pane.drop(bRow.el); })
@@ -322,12 +321,12 @@
         if (value == null) return;
         return Flow.wait(SHORT).then(function () { return Flow.anim(row.showVal(value)); });
       })
-      .then(function () { return K.speak(K.keyed('fbCorrect'), 'happy'); })
+      .then(function () { return K.speak(K.keyed('fbCorrect')); })
       .then(function () { return Flow.wait(SHORT); });
   }
 
-  /* The second scene opens on the two halves, parted, with the bird on
-     the header; written in if they are not there. */
+  /* The second scene opens on the two halves, parted; written in if they
+     are not there. */
   function ensureHalves() {
     if (!dom.gL.hasAttribute('hidden') && !dom.gR.hasAttribute('hidden')) return Promise.resolve();
     halvesInstant();
@@ -367,7 +366,7 @@
         quiet(K.onPhrase('s3Yes60', 'other acute', function () {
           return Flow.anim(Beats.textPulse([tL.angles.A], 2));
         }));
-        return K.speakBySentence('s3Yes60', 'happy');
+        return K.speakBySentence('s3Yes60');
       })
       .then(function () { return Flow.wait(BEAT); })
       .then(function () { return K.handOver(); });
@@ -397,9 +396,6 @@
   }
   function stage(local) {
     if (local <= 0) return;
-    mascot.placeIn(dom.slotHeader);
-    mascot.el.classList.remove('is-away');
-    mascot.idle();
     if (local === 1) { halvesInstant(); return; }
     /* scene 3 opens on the kept half aside, with the rows found */
     Tri.instant(tL);

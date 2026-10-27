@@ -592,7 +592,8 @@
    * The table of values
    * Ratio | 0° | 30° | 45° | 60° | 90°, three rows. Built once; the values
    * filled in over the lesson are remembered, so each time the table is
-   * shown it carries what has been found so far.
+   * shown it carries what has been found so far. While a value lands, its
+   * row is lit and the other two step back.
    * ====================================================================== */
   var ANGLES = [0, 30, 45, 60, 90];
   var RATIOS = ['sin', 'cos', 'tan'];
@@ -600,6 +601,7 @@
   var filled = {};          /* 'sin:45' -> text */
   var tableEl = null;
   var cells = {};
+  var rows = {};
 
   function buildTable() {
     var d = dom();
@@ -615,6 +617,7 @@
     });
     RATIOS.forEach(function (r) {
       var row = h('div', 'ttable__row', tableEl);
+      rows[r] = row;
       var lhs = h('div', 'ttable__cell ttable__cell--lhs', row);
       lhs.textContent = T(RATIO_LBL[r]);
       ANGLES.forEach(function (a) {
@@ -629,6 +632,7 @@
     paintTable();
   }
   function paintTable() {
+    focusRow(null);
     Object.keys(cells).forEach(function (k) {
       var c = cells[k];
       c.el.classList.remove('is-new', 'is-ask', 'is-right', 'is-wrong');
@@ -642,6 +646,11 @@
         c.el.classList.remove('is-filled');
       }
     });
+  }
+  /* One row lit and the others stepped back; null brings them all back. */
+  function focusRow(r) {
+    tableEl.classList.toggle('has-focus', !!r);
+    RATIOS.forEach(function (k) { rows[k].classList.toggle('is-focus', k === r); });
   }
 
   var table = {
@@ -673,6 +682,7 @@
     fill: function (r, a, text) {
       var c = cells[r + ':' + a];
       filled[r + ':' + a] = text;
+      focusRow(r);
       write(c.v, text);
       c.el.classList.add('is-filled', 'is-new');
       Beats.sfx('correct');
@@ -684,14 +694,14 @@
     fillColumn: function (a, vals) {
       return RATIOS.reduce(function (chain, r) {
         return chain.then(function () { return table.fill(r, a, vals[r]); });
-      }, Promise.resolve());
+      }, Promise.resolve()).then(function () { focusRow(null); });
     },
     /* What has been found, for a later scene to stage. */
     remember: function (r, a, text) { filled[r + ':' + a] = text; },
     known: function (r, a) { return filled[r + ':' + a]; },
     /* Tap the cell: every filled cell is live, the right one is confirmed
        with a pulse and a burst, a wrong one shakes and is refused. The
-       bird is told of a wrong tap through onWrong. */
+       caller is told of a wrong tap through onWrong. */
     ask: function (r, a, q) {
       q = q || {};
       var good = cells[r + ':' + a];

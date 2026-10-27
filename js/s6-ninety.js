@@ -26,13 +26,12 @@
   var C0 = { x: 600, y: 340 - 4 * UNIT };
   var START_DEG = 60;
 
-  var dom = null, mascot = null;
+  var dom = null;
   var t = null;
   var saidCloser = false;
 
   function build() {
     dom = Object.create(K.dom());
-    mascot = K.mascot();
     dom.g = document.getElementById('figS6');
     t = Tri.create(dom.g, { A: aAt(START_DEG), B: B0, C: C0, right: 'B', theta: 'A' });
     reset();
@@ -103,7 +102,7 @@
         /* the first piece of the line is said as the triangle is drawn;
            the rest follow one at a time */
         var pieces = K.sentencesOf(T('s6Explore90')) || [T('s6Explore90')];
-        return K.say({ text: pieces[0], vo: null }, null, function () {
+        return K.say({ text: pieces[0], vo: null }, function () {
           return Tri.draw(t, { time: 1.4, hold: 120 })
             .then(function () { return Flow.anim(Beats.marksIn(['A', 'B', 'C'].map(function (v) { return t.names[v]; }), 0.3)); })
             .then(function () { return Tri.angleIn(t, 'A', T('lblDegVal', { n: START_DEG })); })

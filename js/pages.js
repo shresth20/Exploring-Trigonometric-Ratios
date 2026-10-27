@@ -7,9 +7,9 @@
  * if Skip is pressed. Nothing in here sets a timeout of its own.
  *
  * This file owns what every section shares: the board and its header, the
- * bird's lines and its jumps on and off the board, the Next control, the
- * tray of names and the drag that puts them in boxes, the pacing constants,
- * and the registry the sections join. The sections themselves are in
+ * lines said on the header and its opening and closing around them, the
+ * Next control, the tray of names and the drag that puts them in boxes,
+ * the pacing constants, and the registry the sections join. The sections themselves are in
  * js/s1-sides.js ... js/s7-table.js, and the right pane's widgets -- the
  * dropdown, the slider, the equations, the table -- in js/widgets.js.
  *
@@ -34,11 +34,13 @@
   var HOLD_ASK = 2000;      /* an instruction left standing before the hand-over */
   var AUTO_TURN = 2500;     /* ms: a self-turning page, left to be looked at */
   var LOOK = 1400;          /* ms: a finished mark looked at before the next */
+  var BIRD_LAG = 160;       /* ms: the bird hops up once the plate is mostly in */
 
-  /* The figure's own coordinates: the picture is 1000 x 420, centred on
-     (500, 210). SHIFT is how far a figure slides to stand in the left half. */
+  /* The figure's own coordinates: the picture is 1000 x 420, from y = 45
+     (the viewBox in index.html), so centred on (500, 255). SHIFT is how far
+     a figure slides to stand in the left half. */
   var VB_W = 1000, VB_H = 420;
-  var CX = 500, CY = 210;
+  var CX = 500, CY = 255;
   var SHIFT = -250;
   var SVG_NS = 'http://www.w3.org/2000/svg';
 
@@ -50,10 +52,10 @@
   var LEAD_STUB = 42;
 
   var dom = null;
-  var mascot = null;
   var chips = [];
   var choiceBtns = [];
   var sayBubble, sayPrompt;
+  var mascot = null;
 
   function $(id) { return document.getElementById(id); }
 
@@ -64,12 +66,10 @@
       startBtn: $('startBtn'),
 
       frame:    $('frame'),
-      slotHero: $('slotHero'),
       bubble:   $('bubble'),
-      hopper:   $('hopper'),
+      bird:     $('bubbleBird'),
 
       board:    $('board'),
-      slotHeader: $('slotHeader'),
       promptLine: document.querySelector('.prompt__line'),
 
       figure:    $('figure'),
@@ -285,20 +285,10 @@
     M.set(dom.promptLine, { clearProps: 'opacity,transform,filter' });
   }
 
-  /* Say a line in the header, and carry the bird to where the new line
-     leaves room for it: the row is centred on the pair, so the bird steps
-     aside by exactly the difference instead of jumping. */
+  /* Say a line in the header. The plate is one width for every line, so
+     nothing in the row has to make room for it. */
   function sayInHeader(text, over) {
-    var slot = dom.slotHeader;
-    var before = slot.getBoundingClientRect().left;
-    var reveal = sayPrompt.reserve(text, over);
-    var shift = before - slot.getBoundingClientRect().left;
-
-    if (Math.abs(shift) > 0.5) {
-      M.set(slot, { x: shift });
-      M.to(slot, { x: 0, duration: M.dur(0.42), ease: 'power2.inOut' });
-    }
-    return reveal();
+    return sayPrompt(text, over);
   }
 
   var speaking = 0;
@@ -435,10 +425,9 @@
     return said;
   }
 
-  /* The bird, already on the header, saying its next line. `mood` is the
-     state the bird holds while it speaks. `along` is something acted out
-     on the figure while the line is said. */
-  function speak(text, mood, along) {
+  /* The next line, said on the header while it is already up. `along` is
+     something acted out on the figure while the line is said. */
+  function speak(text, along) {
     var line = lineOf(text);
     var mine = ++speaking;
     var has = dom.promptLine.textContent.trim().length > 0;
@@ -446,112 +435,38 @@
     return gone.then(function () {
       if (mine !== speaking) return;
       M.set(dom.promptLine, { clearProps: 'opacity,transform,filter' });
-      mascot.state(mood || 'talking');
       var heard = quiet(voiceOf(line));
       var said = sayInHeader(line);
       return Promise.all([said, heard, along ? along(line) : null]);
-    }).then(function () {
-      if (mine === speaking) mascot.settle();
     });
   }
 
-  /* ---- the mascot's jump on and off the board -------------------------- */
-  var FOOT = 0.90;
-  var CLEAR = 8;
-  var PARK = 14;
+  /* ---- the header, taken up and let go ----------------------------------
+     A line arriving on a closed header opens it first; the lesson letting
+     the header go closes it behind, unless `keep`. `headerUp` is whether
+     the header is in use: whether the next line is said on it straight
+     away, or opens it first. */
+  var headerUp = false;
 
-  function flightPlan(cell) {
-    var b = dom.board.getBoundingClientRect();
-    return {
-      centre: b.top - CLEAR - (FOOT - 0.5) * cell.height,
-      park: b.top + PARK
-    };
+  function headerIn() {
+    headerUp = true;
+    return Flow.anim(openHeader());
   }
-  function hopperOff() {
-    dom.hopper.classList.remove('on');
-    mascot.unmirror(dom.hopper);
-  }
-  function jumpDone() {
-    hopperOff();
-    M.set([mascot.el, dom.hopper], { clearProps: 'transform' });
+  function headerOut(keep) {
+    if (!headerUp) return Promise.resolve();
+    headerUp = false;
+    if (!keep) Flow.anim(collapseHeader(true));
+    return Promise.resolve();
   }
 
-  /* Up from behind the board, and down onto the spot. The header opens as
-     the bird comes back to it. */
-  function mascotJumpIn(slot) {
-    var el = mascot.el;
-    slot = slot || dom.slotHeader;
-    if (slot === dom.slotHeader) Flow.anim(openHeader());
-    el.classList.add('is-away');
-    el.hidden = false;
-    mascot.placeIn(slot);
-
-    var cell = el.getBoundingClientRect();
-    if (!cell.width || M.reducedMotion()) {
-      el.classList.remove('is-away');
-      return Promise.resolve();
-    }
-
-    var plan = flightPlan(cell);
-    M.set(dom.hopper, {
-      left: cell.left, top: plan.park, width: cell.width, height: cell.height, y: 0
-    });
-    mascot.mirror(dom.hopper);
-    dom.hopper.classList.add('on');
-
-    return Flow.anim(Beats.hopUp(dom.hopper, plan.centre - (plan.park + cell.height / 2)))
-      .then(function () {
-        var at = el.getBoundingClientRect();
-        var from = plan.centre - (at.top + at.height / 2);
-        M.set(el, { y: from });
-        el.classList.remove('is-away');
-        hopperOff();
-        return Flow.anim(Beats.landOn(el, from));
-      })
-      .then(jumpDone, function (err) { jumpDone(); throw err; });
-  }
-
-  /* Crouch, spring off the spot, and fall back behind the board. Leaving
-     the header closes it behind the bird, unless `keep`. */
-  function mascotJumpOut(keep) {
-    var el = mascot.el;
-    if (el.hidden || el.classList.contains('is-away')) return Promise.resolve();
-    var closes = el.parentNode === dom.slotHeader && !keep;
-    var shut = function () { if (closes) Flow.anim(collapseHeader(true)); };
-
-    var cell = el.getBoundingClientRect();
-    if (!cell.width || M.reducedMotion()) {
-      el.classList.add('is-away');
-      shut();
-      return Promise.resolve();
-    }
-
-    var plan = flightPlan(cell);
-    return Flow.anim(Beats.springOff(el, plan.centre - (cell.top + cell.height / 2)))
-      .then(function () {
-        var at = el.getBoundingClientRect();
-        M.set(dom.hopper, {
-          left: cell.left, top: cell.top, width: cell.width, height: cell.height,
-          y: (at.top + at.height / 2) - (cell.top + cell.height / 2)
-        });
-        mascot.mirror(dom.hopper);
-        dom.hopper.classList.add('on');
-        el.classList.add('is-away');
-        return Flow.anim(Beats.hopDown(dom.hopper, plan.park - cell.top));
-      })
-      .then(function () { jumpDone(); shut(); },
-            function (err) { jumpDone(); throw err; });
-  }
-
-  /* The bird comes up to say a line. The line is RESERVED before the jump
-     starts, so the bird lands where the finished line will put it, and it
-     starts talking on landing. */
-  function arriveSaying(text, mood, along) {
+  /* A line arriving on the header. It is RESERVED before the header opens,
+     so its plate arrives already the size of the finished line, and the
+     words start as the header settles. */
+  function arriveSaying(text, along) {
     var line = lineOf(text);
     speaking++;
     var reveal = sayPrompt.reserve(line);
-    return mascotJumpIn().then(function () {
-      mascot.state(mood || 'talking');
+    return headerIn().then(function () {
       var heard = quiet(voiceOf(line));
       return Promise.all([reveal(), heard, along ? along(line) : null]);
     });
@@ -562,17 +477,17 @@
     return { text: global.I18n ? global.I18n.t(key, repl) : key, vo: key };
   }
 
-  /* The bird says a line from wherever it is: on the header already, or up
-     onto it first. A line of several pieces is said a piece at a time
+  /* A line, said on the header: straight away if the header is up, or
+     opening it first. A line of several pieces is said a piece at a time
      (speakBySentence); a line with something acted out alongside it is
      said whole, so the beat and the words start together. */
-  function say(key, mood, along) {
+  function say(key, along) {
     var line = typeof key === 'string' ? keyed(key) : key;
-    if (!along && sentencesOf(line.text)) return speakBySentence(line, mood);
-    return sayWhole(line, mood, along);
+    if (!along && sentencesOf(line.text)) return speakBySentence(line);
+    return sayWhole(line, along);
   }
-  function sayWhole(line, mood, along) {
-    return birdOnHeader() ? speak(line, mood, along) : arriveSaying(line, mood, along);
+  function sayWhole(line, along) {
+    return headerUp ? speak(line, along) : arriveSaying(line, along);
   }
 
   /* A line of more than one sentence, said one sentence at a time from ONE
@@ -615,11 +530,11 @@
     return out.length > 1 ? out : null;
   }
 
-  function speakBySentence(key, mood) {
+  function speakBySentence(key) {
     var line = typeof key === 'string' ? keyed(key) : key;
     var I = global.I18n;
     var parts = sentencesOf(line.text);
-    if (!parts || Flow.isFast()) return sayWhole(line, mood);
+    if (!parts || Flow.isFast()) return sayWhole(line);
 
     var cues = I && I.cues && line.vo ? I.cues(line.vo) : null;
     if (!cues) {
@@ -628,13 +543,13 @@
          of the voice or behind it. */
       var clipHere = I && line.vo && global.GameAudio && global.GameAudio.has &&
                      global.GameAudio.has(I.voice(line.vo));
-      if (clipHere) return sayWhole(line, mood);
-      /* no clip: each piece its own plain line, the first said from
-         wherever the bird is */
+      if (clipHere) return sayWhole(line);
+      /* no clip: each piece its own plain line, the first opening the
+         header if it is not up already */
       return parts.reduce(function (chain, s, i) {
         return chain.then(function (n) {
           if (i > 0 && n !== speaking) return n;
-          var said = i === 0 ? sayWhole({ text: s, vo: null }, mood) : speak(s, mood);
+          var said = i === 0 ? sayWhole({ text: s, vo: null }) : speak(s);
           var mine = speaking;
           return said.then(function () { return mine; });
         });
@@ -651,7 +566,7 @@
       return { text: s, at: atc };
     });
 
-    var up = birdOnHeader() ? Promise.resolve() : mascotJumpIn();
+    var up = headerUp ? Promise.resolve() : headerIn();
     return up.then(function () {
       var mine = ++speaking;
       var has = dom.promptLine.textContent.trim().length > 0;
@@ -659,7 +574,6 @@
       return gone.then(function () {
         if (mine !== speaking) return;
         M.set(dom.promptLine, { clearProps: 'opacity,transform,filter' });
-        mascot.state(mood || 'talking');
         var t0 = performance.now();
         var heard = quiet(voiceOf(line));
         var typed = split.reduce(function (chain, s, i) {
@@ -681,8 +595,6 @@
           });
         }, Promise.resolve());
         return Promise.all([typed, heard]);
-      }).then(function () {
-        if (mine === speaking) mascot.settle();
       });
     });
   }
@@ -708,24 +620,10 @@
     return Flow.wait(ms == null ? AUTO_TURN : ms).then(turned);
   }
 
-  /* The bird and its line off the header, with the header kept open. */
-  function birdAway() {
-    return Promise.all([mascotJumpOut(true), Flow.anim(Beats.lineOut(dom.promptLine))])
-      .then(clearPrompt);
-  }
-
-  /* The line off the header with the bird LEFT on it, gliding to re-centre. */
+  /* The line off the header, with the header kept open. */
   function lineAway() {
     if (!dom.promptLine.textContent.trim()) return Promise.resolve();
-    return Flow.anim(Beats.lineOut(dom.promptLine)).then(function () {
-      var slot = dom.slotHeader;
-      var before = slot.getBoundingClientRect().left;
-      clearPrompt();
-      var shift = before - slot.getBoundingClientRect().left;
-      if (Math.abs(shift) <= 0.5) return;
-      M.set(slot, { x: shift });
-      return Flow.anim(M.to(slot, { x: 0, duration: M.dur(0.42), ease: 'power2.inOut' }));
-    });
+    return Flow.anim(Beats.lineOut(dom.promptLine)).then(clearPrompt);
   }
 
   /* ---- an activity finished -------------------------------------------- */
@@ -739,24 +637,20 @@
     Beats.sfx('cheer');
     quiet(Flow.anim(Beats.confettiRain(dom.board)));
   }
-  /* ...and a word of praise said by the bird as the confetti comes down. */
+  /* ...and a word of praise said as the confetti comes down. */
   function praise(key) {
     celebrate();
     return Flow.wait(Beats.ringing())
-      .then(function () { return say(key || praiseKey(), 'happy'); })
-      .then(function () { mascot.settle(); });
+      .then(function () { return say(key || praiseKey()); });
   }
 
-  function birdOnHeader() {
-    var el = mascot.el;
-    return el.parentNode === dom.slotHeader && !el.hidden &&
-           !el.classList.contains('is-away');
-  }
-
+  /* The bubble put away, and the bird with it: its player stopped, so no
+     frame is painted for a bird nobody can see. */
   function restoreBubble() {
     sayBubble.clear();
+    mascot.stop();
     dom.bubble.setAttribute('hidden', '');
-    M.set(dom.bubble, { clearProps: 'opacity,transform' });
+    M.set([dom.bubble, dom.bird], { clearProps: 'opacity,transform' });
   }
 
   /* ---- the board's top band, taken away and given back ------------------- */
@@ -811,14 +705,15 @@
   }
 
   /* ---- a scene, over ------------------------------------------------------
-     The bird leaves and the board is wiped in the same beat. */
+     The line leaves and the board is wiped in the same beat; the header
+     closes once its line has gone. */
   var wipers = [];
   function addWipe(fn) { wipers.push(fn); }
 
   function wipeBoard() {
-    var gone = mascotJumpOut();
     var shut = Flow.anim(Beats.bubbleOut(dom.bubble));
     var line = Flow.anim(Beats.lineOut(dom.promptLine));
+    var gone = line.then(function () { return headerOut(); });
     var figure = Flow.anim(Beats.clearFigure(figureParts()));
 
     var footer = [];
@@ -1210,16 +1105,14 @@
 
   /* ======================================================================
    * Scene 0 -- welcome
-   * The title and a waving bird are painted into the welcome artwork, so
-   * the only live thing on it is Start. The real bird is already on its
-   * mark behind the screen, waving, and is revealed as the artwork fades:
-   * the painted bird hands over to the live one. Then the first line, from
-   * the bubble over its head.
+   * The welcome is the swamp itself: the title drops in on its hanging
+   * plate (a CSS entrance, from the first frame -- see .welcome__title),
+   * and Start is offered once everything has loaded. Then the welcome
+   * stands aside, and the first line arrives on a plate of its own in the
+   * middle of the screen (the bubble), with the bird hopping up under it
+   * to say it -- the one screen the bird is on.
    * ====================================================================== */
   function sceneWelcome() {
-    mascot.placeIn(dom.slotHero);
-    mascot.state('waving');
-
     return Flow.wait(SHORT)
       .then(function () { return Flow.anim(global.Loader ? global.Loader.ready() : null); })
       .then(function () {
@@ -1233,18 +1126,21 @@
       })
       .then(function () {
         Beats.sfx('click');
-        mascot.settle();
         return Flow.anim(Beats.welcomeOut(dom.welcome, dom.title, dom.startBtn));
       })
       .then(function () { return Flow.wait(SHORT); })
       .then(function () {
-        mascot.state('talking');
         Beats.bubbleArm(dom.bubble);
+        Beats.birdArm(dom.bird);
+        mascot.state('talking');
         var hello = keyed('s1Hello');
         var heard = quiet(voiceOf(hello));
         var said = sayBubble(hello);
         Beats.bubbleIn(dom.bubble);
-        return Promise.all([said, heard]);
+        var hop = Flow.wait(BIRD_LAG).then(function () {
+          return Flow.anim(Beats.birdIn(dom.bird));
+        });
+        return Promise.all([said, heard, hop]);
       })
       .then(function () {
         mascot.settle();
@@ -1338,10 +1234,7 @@
     begun = { text: null, at: 0 };
     if (global.I18n) global.I18n.stop();
 
-    hopperOff();
-    mascot.el.hidden = false;
-    mascot.el.classList.remove('is-away');
-    mascot.idle();
+    headerUp = false;
     rowsMove = null;
     dom.welcome.removeAttribute('hidden');
     dom.startBtn.setAttribute('hidden', '');
@@ -1358,7 +1251,7 @@
     wipers.forEach(function (w) { if (w.reset) w.reset(); });
 
     M.set([dom.welcome, dom.title, dom.startBtn, dom.nextBtn, dom.bubble,
-           dom.board, dom.promptLine, dom.slotHeader, mascot.el, dom.hopper],
+           dom.board, dom.promptLine],
           { clearProps: 'opacity,transform,filter' });
   }
 
@@ -1367,13 +1260,10 @@
   function stageFor(index) {
     if (index <= 0) return;
     dom.welcome.setAttribute('hidden', '');
-    mascot.placeIn(dom.slotHero);
-    mascot.idle();
     if (index <= 1) return;
 
     dom.board.classList.add('show');
     dom.board.setAttribute('aria-hidden', 'false');
-    mascot.el.classList.add('is-away');
 
     if (index >= BASE_SCENES) {
       var s = sectionOf(index);
@@ -1382,13 +1272,13 @@
   }
 
   function init() {
-    if (dom) return { dom: dom, mascot: mascot };
+    if (dom) return { dom: dom };
     dom = collect();
-    mascot = global.Mascot.create({ slot: dom.slotHero });
     sayBubble = onVoice(global.Typer.create($('bubbleType'), { box: dom.bubble }));
+    mascot = global.Mascot.create({ slot: dom.bird, idle: false });
     sayPrompt = onVoice(global.Typer.create($('promptType')));
     sections.forEach(function (s) { if (s.build) s.build(kit); });
-    return { dom: dom, mascot: mascot };
+    return { dom: dom };
   }
 
   var started = false;
@@ -1421,7 +1311,6 @@
     CX: CX, CY: CY, VB_W: VB_W, VB_H: VB_H, SHIFT: SHIFT,
     BOX_W: BOX_W, BOX_H: BOX_H, LEAD_STUB: LEAD_STUB, HAND_D: HAND_D,
     dom: function () { return dom; },
-    mascot: function () { return mascot; },
     el: el, seg: seg, round2: round2,
     buildBox: buildBox, emptyBox: emptyBox, targetBox: targetBox,
     buildChips: buildChips, buildChoices: buildChoices, shuffle: shuffle,
@@ -1429,8 +1318,7 @@
     choices: function (list) { if (list) choiceBtns = list; return choiceBtns; },
     handOver: handOver, speak: speak, say: say, arriveSaying: arriveSaying,
     speakBySentence: speakBySentence,
-    clearPrompt: clearPrompt, mascotJumpIn: mascotJumpIn, mascotJumpOut: mascotJumpOut,
-    birdOnHeader: birdOnHeader,
+    clearPrompt: clearPrompt, headerIn: headerIn, headerOut: headerOut,
     sayBubble: function (text) { return sayBubble(text); },
     clearBubble: function () { sayBubble.clear(); },
     restoreBubble: restoreBubble,
@@ -1441,7 +1329,7 @@
     keyed: keyed, hear: hear, onWord: onWord, onPhrase: onPhrase, wordAt: wordAt,
     typedFor: typedFor, sentencesOf: sentencesOf,
     celebrate: celebrate, praise: praise, praiseKey: praiseKey,
-    autoTurn: autoTurn, birdAway: birdAway, lineAway: lineAway,
+    autoTurn: autoTurn, lineAway: lineAway,
     ripple: ripple, quiet: quiet, clearInline: clearInline
   };
 
@@ -1464,7 +1352,6 @@
       fn({ scene: at, scenes: SCENES.length, name: SCENES[at].name,
            page: page, pages: seen.slice() });
     },
-    mascot: function () { return mascot; },
     dom: function () { return dom; }
   };
 })(window);

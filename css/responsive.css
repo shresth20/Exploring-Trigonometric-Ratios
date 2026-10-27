@@ -7,6 +7,11 @@
    the full width; height is never the binding constraint here. */
 @media (orientation: portrait) {
   :root { --board-w: min(1500px, 94vw, 160vh); }
+
+  /* The board is a band across the middle here, with the swamp open below
+     it, so the trees can stand taller against the width than they could
+     beside a board that fills the screen. */
+  .scenery { --tree-h: min(52vh, 46vw); }
 }
 
 /* Short landscape (phones on their side): height binds first, so trade the
@@ -16,7 +21,6 @@
 
   .board {
     padding: clamp(8px, 3vh, 20px) clamp(12px, 3.5%, 28px);
-    border-width: 2px;
   }
 }
 

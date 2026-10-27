@@ -23,39 +23,46 @@
     </defs>
   </svg>
 
+  <!-- The swamp the whole lesson is set on, covering the window, back to
+       front: its sky with the clouds taken out and the water smoothed to
+       its glow (sky.png); the clouds drifting over it, the water's ripples
+       flowing across it and the far mist lying on it (js/scenery.js); a
+       big tree at each bottom corner; and the near mist over their roots. -->
+  <div class="scenery" aria-hidden="true">
+    <div class="scenery__art">
+      <img class="cloud cloud--1" src="assets/new/scenery/cloud-1.png" alt="">
+      <img class="cloud cloud--2" src="assets/new/scenery/cloud-2.png" alt="">
+      <img class="cloud cloud--3" src="assets/new/scenery/cloud-3.png" alt="">
+      <img class="cloud cloud--4" src="assets/new/scenery/cloud-4.png" alt="">
+      <div class="water water--far"></div>
+      <div class="water water--near"></div>
+      <img class="mist mist--far" src="assets/new/scenery/fog-a.png" alt="">
+    </div>
+    <img class="tree tree--left" src="assets/new/scenery/tree-big-a.png" alt="">
+    <img class="tree tree--right" src="assets/new/scenery/tree-big-b.png" alt="">
+    <img class="mist mist--near" src="assets/new/scenery/fog-b.png" alt="">
+  </div>
+
   <main id="app">
-    <!-- The 16:9 box the whole lesson is staged in. The board, the mascot and
-         the Next control are all positioned against THIS. -->
+    <!-- The 16:9 box the whole lesson is staged in. The board and the Next
+         control are both positioned against THIS. -->
     <div class="frame" id="frame">
 
-      <!-- The mascot's centre-stage slot. It sits BEHIND the board on purpose:
-           when the board arrives it covers the mascot, and the mascot's next
-           entrance rises back out of the board's own surface. -->
-      <div class="slot slot--hero" id="slotHero">
-        <div class="bubble" id="bubble" hidden>
-          <span class="type-wrap" id="bubbleType">
-            <span class="type-ghost"></span>
-            <span class="type" aria-live="polite"><span class="txt"></span></span>
-          </span>
-          <svg class="bubble-tail" viewBox="0 0 44 42" aria-hidden="true">
-            <path d="M4 0 H42 V8 C36 20 24 30 2 42 C8 32 8 20 4 8 Z"
-                  fill="var(--bubble-bg)" />
-            <path d="M42 8 C36 20 24 30 2 42 C8 32 8 20 4 8" fill="none"
-                  stroke="var(--note-edge)" stroke-width="4"
-                  stroke-linecap="round" stroke-linejoin="round"
-                  vector-effect="non-scaling-stroke" />
-          </svg>
-        </div>
+      <!-- The welcome's first line, on a plate of its own in the middle of
+           the frame, before the board exists. The bird stands under the
+           plate's left end: this is the only screen it appears on, and it
+           comes and goes with the plate. -->
+      <div class="bubble" id="bubble" hidden>
+        <span class="type-wrap" id="bubbleType">
+          <span class="type-ghost"></span>
+          <span class="type" aria-live="polite"><span class="txt"></span></span>
+        </span>
+        <div class="bubble__bird" id="bubbleBird" aria-hidden="true"></div>
       </div>
-
-      <!-- The bird's stand-in for the half of every jump that happens BEHIND
-           the board (see mascotJumpIn in pages.js). -->
-      <div class="hopper" id="hopper" aria-hidden="true"></div>
 
       <section class="board" id="board" aria-hidden="true">
         <header class="board__top" id="boardTop">
           <div class="prompt" id="prompt">
-            <div class="prompt__mascot" id="slotHeader"></div>
             <p class="prompt__line">
               <span class="type-wrap" id="promptType">
                 <span class="type-ghost"></span>
@@ -69,8 +76,11 @@
           <!-- The whole lesson's picture, in ONE svg. Wide rather than
                square -- 1000 x 420 -- so a triangle standing in the left
                half leaves the right half to the working. Each section
-               builds its own triangle into a group of its own. -->
-          <svg class="figure" id="figure" viewBox="0 0 1000 420"
+               builds its own triangle into a group of its own. The view
+               starts at y = 45, not 0: the sections draw low in the 420
+               (their drawings' middle is near y = 255), so this puts the
+               drawing in the middle of the stage, not under it. -->
+          <svg class="figure" id="figure" viewBox="0 45 1000 420"
                role="img" data-i18n-attr="aria-label:a11yFigure" aria-label="A right-angled triangle">
             <defs>
               <!-- The bloom under a mark while it is being named: a
@@ -81,6 +91,16 @@
                 <feGaussianBlur in="SourceGraphic" stdDeviation="6" result="bloom" />
                 <feMerge>
                   <feMergeNode in="bloom" />
+                  <feMergeNode in="bloom" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
+              <!-- The neon every line of the triangle is drawn in: a softer,
+                   always-on bloom of the line's own ink under it. -->
+              <filter id="neon" filterUnits="userSpaceOnUse"
+                      x="-200" y="-200" width="1400" height="820">
+                <feGaussianBlur in="SourceGraphic" stdDeviation="3.5" result="bloom" />
+                <feMerge>
                   <feMergeNode in="bloom" />
                   <feMergeNode in="SourceGraphic" />
                 </feMerge>
@@ -137,8 +157,9 @@
       <!-- Where a burst of confetti is thrown, over everything in the frame. -->
       <svg class="burst-layer" id="burst" aria-hidden="true"></svg>
 
-      <!-- The round Next disc: a rim set a little low so it reads as the
-           thickness of a disc, a face lit from the top, and a rounded arrow. -->
+      <!-- The Next key: a dark outline, an orange wall set a little low so
+           it reads as the key's thickness, a face lit from the top with a
+           gloss, and a rounded arrow outlined in the same dark. -->
       <button class="next-btn" id="nextBtn" type="button" hidden data-i18n-attr="aria-label:a11yNext" aria-label="Next">
         <svg viewBox="0 0 100 100" aria-hidden="true" focusable="false">
           <defs>
@@ -148,18 +169,24 @@
               <stop offset="1" stop-color="var(--next-face-3)" />
             </linearGradient>
           </defs>
-          <circle cx="50" cy="51.5" r="45" fill="var(--next-rim)" />
-          <circle cx="50" cy="50" r="41.5" fill="url(#icoNextFace)" />
-          <path d="M31.25 43.125 H52.5 V31.25 L77.5 50 L52.5 68.75 V56.875 H31.25 Z"
-                fill="var(--next-arrow)" stroke="var(--next-arrow)" stroke-width="8.75"
-                stroke-linejoin="round" stroke-linecap="round" />
+          <rect x="3" y="3" width="94" height="95" rx="24" fill="var(--text-outline)" />
+          <rect x="7" y="7" width="86" height="87" rx="20" fill="var(--next-rim)" />
+          <rect x="7" y="7" width="86" height="80" rx="20" fill="url(#icoNextFace)" />
+          <rect x="14" y="12" width="72" height="26" rx="13" fill="var(--white)" opacity=".24" />
+          <g transform="translate(-3 -3)">
+            <path d="M31.25 43.125 H52.5 V31.25 L77.5 50 L52.5 68.75 V56.875 H31.25 Z"
+                  fill="var(--text-outline)" stroke="var(--text-outline)" stroke-width="16"
+                  stroke-linejoin="round" stroke-linecap="round" />
+            <path d="M31.25 43.125 H52.5 V31.25 L77.5 50 L52.5 68.75 V56.875 H31.25 Z"
+                  fill="var(--next-arrow)" stroke="var(--next-arrow)" stroke-width="8.75"
+                  stroke-linejoin="round" stroke-linecap="round" />
+          </g>
         </svg>
       </button>
     </div>
 
-    <!-- Welcome, over everything until Start is pressed. The title and the
-         bird are painted into the artwork (welcome.png), so the heading is
-         there for screen readers only. -->
+    <!-- Welcome, over everything until Start is pressed: the title on its
+         hanging plate and Start, over the swamp. -->
     <section class="welcome" id="welcome">
       <h1 class="welcome__title" data-i18n="uiTitle">Exploring Trigonometric Ratios</h1>
       <div class="loader" id="loader" role="progressbar" aria-valuemin="0" aria-valuemax="100"
@@ -181,6 +208,7 @@
   <script src="js/audio.js"></script>
   <script src="js/i18n.js"></script>
   <script src="js/motion.js"></script>
+  <script src="js/scenery.js"></script>
   <script src="js/flow.js"></script>
   <script src="js/mathtext.js"></script>
   <script src="js/typer.js"></script>

@@ -4,7 +4,7 @@
  * Storyboard pages 14-34. Three scenes:
  *
  *   Recall the ratios.  The first triangle again, named; it slides to the
- *     left half and the bird asks, row by row, which two sides make sin θ,
+ *     left half and the header asks, row by row, which two sides make sin θ,
  *     cos θ and tan θ -- each a fraction of two dropdown blanks. "Now let's
  *     use these ratios to find the values for a few familiar angles." Next.
  *   The 45° triangle.  "We'll start with 45°." The rows give way to a
@@ -29,13 +29,12 @@
   var BASE = 300;              /* the base's length, picture units          */
   var START_DEG = 35;
 
-  var dom = null, mascot = null;
+  var dom = null;
   var t = null;
   var rows = {};               /* sin, cos, tan: the ratio rows            */
 
   function build() {
     dom = Object.create(K.dom());
-    mascot = K.mascot();
     dom.g = document.getElementById('figS2');
     t = Tri.create(dom.g, { A: S1.A, B: S1.B, C: S1.C, right: 'B', theta: 'A' });
     reset();
@@ -64,8 +63,8 @@
   }
   function roleOf(key) { return { wOpposite: 'opp', wAdjacent: 'adj', wHypotenuse: 'hyp' }[key]; }
 
-  /* A wrong pick in a blank: the bird says so from the header. */
-  function notQuite() { quiet(K.speak(K.keyed('fbNotQuite'), 'confused')); }
+  /* A wrong pick in a blank: the header says so. */
+  function notQuite() { quiet(K.speak(K.keyed('fbNotQuite'))); }
 
   /* ======================================================================
    * Scene 1 -- recall the ratios
@@ -81,7 +80,7 @@
       .then(function () { return Tri.nameSides(t, ['opp', 'adj', 'hyp'], 120); })
       .then(function () { return Flow.wait(SHORT); })
       .then(function () {
-        return K.say('s2Back', null, function () {
+        return K.say('s2Back', function () {
           return Flow.anim(Beats.slideGroup(dom.g, K.SHIFT, 0.9));
         });
       })
@@ -98,7 +97,7 @@
       .then(function () { return K.handOver(); });
   }
 
-  /* One ratio asked: the row arrives, the bird asks, the two blanks are
+  /* One ratio asked: the row arrives, the header asks, the two blanks are
      filled, and the row is told right. The sides named light as their
      words are chosen. */
   function askRow(which, lhsKey, askKey, num, den, last) {
@@ -115,7 +114,7 @@
       })
       .then(function () {
         quiet(Flow.anim(Beats.linePulse([t.side(roleOf(num)), t.side(roleOf(den))])));
-        return last ? K.praise() : K.speak(K.keyed('fbCorrect'), 'happy');
+        return last ? K.praise() : K.speak(K.keyed('fbCorrect'));
       })
       .then(function () { return Flow.wait(SHORT); });
   }
@@ -152,7 +151,7 @@
       .then(function () {
         shapeAt(45);
         t.writeAngle('A', T('lblDeg45'));
-        return K.say('s2Now45', 'happy');
+        return K.say('s2Now45');
       })
       .then(function () { return Flow.wait(SHORT); })
       .then(function () { return W.pane.out(); })
@@ -175,7 +174,7 @@
           return Promise.all([
             Flow.anim(Beats.relabel(t.angles.C, function () { t.angles.C.textContent = T('lblDeg45'); })),
             Flow.anim(Beats.growLine(t.arcs.C, 0.45, 'power2.inOut')),
-            K.speak(K.keyed('fbCorrect'), 'happy')
+            K.speak(K.keyed('fbCorrect'))
           ]);
         }).then(function () { return W.pane.drop(p.el); });
       })
@@ -241,7 +240,7 @@
         quiet(K.onPhrase('s2HypRoot2', 'hypotenuse', function () {
           return Flow.anim(Beats.linePulse(t.sides.CA));
         }));
-        return K.say('s2HypRoot2', 'happy');
+        return K.say('s2HypRoot2');
       })
       .then(function () { return Flow.wait(SHORT); })
       .then(function () {
@@ -316,12 +315,12 @@
         if (value == null) return;
         return Flow.wait(SHORT).then(function () { return Flow.anim(row.showVal(value)); });
       })
-      .then(function () { return K.speak(K.keyed('fbCorrect'), 'happy'); })
+      .then(function () { return K.speak(K.keyed('fbCorrect')); })
       .then(function () { return Flow.wait(SHORT); });
   }
 
   /* The second scene opens on the first's last board: the triangle aside,
-     named, θ at A, the three rows on the pane, the bird on the header. If
+     named, θ at A, the three rows on the pane, the header up. If
      it is not there (the scene played from the level bar), it is written
      in whole. */
   function ensureRows() {
@@ -376,13 +375,10 @@
   }
   /* The board as each scene expects to find it. Scene 1 wipes; scene 2
      writes its own opening in (ensureRows); scene 3 opens on the 45°
-     triangle's finished board -- the bird on the header, and the values
-     found -- which it takes down at once, so the bird alone is staged. */
+     triangle's finished board -- the values found -- which it takes
+     down at once, so nothing is staged. */
   function stage(local) {
     if (local <= 0) return;
-    mascot.placeIn(dom.slotHeader);
-    mascot.el.classList.remove('is-away');
-    mascot.idle();
     if (local === 1) { ensureRows(); return; }
     shapeAt(45);
     Tri.instant(t);

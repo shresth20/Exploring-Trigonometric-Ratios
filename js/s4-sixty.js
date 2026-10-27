@@ -22,20 +22,19 @@
   function T(key, repl) { return global.T ? global.T(key, repl) : key; }
   var quiet = K.quiet;
 
-  var dom = null, mascot = null;
+  var dom = null;
   var t = null;
   var rows = {};
 
   function build() {
     dom = Object.create(K.dom());
-    mascot = K.mascot();
     dom.g = document.getElementById('figS4');
     /* the names stand further out than the lengths, so both can show */
     t = Tri.create(dom.g, { A: S3.HALF.A, B: S3.HALF.B, C: S3.HALF.C, right: 'B', theta: 'C', wordOff: 70 });
     reset();
   }
 
-  function notQuite() { quiet(K.speak(K.keyed('fbNotQuite'), 'confused')); }
+  function notQuite() { quiet(K.speak(K.keyed('fbNotQuite'))); }
   function vals() { return Object.keys(t.vals).map(function (s) { return t.vals[s]; }); }
 
   /* The triangle as section 3 left it: in the middle, its three lengths
@@ -149,7 +148,7 @@
         if (value == null) return;
         return Flow.wait(SHORT).then(function () { return Flow.anim(row.showVal(value)); });
       })
-      .then(function () { return K.speak(K.keyed('fbCorrect'), 'happy'); })
+      .then(function () { return K.speak(K.keyed('fbCorrect')); })
       .then(function () { return Flow.wait(SHORT); });
   }
 
@@ -184,9 +183,6 @@
     rows = {};
   }
   function stage(local) {
-    mascot.placeIn(dom.slotHeader);
-    mascot.el.classList.remove('is-away');
-    mascot.idle();
     if (local <= 0) {
       /* the table of the scene before, and the half under it */
       W.table.remember('sin', 45, T('valOneOverRoot2')); W.table.remember('cos', 45, T('valOneOverRoot2')); W.table.remember('tan', 45, T('val1'));

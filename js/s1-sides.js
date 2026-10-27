@@ -3,12 +3,14 @@
  * --------------------------------------------------------------------------
  * Storyboard pages 1-13. One scene, several pages:
  *
- *   1. The board opens. The bird comes up saying "Here's a right-angled
- *      triangle." as the pen draws one; the caption lands. "We'll call
- *      this angle theta." -- the arc and θ go on at A. The page turns.
+ *   1. The board opens and the pen draws the triangle. Then the header
+ *      comes up saying "Here's a right-angled triangle." and the caption
+ *      lands. "We'll call this angle theta." -- the arc goes on at A as
+ *      "this angle" is said, the θ as "theta" is. The page turns.
  *   2. "Before we begin, let's recall the side names for this angle."
- *      Three boxes arrive on the ends of dashed leaders, one per side, and
- *      the three names arrive in the tray. "Can you match each side to its
+ *      The caption goes once the line is said. Three boxes arrive on the
+ *      ends of dashed leaders, one per side, and the three names arrive
+ *      in the tray. "Can you match each side to its
  *      name?" -- the drag is shown, and each name dropped right colours
  *      its side. "That's correct! These are the opposite side, adjacent
  *      side and hypotenuse." -- each side lit as it is named. Next.
@@ -35,19 +37,24 @@
   var A = { x: 350, y: 345 }, B = { x: 650, y: 345 }, C = { x: 650, y: 135 };
   var DRAW_TIME = 2.4;
 
-  /* The three boxes round the triangle, each tied to its side: every
-     leader ends ON its side's midpoint. The adjacent box sits below the
-     base, so its leader comes up from underneath and never crosses θ or
-     the hypotenuse on the way. */
+  /* The three boxes round the triangle, each tied to its side by a leader
+     that ends ON it. The adjacent box sits below the base, so its leader
+     comes up from underneath and never crosses θ or the hypotenuse on the
+     way. The hypotenuse's midpoint is nearly under its box's corner, and a
+     leader to it would drop almost straight down; it lands higher up the
+     side instead (HYP_AT of the way from A to C), at the same shallow
+     slant as the adjacent's. */
+  var HYP_AT = 0.63;
   function boxSpecs(t) {
     return [
-      { name: 'lblHypotenuse', x: 60,  y: 118, anchor: t.midOf('CA') },
-      { name: 'lblOpposite',   x: 760, y: 182, anchor: t.midOf('BC') },
-      { name: 'lblAdjacent',   x: 60,  y: 362, anchor: t.midOf('AB') }
+      { name: 'lblHypotenuse', x: 220, y: 160,
+        anchor: { x: A.x + (C.x - A.x) * HYP_AT, y: A.y + (C.y - A.y) * HYP_AT } },
+      { name: 'lblOpposite',   x: 720, y: 219, anchor: t.midOf('BC') },
+      { name: 'lblAdjacent',   x: 160, y: 366, anchor: t.midOf('AB') }
     ];
   }
 
-  var dom = null, mascot = null;
+  var dom = null;
   var t = null, t2 = null;
   var caption = null;
   var boxes = [];
@@ -55,13 +62,13 @@
 
   function build() {
     dom = Object.create(K.dom());
-    mascot = K.mascot();
     dom.g = document.getElementById('figS1');
     dom.g2 = document.getElementById('figS1b');
     dom.boxes = document.getElementById('figBoxes');
     t = Tri.create(dom.g, { A: A, B: B, C: C, right: 'B', theta: 'A' });
     t2 = Tri.create(dom.g2, { A: A, B: B, C: C, right: 'B', theta: 'A' });
-    caption = K.el('text', { 'class': 'figure-label tri-caption', x: 500, y: 70, 'text-anchor': 'middle' });
+    /* the caption sits under the base, centred on it */
+    caption = K.el('text', { 'class': 'figure-label tri-caption', x: (A.x + B.x) / 2, y: 398, 'text-anchor': 'middle' });
     dom.g.appendChild(caption);
     boxDefs = K.el('defs');
     dom.boxes.appendChild(boxDefs);
@@ -93,39 +100,50 @@
     var sides = t.allSides();
     return Flow.anim(Beats.bubbleOut(dom.bubble))
       .then(function () {
-        K.clearBubble();
+        K.restoreBubble();
         return Flow.anim(Beats.boardIn(dom.board));
       })
       .then(function () { return Flow.wait(SHORT); })
 
       /* ---- 1. Here's a right-angled triangle ----------------------------
-         The pen draws the triangle as the first sentence is said and the
-         caption lands under it; θ goes on at A as the second sentence
-         names it -- after the drawing, if the voice gets there first. */
+         The pen draws the triangle first, before a word is said. Then the
+         first sentence names it and the caption lands; the second puts θ
+         on at A -- the arc as "this angle" is said, the θ as "theta" is. */
+      .then(function () { return Tri.draw(t, { time: DRAW_TIME }); })
       .then(function () {
-        var drawn = null, named = null;
-        function drawIt() {
-          if (!drawn) {
-            drawn = Tri.draw(t, { time: DRAW_TIME })
-              .then(function () { return Flow.anim(Beats.labelIn(caption)); });
-          }
-          return drawn;
+        var captioned = null, arced = null, named = null;
+        function captionIt() {
+          if (!captioned) captioned = Flow.anim(Beats.labelIn(caption));
+          return captioned;
+        }
+        function arcIt() {
+          if (!arced) arced = Tri.angleIn(t, 'A', null);
+          return arced;
         }
         function nameIt() {
-          if (!named) named = drawIt().then(function () { return Tri.angleIn(t, 'A', T('lblTheta')); });
+          if (!named) {
+            named = arcIt().then(function () {
+              t.writeAngle('A', T('lblTheta'));
+              return Flow.anim(Beats.labelIn(t.angles.A));
+            });
+          }
           return named;
         }
-        quiet(K.onPhrase('s1Here', 'right-angled', drawIt));
+        quiet(K.onPhrase('s1Here', 'right-angled', captionIt));
+        quiet(K.onPhrase('s1Here', 'this angle', arcIt));
         quiet(K.onPhrase('s1Here', 'theta', nameIt));
         return K.speakBySentence('s1Here', null)
-          .then(function () { return nameIt(); });
+          .then(function () { return Promise.all([captionIt(), nameIt()]); });
       })
       .then(function () { return Flow.wait(SHORT); })
       .then(function () { return Flow.wait(K.LOOK); })
       .then(function () { return K.autoTurn(); })
 
       /* ---- 2. Name the sides ------------------------------------------------ */
+      /* the caption has done its job once the recall is said: it goes
+         before the boxes arrive */
       .then(function () { return K.say('s1Recall'); })
+      .then(function () { return Flow.anim(Beats.marksOut([caption])); })
       .then(function () { return Flow.wait(SHORT); })
       .then(function () {
         buildBoxes();
@@ -143,13 +161,12 @@
       })
       .then(function () {
         var guide = null;
-        return K.say('s1Match', null, function () {
+        return K.say('s1Match', function () {
           guide = K.dragGuide(boxes[0].rect);
         }).then(function () {
-          mascot.settle();
           return K.armQuiz({ boxes: boxes }, K.chips(), {
             group: dom.boxes,
-            onWrong: function () { quiet(K.speak(K.keyed('fbNotQuite'), 'confused')); },
+            onWrong: function () { quiet(K.speak(K.keyed('fbNotQuite'))); },
             onRight: function (box) {
               var role = ROLE[box.name];
               t.side(role).classList.add('tri__side--' + role);
@@ -168,7 +185,7 @@
           }));
         });
         return Flow.wait(Beats.ringing()).then(function () {
-          return K.speakBySentence('s1MatchDone', 'happy');
+          return K.speakBySentence('s1MatchDone');
         });
       })
       .then(function () { return Flow.wait(BEAT); })
@@ -202,9 +219,6 @@
       .then(function () { return Flow.wait(SHORT); })
       /* the two views, side by side: the first angle's on the left, this
          one's on the right */
-      .then(function () {
-        return Flow.anim(Beats.marksOut([caption]));
-      })
       .then(function () {
         Tri.instant(t2);
         t2.setTheta('A');

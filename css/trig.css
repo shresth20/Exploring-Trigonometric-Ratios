@@ -9,20 +9,24 @@
 /* ==========================================================================
    The triangle
    ========================================================================== */
-/* The wash inside: a soft periwinkle of the board's own family, poured in
-   once the outline is drawn. Rests invisible. */
+/* The wash inside: a faint haze of the line's gold, poured in once the
+   outline is drawn, so the shape reads as a pane of lit glass over the
+   swamp. Rests invisible. */
 .tri__fill {
   fill: var(--tri-fill);
   opacity: 0;
 }
 /* The outline the pen draws: one closed path, at the sides' weight, in
-   the plain line ink. Hidden once the three sides take over from it. */
+   the plain line ink. Hidden once the three sides take over from it.
+   Every line of the triangle is neon: it wears #neon (index.html), a soft
+   bloom of its own ink under it. */
 .tri__outline {
   fill: none;
   stroke: var(--tri-line);
   stroke-width: var(--part-weight);
   stroke-linecap: round;
   stroke-linejoin: round;
+  filter: url(#neon);
   opacity: 0;
 }
 /* The three sides. The colour is transitioned rather than tweened: it is
@@ -33,6 +37,7 @@
   stroke: var(--tri-line);
   stroke-width: var(--part-weight);
   stroke-linecap: round;
+  filter: url(#neon);
   opacity: 0;
   transition: stroke .55s ease;
 }
@@ -53,15 +58,16 @@
 .tri__arc {
   fill: none;
   stroke: var(--angle-ink);
-  stroke-width: 3.2;
+  stroke-width: 3.6;
   stroke-linecap: round;
+  filter: url(#neon);
   opacity: 0;
 }
-/* The pen that draws the outline: a dot in the line ink with a white
-   edge, so it reads as a point over the line it is leaving behind. */
+/* The pen that draws the outline: a white-hot dot with a gold edge, so
+   it reads as a spark over the line it is leaving behind. */
 .tri__tip {
-  fill: var(--tri-line);
-  stroke: var(--board-highlight);
+  fill: var(--white);
+  stroke: var(--tri-line);
   stroke-width: 2.4;
   opacity: 0;
 }
@@ -139,8 +145,11 @@
   container-type: size;
   font-family: var(--font-display);
   font-size: var(--pane-fs);
-  font-weight: 700;
+  font-weight: 400;
   color: var(--text-primary);
+  text-shadow:
+    0 .07em 0 var(--text-outline),
+    0 0 .3em color-mix(in srgb, var(--text-outline) 80%, transparent);
 }
 .pane[hidden] { display: none; }
 .pane__body {
@@ -214,7 +223,7 @@
 .c-hyp { color: var(--side-hyp); }
 .c-ang { color: var(--angle-ink); }
 /* A row answered right: the value pulses green and stays so. */
-.eq .is-right { color: var(--right-border); }
+.eq .is-right { color: var(--right-fill); }
 /* A row the lesson has finished with, standing back a little while the
    next is worked. */
 .eq.is-done { opacity: .72; }
@@ -243,7 +252,8 @@
   padding: .12em .5em .12em .65em;
   border: .13em dashed var(--pill-border);
   border-radius: .55em;
-  background: color-mix(in srgb, var(--blue-fill) 12%, #FFFFFF);
+  background: color-mix(in srgb, var(--blue-fill) 12%, var(--surface));
+  text-shadow: 0 .06em 0 var(--text-outline);
   font: inherit;
   color: var(--text-primary);
   cursor: pointer;
@@ -252,7 +262,7 @@
 }
 .dd__face:focus-visible { outline: 3px solid color-mix(in srgb, var(--blue-fill) 70%, transparent); outline-offset: 2px; }
 .dd__val { min-width: 2.2em; text-align: center; }
-.dd__val.is-placeholder { color: var(--text-secondary); font-weight: 600; }
+.dd__val.is-placeholder { color: var(--text-secondary); }
 .dd__caret {
   width: .7em;
   height: .7em;
@@ -266,7 +276,7 @@
   0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--blue-fill) 0%, transparent); }
   50%      { box-shadow: 0 0 0 .28em color-mix(in srgb, var(--blue-fill) 50%, transparent); }
 }
-.dd.is-open .dd__face { animation: none; background: color-mix(in srgb, var(--blue-fill) 20%, #FFFFFF); }
+.dd.is-open .dd__face { animation: none; background: color-mix(in srgb, var(--blue-fill) 20%, var(--surface)); }
 
 .dd__menu {
   position: absolute;
@@ -277,9 +287,9 @@
   flex-direction: column;
   gap: .12em;
   padding: .28em;
-  border: .09em solid color-mix(in srgb, var(--blue-fill) 55%, #FFFFFF);
+  border: .09em solid color-mix(in srgb, var(--blue-fill) 55%, var(--surface));
   border-radius: .62em;
-  background: linear-gradient(180deg, #FFFFFF 0%, #F6F8FF 100%);
+  background: linear-gradient(180deg, var(--surface-hi) 0%, var(--surface) 100%);
   box-shadow: 0 .5em 1.2em var(--shadow-deep), 0 .1em .2em var(--shadow-soft);
   translate: -50% 0;
   white-space: nowrap;
@@ -303,19 +313,19 @@
   transition: background .18s ease, opacity .2s ease;
 }
 .dd__opt:hover,
-.dd__opt:focus-visible { background: color-mix(in srgb, var(--blue-fill) 22%, #FFFFFF); outline: none; }
+.dd__opt:focus-visible { background: color-mix(in srgb, var(--blue-fill) 22%, var(--surface)); outline: none; }
 .dd__opt.is-out { opacity: .4; pointer-events: none; text-decoration: line-through; }
 
 .dd.is-wrong .dd__face {
   border-style: solid;
   border-color: var(--wrong-border);
-  background: color-mix(in srgb, var(--wrong-fill) 26%, #FFFFFF);
+  background: color-mix(in srgb, var(--wrong-fill) 26%, var(--surface));
 }
 .dd.is-right .dd__face {
   border-style: solid;
   border-color: var(--right-border);
-  background: color-mix(in srgb, var(--right-fill) 26%, #FFFFFF);
-  color: color-mix(in srgb, var(--right-border) 78%, #0B5A1E);
+  background: color-mix(in srgb, var(--right-fill) 26%, var(--surface));
+  color: var(--right-fill);
   cursor: default;
   padding-right: .65em;
 }
@@ -329,8 +339,8 @@
   opacity: 0;
   pointer-events: none;
 }
-.dd__tick circle { fill: var(--right-border); stroke: #FFFFFF; stroke-width: 2.5; }
-.dd__tick path { fill: none; stroke: #FFFFFF; stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
+.dd__tick circle { fill: var(--right-border); stroke: var(--white); stroke-width: 2.5; }
+.dd__tick path { fill: none; stroke: var(--white); stroke-width: 3; stroke-linecap: round; stroke-linejoin: round; }
 /* An open menu reaches below its row: the stage lifts over the footer. */
 .board__stage:has(.dd.is-open) { z-index: 5; }
 
@@ -356,11 +366,19 @@
   font-size: clamp(14px, 5.4cqw, 32px);
   color: var(--text-primary);
 }
-/* The three distances of a collapsed triangle: one under another. */
+/* The three distances of a collapsed triangle: one under another, on a
+   small mossy plate (box2.png, 9-sliced in em so it scales with them). */
 .facts {
+  --s: .0135em;
   flex-direction: column;
   align-items: flex-start;
   gap: .05em;
+  padding: calc(var(--s) * 58) calc(var(--s) * 70) calc(var(--s) * 84);
+  border: 0 solid transparent;
+  border-image: var(--art-box-alt) 72 150 92 150 fill /
+    calc(var(--s) * 72) calc(var(--s) * 150)
+    calc(var(--s) * 92) calc(var(--s) * 150);
+  filter: drop-shadow(0 .2em .35em var(--shadow-deep));
 }
 .facts .fact { font-size: clamp(13px, 4.6cqw, 28px); line-height: 1.25; }
 .fact--opp { color: var(--side-opp); }
@@ -383,7 +401,7 @@
   align-items: baseline;
   padding: 0 .2em;
 }
-.slider__label { color: var(--text-secondary); font-weight: 700; }
+.slider__label { color: var(--text-secondary); }
 .slider__value {
   color: var(--angle-ink);
   font-variant-numeric: tabular-nums;
@@ -394,8 +412,10 @@
   position: relative;
   height: .62em;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--blue-fill) 32%, #FFFFFF);
-  box-shadow: inset 0 .08em .18em color-mix(in srgb, var(--blue-border) 30%, transparent);
+  background: color-mix(in srgb, var(--blue-fill) 18%, var(--surface));
+  box-shadow:
+    inset 0 .08em .18em var(--shadow-deep),
+    0 0 0 .08em color-mix(in srgb, var(--stone) 80%, transparent);
   cursor: pointer;
   pointer-events: auto;
   touch-action: none;
@@ -418,7 +438,7 @@
   height: 1.46em;
   margin-left: -.08em;
   border-radius: 999px;
-  background: color-mix(in srgb, var(--angle-ink) 55%, #FFFFFF);
+  background: color-mix(in srgb, var(--angle-ink) 55%, var(--surface));
   pointer-events: none;
 }
 .slider__mark[hidden] { display: none; }
@@ -431,7 +451,7 @@
   margin-left: -.75em;
   border-radius: 50%;
   border: .14em solid var(--angle-ink);
-  background: linear-gradient(180deg, #FFFFFF 0%, var(--amber-fill) 100%);
+  background: linear-gradient(180deg, var(--white) 0%, var(--amber-fill) 100%);
   box-shadow: 0 .2em .5em var(--shadow-deep);
   transform: translate(0, -50%);
   pointer-events: none;
@@ -445,13 +465,17 @@
 .slider__thumb.is-held { box-shadow: 0 .3em .8em var(--shadow-deep); animation: none; }
 .slider.is-done .slider__thumb { border-color: var(--right-border); animation: none; }
 .slider.is-done .slider__fill { background: linear-gradient(90deg, var(--right-fill), var(--right-border)); }
-.slider.is-done .slider__value { color: var(--right-border); }
+.slider.is-done .slider__value { color: var(--right-fill); }
 .slider.is-done .slider__track { cursor: default; pointer-events: none; }
 
 /* ==========================================================================
    The table of values
    Centred on the stage, the whole width: a head row and three rows, the
-   cells filled in over the lesson.
+   cells filled in over the lesson. A parchment card in a gold rim, each
+   cell a tile of its own: the angles on orange keys, the corner on a
+   violet one, the ratios on lime, the values on cream, all in the
+   parchment's brown. While a value lands, its row is lit and the other
+   two step back, faded to tan.
    ========================================================================== */
 .table-wrap {
   position: absolute;
@@ -464,18 +488,39 @@
 }
 .table-wrap[hidden] { display: none; }
 .ttable {
+  /* the keys: a face lit from the top, a rim, and a wall under it */
+  --head-top: var(--orange-fill);
+  --head-low: color-mix(in srgb, var(--orange-fill) 55%, var(--orange-border));
+  --head-rim: var(--orange-deep);
+  --corner-top: color-mix(in srgb, var(--indigo-border) 78%, var(--indigo-fill));
+  --corner-low: color-mix(in srgb, var(--indigo-border) 82%, var(--text-outline));
+  --corner-rim: color-mix(in srgb, var(--indigo-border) 50%, var(--text-outline));
+  --lhs-top: color-mix(in srgb, var(--teal-fill) 80%, var(--amber-fill));
+  --lhs-low: color-mix(in srgb, var(--teal-fill) 50%, var(--teal-border));
+  --lhs-rim: var(--brown);
+  --dim-top: color-mix(in srgb, var(--tan) 80%, var(--cream));
+  --dim-low: var(--tan);
+  --cell-top: color-mix(in srgb, var(--cream) 60%, var(--white));
+  --cell-low: var(--cream);
+  --cell-rim: color-mix(in srgb, var(--cream-deep) 85%, var(--brown));
+  --gap: .24em;
+
   display: grid;
-  grid-template-columns: 1.25fr repeat(5, 1fr);
+  grid-template-columns: 1.3fr repeat(5, 1fr);
+  gap: var(--gap);
   width: min(100%, 980px);
+  padding: .8em .9em .9em;
   font-family: var(--font-display);
   font-size: clamp(13px, calc(var(--board-w) * .021), 32px);
-  font-weight: 700;
-  color: var(--text-primary);
+  font-weight: 400;
+  color: var(--brown-ink);
+  border: .3em solid var(--orange-fill);
   border-radius: 1em;
-  overflow: hidden;
-  border: .12em solid var(--pill-border);
-  background: var(--board-highlight);
-  box-shadow: 0 .6em 1.6em var(--shadow-deep), 0 .1em .25em var(--shadow-soft);
+  background: linear-gradient(180deg, var(--cream) 0%, var(--cream-deep) 100%);
+  box-shadow:
+    0 0 0 .12em var(--orange-deep),
+    inset 0 0 0 .1em color-mix(in srgb, var(--white) 65%, transparent),
+    0 .5em 1.2em var(--shadow-deep);
   pointer-events: auto;
 }
 .ttable__row { display: contents; }
@@ -483,44 +528,87 @@
   display: flex;
   align-items: center;
   justify-content: center;
-  min-height: 2.6em;
-  padding: .3em .4em;
-  border-right: .06em solid color-mix(in srgb, var(--blue-fill) 45%, #FFFFFF);
-  border-bottom: .06em solid color-mix(in srgb, var(--blue-fill) 45%, #FFFFFF);
+  min-height: 2.3em;
+  padding: .25em .4em;
+  border: .08em solid var(--cell-rim);
+  border-radius: .4em;
+  background: linear-gradient(180deg, var(--cell-top) 0%, var(--cell-low) 100%);
   position: relative;
-  transition: background .25s ease, box-shadow .25s ease;
+  isolation: isolate;
+  transition: opacity .25s ease;
 }
-.ttable__row > .ttable__cell:last-child { border-right: 0; }
-.ttable__row:last-child > .ttable__cell { border-bottom: 0; }
+/* The angles and the corner: raised keys, the word on them outlined in
+   the key's own rim. */
 .ttable__cell--head {
-  background: color-mix(in srgb, var(--blue-fill) 28%, #FFFFFF);
-  color: var(--text-primary);
+  border: .1em solid var(--head-rim);
+  background: linear-gradient(180deg, var(--head-top) 0%, var(--head-low) 100%);
+  box-shadow:
+    inset 0 .12em 0 color-mix(in srgb, var(--white) 40%, transparent),
+    0 .1em 0 var(--head-rim);
+  color: var(--white);
+  text-shadow: 0 .07em 0 var(--head-rim);
 }
-.ttable__cell--head:not(.ttable__cell--lhs) { color: var(--angle-ink); }
-.ttable__cell--lhs { background: color-mix(in srgb, var(--blue-fill) 14%, #FFFFFF); justify-content: center; }
+.ttable__cell--head.ttable__cell--lhs {
+  --head-top: var(--corner-top);
+  --head-low: var(--corner-low);
+  --head-rim: var(--corner-rim);
+}
+/* The ratios: lime keys, the name in brown. The tan a row steps back to
+   is a layer over the lime, faded in rather than painted over it. */
+.ttable__cell--lhs:not(.ttable__cell--head) {
+  border: .1em solid var(--lhs-rim);
+  background: linear-gradient(180deg, var(--lhs-top) 0%, var(--lhs-low) 100%);
+  box-shadow:
+    inset 0 .12em 0 color-mix(in srgb, var(--white) 45%, transparent),
+    0 .1em 0 var(--lhs-rim);
+}
+.ttable__cell--lhs:not(.ttable__cell--head)::before {
+  content: "";
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  border-radius: .3em;
+  background: linear-gradient(180deg, var(--dim-top) 0%, var(--dim-low) 100%);
+  opacity: 0;
+  transition: opacity .25s ease;
+}
+/* One row lit: the others step back. */
+.ttable.has-focus .ttable__row:not(.ttable__row--head):not(.is-focus) > .ttable__cell { opacity: .55; }
+.ttable.has-focus .ttable__row:not(.ttable__row--head):not(.is-focus) > .ttable__cell--lhs::before { opacity: 1; }
 .ttable__v { display: inline-flex; align-items: center; }
 .ttable .frac { height: auto; }
 .ttable .frac__n, .ttable .frac__d { font-size: .8em; padding: 0 .2em; }
-/* A value just landed: lit for a moment. */
-.ttable__cell.is-new { background: color-mix(in srgb, var(--amber-fill) 36%, #FFFFFF); }
-/* The cells a question is asked about are live: a hand over one lifts it. */
+/* A value just landed: its tile warmed with the moon's gold. */
+.ttable__cell.is-new {
+  border-color: var(--amber-border);
+  background: linear-gradient(180deg, var(--cell-top) 0%,
+              color-mix(in srgb, var(--amber-fill) 30%, var(--cream)) 100%);
+}
+/* The cells a question is asked about are live: a hand over one rings it. */
 .ttable__cell.is-live { cursor: pointer; }
 .ttable__cell.is-live:hover,
-.ttable__cell.is-live:focus-visible { background: color-mix(in srgb, var(--blue-fill) 22%, #FFFFFF); outline: none; }
-.ttable.is-asking .ttable__cell--val:not(.is-live) { color: color-mix(in srgb, var(--text-primary) 35%, transparent); }
+.ttable__cell.is-live:focus-visible {
+  outline: none;
+  border-color: var(--orange-border);
+  box-shadow: inset 0 0 0 .08em var(--orange-border);
+}
+.ttable.is-asking .ttable__cell--val:not(.is-live) { color: color-mix(in srgb, var(--brown-ink) 35%, transparent); }
 .ttable__cell.is-right {
-  background: color-mix(in srgb, var(--right-fill) 32%, #FFFFFF);
-  box-shadow: inset 0 0 0 .14em var(--right-border);
-  color: var(--right-border);
+  border-color: var(--right-border);
+  background: color-mix(in srgb, var(--right-fill) 34%, var(--cream));
+  box-shadow: inset 0 0 0 .1em var(--right-border);
+  color: color-mix(in srgb, var(--right-border) 45%, var(--text-outline));
 }
 .ttable__cell.is-wrong {
-  background: color-mix(in srgb, var(--wrong-fill) 30%, #FFFFFF);
-  box-shadow: inset 0 0 0 .14em var(--wrong-border);
+  border-color: var(--wrong-border);
+  background: color-mix(in srgb, var(--wrong-fill) 30%, var(--cream));
+  box-shadow: inset 0 0 0 .1em var(--wrong-border);
 }
 .ttable__cell.is-undef .ttable__v { font-size: .78em; }
 
 /* ---- Reduced motion ------------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
-  .tri__side, .dd__face, .dd__caret, .slider__thumb, .ttable__cell { transition: none !important; }
+  .tri__side, .dd__face, .dd__caret, .slider__thumb, .ttable__cell,
+  .ttable__cell--lhs::before { transition: none !important; }
   .dd.is-asking .dd__face, .slider.is-asking .slider__thumb, .choice--big.is-asking { animation: none !important; }
 }

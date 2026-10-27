@@ -241,11 +241,10 @@
 
     /* Lay the line out and hand back the function that says it.
        The two halves are separable because the caller sometimes needs to do
-       something BETWEEN them: the board's prompt row is centred as a pair,
-       so the mascot beside it can only be moved into its final place once
-       the row knows how wide the finished line will make it. Reserving the
-       width first lets the bird arrive where it belongs instead of landing
-       in the middle of an empty row and being shoved sideways a beat later.
+       something BETWEEN them: a line arriving on a closed header is laid out
+       first, so its plate is already the finished line's size while the
+       header opens, and the words start once it has. Reserving first means
+       the box never grows in front of the learner.
          Ghost before live, always, for the same reason. */
     function reserve(text, over) {
       var g = ++gen;

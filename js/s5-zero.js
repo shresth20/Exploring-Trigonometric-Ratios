@@ -30,18 +30,17 @@
   var HYP = 4 * UNIT;
   var START_DEG = 40;
 
-  var dom = null, mascot = null;
+  var dom = null;
   var t = null;
 
   function build() {
     dom = Object.create(K.dom());
-    mascot = K.mascot();
     dom.g = document.getElementById('figS5');
     t = Tri.create(dom.g, { A: A0, B: { x: A0.x + HYP, y: A0.y }, C: { x: A0.x + HYP, y: A0.y }, right: 'B', theta: 'A' });
     reset();
   }
 
-  function notQuite() { quiet(K.speak(K.keyed('fbNotQuite'), 'confused')); }
+  function notQuite() { quiet(K.speak(K.keyed('fbNotQuite'))); }
   function approx(n) { return T('lblApprox', { v: (Math.round(n * 100) / 100).toFixed(2) }); }
 
   /* The triangle at θ = deg, and the lengths beside its sides. */
@@ -90,7 +89,7 @@
         return W.table.ask(r, a, { onWrong: notQuite });
       })
       .then(function () {
-        return last ? K.praise() : K.speak(K.keyed('fbCorrect'), 'happy');
+        return last ? K.praise() : K.speak(K.keyed('fbCorrect'));
       })
       .then(function () { return Flow.wait(SHORT); })
       .then(function () { W.table.settle(r, a); });
@@ -116,7 +115,7 @@
       .then(function () { return Flow.wait(SHORT); })
       .then(function () {
         shapeAt(START_DEG);
-        return K.say('s5Closer0', null, function () {
+        return K.say('s5Closer0', function () {
           return Tri.draw(t, { time: 1.4, hold: 120 })
             .then(function () { return Tri.angleIn(t, 'A', T('lblDegVal', { n: START_DEG })); })
             .then(function () { return Tri.nameSides(t, ['opp', 'adj', 'hyp'], 100); });
@@ -234,9 +233,6 @@
     dom.g.setAttribute('hidden', '');
   }
   function stage(local) {
-    mascot.placeIn(dom.slotHeader);
-    mascot.el.classList.remove('is-away');
-    mascot.idle();
     rememberAll();
     if (local <= 0) { W.table.place(); return; }
     if (local === 1) { W.table.place(); return; }

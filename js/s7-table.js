@@ -3,8 +3,8 @@
  * --------------------------------------------------------------------------
  * Storyboard pages 80-89. One scene: the 90° values go into the table, and
  * "Our table is complete! You've found the sine, cosine and tangent values
- * for all five angles." -- the bird celebrates under a shower of confetti.
- * Next takes the board away and leaves the bird waving on the field.
+ * for all five angles." -- said under a shower of confetti. Next takes the
+ * board away and leaves the swamp.
  * ========================================================================== */
 (function (global) {
   'use strict';
@@ -17,11 +17,10 @@
   function T(key, repl) { return global.T ? global.T(key, repl) : key; }
   var quiet = K.quiet;
 
-  var dom = null, mascot = null;
+  var dom = null;
 
   function build() {
     dom = Object.create(K.dom());
-    mascot = K.mascot();
   }
 
   function rememberAll() {
@@ -54,41 +53,20 @@
       .then(function () {
         K.celebrate();
         return Flow.wait(Beats.ringing()).then(function () {
-          return K.speakBySentence('s7Complete', 'happy');
+          return K.speakBySentence('s7Complete');
         });
       })
-      .then(function () {
-        mascot.state('celebrating');
-        return Flow.wait(1600);
-      })
-      .then(function () {
-        mascot.settle();
-        return Flow.wait(SHORT);
-      })
-      .then(function () { return K.handOver(); })
-      /* ---- the lesson closes: the board goes, the bird is on the field ---- */
-      .then(function () { return K.wipeBoard(); })
-      .then(function () {
-        mascot.placeIn(dom.slotHero);
-        mascot.el.classList.remove('is-away');
-        mascot.idle();
-        return Flow.anim(Beats.boardOut(dom.board));
-      })
       .then(function () { return Flow.wait(SHORT); })
-      .then(function () {
-        mascot.state('waving');
-        return Flow.wait(2400);
-      })
-      .then(function () { mascot.settle(); });
+      .then(function () { return K.handOver(); })
+      /* ---- the lesson closes: the board goes, and the swamp is left ---- */
+      .then(function () { return K.wipeBoard(); })
+      .then(function () { return Flow.anim(Beats.boardOut(dom.board)); });
   }
 
   function parts() { return []; }
   function wipe() { return []; }
   function reset() {}
   function stage() {
-    mascot.placeIn(dom.slotHeader);
-    mascot.el.classList.remove('is-away');
-    mascot.idle();
     rememberAll();
     W.table.place();
   }

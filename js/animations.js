@@ -96,8 +96,7 @@
 
   /* The board arriving. .show is the RESTING state -- opacity 1 in CSS --
      so the board ends up visible even if the tween below never runs. It
-     grows from slightly small and slightly low, which is also what hides
-     the mascot: the hero slot sits under the board on the --z ladder. */
+     grows from slightly small and slightly low. */
   function boardIn(board) {
     board.classList.add('is-animating');
     board.classList.add('show');
@@ -611,25 +610,17 @@
    * Text boxes and controls
    * ====================================================================== */
 
-  /* Where the bubble grows from: its tail. */
-  var TAIL_X = 0.78 + 0.76 / 2;
-  var TAIL_BORDER = 4;
-
-  function tailOrigin(bubble) {
-    var style = getComputedStyle(bubble);
-    var em = parseFloat(style.fontSize) || 16;
-    return (TAIL_BORDER + em * TAIL_X) + 'px 100%';
-  }
-
+  /* The bubble is a plate in the middle of the screen with no tail, so it
+     grows from, and shrinks back into, its own centre. */
   function bubbleArm(bubble) {
     bubble.removeAttribute('hidden');
-    M.set(bubble, { opacity: 0, scale: 0.15, transformOrigin: tailOrigin(bubble) });
+    M.set(bubble, { opacity: 0, scale: 0.15, transformOrigin: '50% 50%' });
   }
 
   function bubbleIn(bubble) {
     var tl = M.timeline({ willChange: bubble, willChangeValue: 'transform, opacity' });
     tl.to(bubble, {
-      opacity: 1, scale: 1, transformOrigin: tailOrigin(bubble),
+      opacity: 1, scale: 1, transformOrigin: '50% 50%',
       duration: M.dur(0.44), ease: 'back.out(1.6)'
     });
     return tl;
@@ -643,44 +634,28 @@
       }
     });
     tl.to(bubble, {
-      opacity: 0, scale: 0.9, transformOrigin: tailOrigin(bubble),
+      opacity: 0, scale: 0.9, transformOrigin: '50% 50%',
       duration: M.dur(0.24), ease: 'power2.in'
     });
     return tl;
   }
 
-  /* ---- the mascot's jump (see mascotJumpIn in pages.js) ----------------- */
-  function hopUp(hopper, y) {
-    var tl = M.timeline({ willChange: hopper, willChangeValue: 'transform' });
-    tl.to(hopper, { y: y, duration: M.dur(0.38), ease: 'power2.out' });
-    return tl;
+  /* The bird under the bubble: out of sight while the plate arms, then up
+     onto its mark, squashing on its feet as it lands. It leaves with the
+     plate, so it has no way out of its own. */
+  function birdArm(bird) {
+    M.set(bird, { opacity: 0, yPercent: 30, transformOrigin: '50% 88%' });
   }
-  function hopDown(hopper, y) {
-    var tl = M.timeline({ willChange: hopper, willChangeValue: 'transform' });
-    tl.to(hopper, { y: y, duration: M.dur(0.36), ease: 'power2.in' });
-    return tl;
-  }
-  function landOn(el, from) {
-    var fall = Math.min(0.76, 0.32 + Math.abs(from) * 0.0005);
-    var tl = M.timeline({ willChange: el, willChangeValue: 'transform' });
-    tl.to(el, {
-      y: 0, scaleX: 1.06, scaleY: 0.92,
-      duration: M.dur(fall * 0.8), ease: 'power2.in'
-    }).to(el, {
-      scaleX: 1, scaleY: 1,
-      duration: M.dur(fall * 0.2), ease: 'power2.out'
-    });
-    return tl;
-  }
-  function springOff(el, y) {
-    var dip = el.getBoundingClientRect().height * 0.06;
-    var tl = M.timeline({ willChange: el, willChangeValue: 'transform' });
-    tl.to(el, {
-      y: dip, scaleX: 1.06, scaleY: 0.92,
-      duration: M.dur(0.14), ease: 'power2.in'
-    }).to(el, {
-      y: y, scaleX: 1, scaleY: 1,
-      duration: M.dur(0.42), ease: 'power2.out'
+  function birdIn(bird) {
+    var tl = M.timeline({ willChange: bird, willChangeValue: 'transform, opacity' });
+    tl.to(bird, { opacity: 1, duration: M.dur(0.2), ease: 'power2.out' }, 0);
+    tl.to(bird, {
+      yPercent: 0, scaleX: 0.94, scaleY: 1.06,
+      duration: M.dur(0.32), ease: 'power2.out'
+    }, 0).to(bird, {
+      scaleX: 1.06, scaleY: 0.94, duration: M.dur(0.12), ease: 'power2.in'
+    }).to(bird, {
+      scaleX: 1, scaleY: 1, duration: M.dur(0.24), ease: 'back.out(2)'
     });
     return tl;
   }
@@ -1026,10 +1001,8 @@
     bubbleArm: bubbleArm,
     bubbleIn: bubbleIn,
     bubbleOut: bubbleOut,
-    hopUp: hopUp,
-    hopDown: hopDown,
-    landOn: landOn,
-    springOff: springOff,
+    birdArm: birdArm,
+    birdIn: birdIn,
     lineOut: lineOut,
     controlIn: controlIn,
     controlOut: controlOut,
