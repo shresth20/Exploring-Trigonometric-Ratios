@@ -8,9 +8,9 @@
  *     worked from, and its formula stands under the table: "Remember, cosec
  *     is the reciprocal of sine." Next.
  *   Your turn.  "Can you use the sine values to complete this new row?" A
- *     blank in each of its five cells and a Check beside the formula: the
- *     five are judged together, the right ones kept and the wrong ones
- *     emptied for another go, until the whole row is right.
+ *     blank in each of its five cells, three values to choose from in
+ *     each, judged as it is picked: a right one kept, a wrong one struck
+ *     off and emptied for another go, until the whole row is right.
  *   Right.  "That's right! Each cosec value is the reciprocal of the sine
  *     value." Next.
  *
@@ -51,19 +51,43 @@
   };
   var ORDER = ['cosec', 'sec', 'cot'];
 
-  /* What each blank of a row offers, smallest first: the row's own values
-     and the ones a learner reaches for by mistake -- the values it is
-     worked from, left un-flipped. */
+  /* What each blank offers, smallest first: three values -- the right
+     one, the value it is worked from left un-flipped, and a near miss. */
   var OPTIONS = {
-    cosec: ['val0', 'valHalf', 'valRoot3Over2', 'val1', 'valTwoOverRoot3', 'valRoot2', 'val2', 'valUndefined'],
-    sec:   ['val0', 'valHalf', 'valRoot3Over2', 'val1', 'valTwoOverRoot3', 'valRoot2', 'val2', 'valUndefined'],
-    cot:   ['val0', 'valOneOverRoot3', 'valHalf', 'val1', 'valRoot2', 'valRoot3', 'val2', 'valUndefined']
+    cosec: {
+      0:  ['val0', 'val1', 'valUndefined'],
+      30: ['valHalf', 'valRoot2', 'val2'],
+      45: ['valOneOverRoot2', 'valRoot2', 'val2'],
+      60: ['valRoot3Over2', 'valTwoOverRoot3', 'valRoot3'],
+      90: ['val0', 'val1', 'valUndefined']
+    },
+    sec: {
+      0:  ['val0', 'val1', 'valUndefined'],
+      30: ['valRoot3Over2', 'valTwoOverRoot3', 'valRoot3'],
+      45: ['valOneOverRoot2', 'valRoot2', 'val2'],
+      60: ['valHalf', 'valRoot2', 'val2'],
+      90: ['val0', 'val1', 'valUndefined']
+    },
+    cot: {
+      0:  ['val0', 'val1', 'valUndefined'],
+      30: ['valOneOverRoot3', 'valRoot3Over2', 'valRoot3'],
+      45: ['val0', 'val1', 'valRoot2'],
+      60: ['valHalf', 'valOneOverRoot3', 'valRoot3'],
+      90: ['val0', 'val1', 'valUndefined']
+    }
   };
 
   var dom = null;
 
   function build() {
     dom = Object.create(K.dom());
+  }
+
+  /* A row's lists, by angle, as text. */
+  function optionsFor(r) {
+    var o = {};
+    W.table.ANGLES.forEach(function (a) { o[a] = OPTIONS[r][a].map(function (k) { return T(k); }); });
+    return o;
   }
 
   function notQuite() { quiet(K.speak(K.keyed('fbNotQuite'))); }
@@ -112,12 +136,12 @@
         })
         .then(function () { return Flow.wait(BEAT); })
         .then(function () { return K.handOver(); })
-        /* ---- your turn: the five blanks, and Check ---- */
+        /* ---- your turn: the five blanks, each judged as it is picked ---- */
         .then(function () { return K.say(s.ask); })
         .then(function () {
           return W.table.askRow(r, {
             answers: answers,
-            options: OPTIONS[r].map(function (k) { return T(k); }),
+            options: optionsFor(r),
             onWrong: notQuite
           });
         })

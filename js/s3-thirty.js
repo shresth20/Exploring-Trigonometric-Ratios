@@ -9,8 +9,8 @@
  *     and the learner draws it. The two halves part, up and down; the
  *     upright side and the 60° angle are halved (1 and 1, 30° and 30°),
  *     and each half shows its right angle. Next.
- *   The 30° triangle.  The lower half goes and the upper one comes to the
- *     middle: 30° at the left, 2 on the hypotenuse, 1 on the upright, b on
+ *   The 30° triangle.  The lower half goes, then the upper one comes to
+ *     the middle and grows: 30° at the left, 2 on the hypotenuse, 1 on the upright, b on
  *     the base. It stands aside and b is found by Pythagoras (√3); sin 30°
  *     is worked, cos 30° and tan 30° are the learner's. Next.
  *   The table.  The 30° values go in. "That leaves 60°. Can we use the
@@ -36,14 +36,19 @@
   var MID = { x: 630, y: 255 };
   var PART = 12;                /* how far each half slides from the cut   */
   /* The upper half, as it stands once the lower one has gone: carried
-     down to the middle of the board. Each half has 30° at A (P), its
-     right angle at B (MID), and 60° at C. */
-  var CENTRE_Y = 75;            /* the upper half's drop to the middle     */
-  var HALF = {
-    A: { x: P.x, y: P.y + CENTRE_Y },
-    B: { x: MID.x, y: MID.y + CENTRE_Y },
-    C: { x: R.x, y: R.y + CENTRE_Y }
-  };
+     to the middle of the board and grown. Each half has 30° at A (P),
+     its right angle at B (MID), and 60° at C. */
+  var GROW = 1.4;               /* the kept half's size, to the split's    */
+  var MIDDLE = { x: 500, y: 255 };
+  var HALF = { A: kept(P), B: kept(MID), C: kept(R) };
+  /* ...and at the split's own size, in the same middle: where section 4
+     shrinks it to, so its side names fit beside the pane. */
+  var HALF_SMALL = { A: kept(P, 1), B: kept(MID, 1), C: kept(R, 1) };
+  function kept(p, grow) {
+    var c = { x: (P.x + MID.x) / 2, y: (R.y + MID.y) / 2 };
+    var k = grow == null ? GROW : grow;
+    return { x: MIDDLE.x + (p.x - c.x) * k, y: MIDDLE.y + (p.y - c.y) * k };
+  }
 
   var dom = null;
   var tE = null, tL = null, tR = null;
@@ -70,6 +75,7 @@
      `halved` say how far. */
   function halvesInstant(o) {
     o = o || {};
+    tL.set(P, MID, R);
     [tL, tR].forEach(function (t, i) {
       Tri.instant(t);
       t.writeVal('CA', T('val2'));
@@ -306,13 +312,9 @@
     var bRow = null, bPills = null;
     return ensureHalves()
       .then(function () {
-        quiet(K.onPhrase('s3KeepOne', 'this one', function () {
-          return Promise.all([
-            Flow.anim(Beats.marksOut([dom.gR])),
-            Flow.anim(Beats.moveGroup(dom.gL, { y: CENTRE_Y }, 0.9))
-          ]).then(function () { dom.gR.setAttribute('hidden', ''); });
-        }));
-        return K.speakBySentence('s3KeepOne');
+        var kept = null;
+        quiet(K.onPhrase('s3KeepOne', 'this one', function () { return (kept = keepUpper()); }));
+        return K.speakBySentence('s3KeepOne').then(function () { return kept || keepUpper(); });
       })
       .then(function () { return Flow.wait(SHORT); })
       .then(function () {
@@ -431,6 +433,23 @@
       .then(function () { return Flow.wait(SHORT); });
   }
 
+  /* The lower half goes first; then the upper one comes to the middle,
+     redrawn corner by corner as it grows to HALF, so its lines and words
+     keep their size. */
+  function keepUpper() {
+    return Flow.anim(Beats.marksOut([dom.gR]))
+      .then(function () {
+        dom.gR.setAttribute('hidden', '');
+        var p = { k: 0 };
+        function at(a, b) { return { x: a.x + (b.x - a.x) * p.k, y: a.y + (b.y - a.y) * p.k }; }
+        var tl = M.timeline({ willChange: dom.gL, willChangeValue: 'transform' });
+        tl.to(dom.gL, { y: 0, duration: M.dur(0.9), ease: 'power2.inOut' }, 0);
+        tl.to(p, { k: 1, duration: M.dur(0.9), ease: 'power2.inOut',
+          onUpdate: function () { tL.set(at(P, HALF.A), at(MID, HALF.B), at(R, HALF.C)); } }, 0);
+        return Flow.anim(tl);
+      });
+  }
+
   /* The second scene opens on the two halves, parted; written in if they
      are not there. */
   function ensureHalves() {
@@ -482,10 +501,11 @@
      both acute angles written -- the board section 4 opens on. */
   function halfCentred() {
     halfWritten();
-    M.set(dom.gL, { x: 0, y: CENTRE_Y, opacity: 1 });
+    M.set(dom.gL, { x: 0, y: 0, opacity: 1 });
   }
-  /* The kept half with its three lengths and both acute angles. */
+  /* The kept half, grown, with its three lengths and both acute angles. */
   function halfWritten() {
+    tL.set(HALF.A, HALF.B, HALF.C);
     Tri.instant(tL);
     tL.writeVal('CA', T('val2'));
     tL.writeVal('BC', T('val1'));
@@ -529,5 +549,5 @@
   });
 
   /* The kept half's geometry in the middle of the board, for section 4. */
-  global.S3 = { HALF: HALF };
+  global.S3 = { HALF: HALF, HALF_SMALL: HALF_SMALL };
 })(window);

@@ -11,7 +11,7 @@
  *   W.pane.show() / clear() / row(cls, html)   the pane and its rows
  *   W.eqRow(lhs)                               sin θ = [a]/[b] = [c]/[d] = v
  *   W.dropdown(host, options, right, o).ask()  the blank
- *     ... .choose(fn) / settle() / refuse()      the blank, judged later
+ *     ... .choose(fn) / settle() / refuse()      the blank, judged by the caller
  *   W.pills(labels)                            answer pills in the pane
  *   W.slider(opts).ask()                       the angle slider
  *   W.handNudge(el) / W.handSlide(track, ...)  the pointing hand
@@ -245,8 +245,8 @@
    * drop out under it. Waiting, it breathes; a wrong one shows red in the
    * slot for a moment, shakes, and is struck off the list; the right one
    * stays, green, with a tick on the corner.
-   *   Or a free choice (choose): a pick is only set in the slot, and a
-   * Check judges it later -- settle() for right, refuse() for wrong.
+   *   Or a free choice (choose): a pick is only set in the slot, and
+   * the caller judges it -- settle() for right, refuse() for wrong.
    * ====================================================================== */
   function dropdown(host, opts, right, o) {
     o = o || {};
@@ -305,7 +305,7 @@
       val.classList.remove('is-placeholder');
       write(val, text);
     }
-    /* `hush`: no chime of its own -- one is rung for a Check's whole row */
+    /* `hush`: no chime of its own -- the caller rings its own */
     function win(hush) {
       open(false);
       dd.classList.remove('is-asking', 'is-wrong');
@@ -380,7 +380,7 @@
 
       /* A free choice: the face opens the list, and an option pressed is
          set in the slot and the list shut -- right or wrong is not said
-         until a Check judges it. `fn(name)` hears every pick, `onOpen` the
+         until the caller judges it. `fn(name)` hears every pick, `onOpen` the
          list being opened. Hands back the function that stops listening. */
       choose: function (fn, onOpen) {
         dd.classList.add('is-asking');
@@ -712,7 +712,7 @@
    * lesson are remembered, so each time the table is shown it carries what
    * has been found so far. While a value lands, its row is lit and the
    * others step back. Under the table, a foot: the formula a new row is
-   * worked from, and the Check that judges it.
+   * worked from.
    * ====================================================================== */
   var ANGLES = [0, 30, 45, 60, 90];
   var RATIOS = ['sin', 'cos', 'tan'];
@@ -797,17 +797,6 @@
     return Array.prototype.slice.call(rows[r].children);
   }
 
-  /* The Check under the table: pressable once every blank of the row is
-     set. */
-  function checkButton() {
-    var b = h('button', 'choice ttable-check', footEl);
-    b.type = 'button';
-    b.textContent = T('btnCheck');
-    b.disabled = true;
-    M.button3d(b, { edge: 4 });
-    return b;
-  }
-
   var table = {
     el: function () { return tableEl; },
     cell: function (r, a) { return cells[r + ':' + a]; },
@@ -882,19 +871,19 @@
       return Flow.anim(Beats.rowOut(footEl)).then(clearFoot);
     },
 
-    /* A whole row asked at once: a blank in each of its five cells, all
-       chosen from one list, and a Check beside the formula that judges the
-       five together once every one is set. A right one is kept, green; a
-       wrong one is struck off its list and emptied for another go, and
-       `spec.onWrong(n)` is told how many were wrong. Once the whole row is
-       right, the blanks give way to the values, which are remembered.
-         spec: { answers: { 0: text, 30: text, ... }, options: [text, ...],
-                 onWrong(n) }.
+    /* A whole row asked at once: a blank in each of its five cells, each
+       with its own short list. A pick is judged the moment it is made: a
+       right one is kept, green; a wrong one is struck off its list and
+       emptied for another go, and `spec.onWrong(n)` is told. Once the
+       whole row is right, the blanks give way to the values, which are
+       remembered.
+         spec: { answers: { 0: text, 30: text, ... },
+                 options: { 0: [text, ...], 30: [...], ... }, onWrong(n) }.
        Under a skip, the right values are set in for the learner. */
     askRow: function (r, spec) {
-      var opts = spec.options;
       var picks = ANGLES.map(function (a) {
         var c = cells[r + ':' + a];
+        var opts = spec.options[a];
         c.v.textContent = '';
         c.el.classList.add('is-pick');
         var dd = dropdown(c.v, opts, opts.indexOf(spec.answers[a]), {
@@ -904,63 +893,51 @@
         return { a: a, c: c, dd: dd, ok: false };
       });
       footEl.hidden = false;
-      var btn = checkButton();
-      M.set(btn, { opacity: 0 });
 
       var touched = false, stopHand = null;
       function hush() {
         touched = true;
         if (stopHand) { stopHand(); stopHand = null; }
       }
-      function ready() {
-        btn.disabled = picks.some(function (p) { return !p.dd.value(); });
-        btn.classList.toggle('is-asking', !btn.disabled);
+      /* each pick judged as it is made; the last right one opens the gate */
+      function judge(p) {
+        if (p.ok) return;
+        if (p.dd.isRight()) {
+          p.ok = true;
+          Beats.sfx('correct');
+          quiet(p.dd.settle());
+          if (picks.every(function (q) { return q.ok; })) dom().gate.click();
+          return;
+        }
+        Beats.sfx('wrong');
+        if (spec.onWrong) spec.onWrong(1);
+        quiet(p.dd.refuse());
       }
-      var offs = picks.map(function (p) { return p.dd.choose(ready, hush); });
+      var offs = picks.map(function (p) { return p.dd.choose(function () { judge(p); }, hush); });
       function off() {
         hush();
         offs.forEach(function (f) { f(); });
-        btn.disabled = true;
-        btn.classList.remove('is-asking');
       }
+      var allRight = Flow.once(dom().gate, { auto: true });
 
-      function round() {
-        ready();
-        return waitPick([btn], btn).then(function () {
-          if (Flow.isFast()) picks.forEach(function (p) { if (!p.ok && !p.dd.isRight()) p.dd.settle(); });
-          btn.disabled = true;
-          btn.classList.remove('is-asking');
-          var open = picks.filter(function (p) { return !p.ok; });
-          var right = open.filter(function (p) { return p.dd.isRight(); });
-          var wrong = open.filter(function (p) { return !p.dd.isRight(); });
-          var landed = right.map(function (p) { p.ok = true; return p.dd.settle(); });
-          if (!wrong.length) {
-            Beats.sfx('correct');
-            return Promise.all(landed);
-          }
-          Beats.sfx('wrong');
-          if (spec.onWrong) spec.onWrong(wrong.length);
-          return Promise.all(landed.concat(wrong.map(function (p) { return p.dd.refuse(); })))
-            .then(round);
-        });
-      }
-
-      return Flow.anim(Beats.rowIn(btn, { y: 10 }))
+      return Flow.anim(Beats.rowIn(picks.map(function (p) { return p.dd.el; }), { y: 10, stagger: 0.06 }))
         .then(function () {
           quiet(Flow.wait(K.SHORT * 3).then(function () {
             if (!touched) stopHand = handNudge(picks[0].dd.face);
           }));
-          return round();
+          return allRight;
         })
         .then(function () {
           off();
+          var late = picks.filter(function (p) { return !p.ok; });
+          late.forEach(function (p) { p.ok = true; });
+          return Promise.all(late.map(function (p) { return p.dd.settle(); }));
+        })
+        .then(function () {
           burstAt(cells[r + ':45'].el);
           return Flow.wait(K.SHORT);
         })
         /* the row as the table keeps it: the blanks give way to the values */
-        .then(function () {
-          return Flow.anim(Beats.rowOut(btn, { remove: true }));
-        })
         .then(function () {
           return Promise.all(picks.map(function (p, i) {
             var text = spec.answers[p.a];
@@ -1048,9 +1025,38 @@
    * side names. A faint hand taps the blank in hand until it is opened.
    * spec: { num, den } -- the right keys (wOpposite ...), `options` the
    * three keys, `onWrong(name)` a wrong pick's answer. Resolves once both
-   * are right, with the two blanks wearing their sides' inks.
+   * are right and the blanks have given way to the words in their sides'
+   * inks (plainA).
    * ====================================================================== */
   var ROLE_OF = { wOpposite: 'opp', wAdjacent: 'adj', wHypotenuse: 'hyp' };
+
+  /* The green blanks give way to the plain words, coloured as the sides
+     they name -- the bar taking the denominator's ink, as a row written in
+     whole has it. The boxes fade, the words come up in their place, and
+     whatever the change of size moves on the pane glides there rather
+     than jumping. */
+  function plainA(row, num, den) {
+    var A = row.A;
+    var near = [row.lhs, row.eq1, row.B.el, row.eq2, row.val].concat(
+      pane.rows().filter(function (r) { return r !== row.el; }));
+    function at(e) { var b = e.getBoundingClientRect(); return { x: b.left, y: b.top }; }
+    return Flow.anim(M.to(A.el, { opacity: 0, scale: 0.92, duration: M.dur(0.22), ease: 'power2.in' }))
+      .then(function () {
+        var before = near.map(at);
+        A.n.className = 'eq__n c-' + ROLE_OF[num];
+        A.d.className = 'eq__d c-' + ROLE_OF[den];
+        write(A.n, T(num)); write(A.d, T(den));
+        var tl = M.timeline({ willChange: near.concat(A.el), willChangeValue: 'transform, opacity' });
+        near.forEach(function (e, i) {
+          var now = at(e), dx = before[i].x - now.x, dy = before[i].y - now.y;
+          if (!dx && !dy) return;
+          tl.fromTo(e, { x: '+=' + dx, y: '+=' + dy }, { x: 0, y: 0, duration: M.dur(0.42), ease: 'power2.out' }, 0);
+        });
+        tl.fromTo(A.el, { opacity: 0, scale: 0.92 },
+          { opacity: 1, scale: 1, duration: M.dur(0.34), ease: 'power2.out' }, M.gap(0.06));
+        return Flow.anim(tl);
+      });
+  }
   function askRatio(row, spec) {
     var options = spec.options || ['wOpposite', 'wAdjacent', 'wHypotenuse'];
     var labels = options.map(function (k) { return T(k); });
@@ -1079,7 +1085,160 @@
       .then(function () { return one(dn); })
       .then(function () { return Flow.wait(K.SHORT); })
       .then(function () { return one(dd); })
+      .then(function () { return plainA(row, spec.num, spec.den); })
       .then(function () { return { num: dn, den: dd }; });
+  }
+
+  /* ======================================================================
+   * A corner taken in hand -- the 45° triangle's (s2-ratios.js), for any
+   * figure. The corner glows, the hand shows the pull, and the learner
+   * drags it: the angle is worked out from where the corner is held
+   * (o.degAt) and the figure redrawn from it (o.turn). Let go within
+   * o.snap of o.target, it is caught there and locked, and ask() resolves;
+   * close but short, it is eased the rest of the way. Arrow keys move it a
+   * degree at a time; a skip carries it there.
+   *   o: { group, dot, point(), degAt(p), pointAt(deg), turn(deg),
+   *        min, max, target, snap, label }
+   * point() is where the corner is now and pointAt(deg) where it would be,
+   * both in the group's own units.
+   * ====================================================================== */
+  var GRAB_HALO = 15;          /* the glow round the corner                 */
+  var GRAB_HIT = 42;           /* where a finger catches it                 */
+  var GRAB_HAND = 46;          /* the hand's height, per picture unit's px  */
+
+  function cornerGrab(o) {
+    var Tri = global.Tri;
+    var g = Tri.el('g', { 'class': 'grab', hidden: '', role: 'slider', tabindex: '-1',
+                          'aria-valuemin': o.min, 'aria-valuemax': o.max }, o.group);
+    var halo = Tri.el('circle', { 'class': 'grab__halo', r: GRAB_HALO }, g);
+    var hit = Tri.el('circle', { 'class': 'grab__hit', r: GRAB_HIT }, g);
+    var s = { deg: o.min, live: false, locked: false, held: false, pid: null, off: null, stopHand: null };
+
+    function place() {
+      var c = o.point();
+      [halo, hit].forEach(function (e) {
+        e.setAttribute('cx', Tri.round2(c.x));
+        e.setAttribute('cy', Tri.round2(c.y));
+      });
+    }
+    function turnTo(deg) {
+      s.deg = Math.max(o.min, Math.min(o.max, deg));
+      o.turn(s.deg);
+      place();
+      g.setAttribute('aria-valuenow', Math.round(s.deg));
+    }
+    function local(ev) {
+      var m = o.group.getScreenCTM();
+      return m ? new DOMPoint(ev.clientX, ev.clientY).matrixTransform(m.inverse()) : o.point();
+    }
+    function screen(p) {
+      var m = o.group.getScreenCTM();
+      return m ? new DOMPoint(p.x, p.y).matrixTransform(m) : p;
+    }
+    function stopHand() {
+      if (s.stopHand) { s.stopHand(); s.stopHand = null; }
+    }
+    function tryLock() {
+      if (s.locked || Math.abs(s.deg - o.target) > o.snap) return false;
+      s.locked = true;
+      s.live = false;
+      g.classList.remove('is-held');
+      turnTo(o.target);
+      Beats.pop();
+      quiet(Flow.anim(Beats.partPulse(o.dot, { times: 1 })));
+      dom().gate.click();
+      return true;
+    }
+    /* The finger is held where it caught the corner, not snapped onto it. */
+    g.addEventListener('pointerdown', function (ev) {
+      if (!s.live) return;
+      var p = local(ev), c = o.point();
+      s.held = true;
+      s.pid = ev.pointerId;
+      s.off = { x: c.x - p.x, y: c.y - p.y };
+      stopHand();
+      g.classList.add('is-held');
+      try { g.setPointerCapture(ev.pointerId); } catch (e) {}
+      ev.preventDefault();
+    });
+    g.addEventListener('pointermove', function (ev) {
+      if (!s.held || ev.pointerId !== s.pid) return;
+      var p = local(ev);
+      turnTo(o.degAt({ x: p.x + s.off.x, y: p.y + s.off.y }));
+    });
+    function up(ev) {
+      if (!s.held || ev.pointerId !== s.pid) return;
+      s.held = false;
+      g.classList.remove('is-held');
+      if (!tryLock() && Math.abs(s.deg - o.target) <= o.snap * 3) {
+        /* close, but not there: eased the rest of the way, as a thing is
+           caught by the place it belongs */
+        var from = s.deg;
+        var p = { t: 0 };
+        quiet(Flow.anim(M.to(p, { t: 1, duration: M.dur(0.3), ease: M.SNAP,
+          onUpdate: function () { turnTo(from + (o.target - from) * p.t); } })).then(tryLock));
+      }
+    }
+    g.addEventListener('pointerup', up);
+    g.addEventListener('pointercancel', up);
+    g.addEventListener('keydown', function (ev) {
+      if (!s.live) return;
+      var step = (ev.key === 'ArrowUp' || ev.key === 'ArrowRight') ? 1 :
+                 (ev.key === 'ArrowDown' || ev.key === 'ArrowLeft') ? -1 : 0;
+      if (!step) return;
+      ev.preventDefault();
+      stopHand();
+      turnTo(Math.round(s.deg) + step);
+      tryLock();
+    });
+
+    function off() {
+      s.live = false;
+      s.held = false;
+      stopHand();
+      g.setAttribute('tabindex', '-1');
+      g.classList.remove('is-asking', 'is-held');
+      o.dot.classList.remove('is-lit');
+    }
+    return {
+      el: g,
+      place: place,
+      turnTo: turnTo,
+      deg: function () { return s.deg; },
+      /* The glow brought in at the corner. */
+      show: function () {
+        place();
+        g.removeAttribute('hidden');
+        M.set(g, { opacity: 0 });
+        return Beats.marksIn(g, 0.3);
+      },
+      /* ...and taken away. */
+      hide: function () {
+        return Flow.anim(Beats.marksOut(g)).then(function () { g.setAttribute('hidden', ''); });
+      },
+      /* The corner lit, and live: the hand shows the pull to the target,
+         until the learner takes hold. */
+      ask: function () {
+        s.live = true;
+        s.locked = false;
+        g.setAttribute('tabindex', '0');
+        if (o.label) g.setAttribute('aria-label', o.label);
+        g.classList.add('is-asking');
+        o.dot.classList.add('is-lit');
+        var m = o.group.getScreenCTM();
+        s.stopHand = handDrag(
+          function () { return screen(o.point()); },
+          function () { return screen(o.pointAt(o.target)); },
+          GRAB_HAND * (m ? m.a : 1));
+        return Flow.once(dom().gate, { auto: true }).then(function () {
+          if (!s.locked) { s.locked = true; turnTo(o.target); }
+          off();
+        }, function (err) { off(); throw err; });
+      },
+      off: off,
+      /* Put away whole, for a reset. */
+      reset: function () { off(); g.setAttribute('hidden', ''); }
+    };
   }
 
   global.W = {
@@ -1094,6 +1253,7 @@
     handNudge: handNudge,
     handSlide: handSlide,
     handDrag: handDrag,
+    cornerGrab: cornerGrab,
     waitPick: waitPick,
     burstAt: burstAt,
     table: table,

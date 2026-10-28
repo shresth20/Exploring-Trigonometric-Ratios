@@ -3,11 +3,12 @@
  * --------------------------------------------------------------------------
  * Storyboard pages 71-79. One scene:
  *
- *   Triangle ABC, the right angle at B, BC fixed at 4. "Now let's explore
- *   90°. Move the slider and watch A move towards B." As angle A grows, A
- *   slides along the base towards B: AB gets shorter and AC gets closer to
+ *   Triangle ABC, the right angle at B, BC fixed at 4, in the middle of the
+ *   board. "Now let's explore 90°. Drag the glowing point and watch A move
+ *   towards B." The learner drags A along the base towards B, and angle A
+ *   grows: AB gets shorter and AC gets closer to
  *   4. At 90°, A reaches B -- the adjacent side is zero and the other two
- *   sides overlap. Its distances extend the ratios to 90°: sin 90° = 1,
+ *   sides overlap. The line steps aside, and its distances extend the ratios to 90°: sin 90° = 1,
  *   cos 90° = 0, and tan 90° = 4/0 -- undefined. Next.
  * ========================================================================== */
 (function (global) {
@@ -21,19 +22,26 @@
   function T(key, repl) { return global.T ? global.T(key, repl) : key; }
   var quiet = K.quiet;
 
-  var UNIT = 60;
-  var B0 = { x: 600, y: 340 };
-  var C0 = { x: 600, y: 340 - 4 * UNIT };
+  /* B and C stay; the triangle as it starts stands in the middle of the
+     board. */
+  var UNIT = 72;
   var START_DEG = 60;
+  var B0 = { x: 500 + 2 * UNIT / Math.tan(START_DEG * Math.PI / 180), y: 390 };
+  var C0 = { x: B0.x, y: B0.y - 4 * UNIT };
+  /* Past this the triangle is too thin at A for the angle's measure to sit
+     inside it, so the measure stands just left of A, over the base. */
+  var THIN_DEG = 72;
 
   var dom = null;
   var t = null;
+  var grab = null;
   var saidCloser = false;
 
   function build() {
     dom = Object.create(K.dom());
     dom.g = document.getElementById('figS6');
     t = Tri.create(dom.g, { A: aAt(START_DEG), B: B0, C: C0, right: 'B', theta: 'A' });
+    buildGrab();
     reset();
   }
 
@@ -44,8 +52,16 @@
   }
   /* The triangle at angle A = deg, and the lengths beside its sides. */
   function shapeAt(deg) {
-    t.set(aAt(deg), null, null);
+    var A = aAt(deg);
+    t.set(A, null, null);
+    if (grab) grab.place();
     t.writeAngle('A', T('lblDegVal', { n: Math.round(deg) }));
+    var ang = t.angles.A;
+    ang.setAttribute('text-anchor', 'middle');
+    if (deg > THIN_DEG) {
+      ang.setAttribute('x', A.x - 16); ang.setAttribute('y', A.y - 18);
+      ang.setAttribute('dy', '0'); ang.setAttribute('text-anchor', 'end');
+    }
     t.writeVal('BC', T('val4'));
     var a = deg * Math.PI / 180;
     if (deg >= 89.95) {
@@ -62,10 +78,6 @@
       t.names.B.setAttribute('x', B0.x); t.names.B.setAttribute('y', B0.y + 26);
       t.arcs.A.setAttribute('d', '');
       t.square.setAttribute('d', '');
-      /* the angle's measure beside the foot of the line, where A has come
-         to rest, rather than up the line where its bisector would put it */
-      t.angles.A.setAttribute('x', B0.x - 52); t.angles.A.setAttribute('y', B0.y - 18);
-      t.angles.A.setAttribute('dy', '0');
     } else {
       t.writeVal('CA', approx(4 / Math.sin(a)));
       t.writeVal('AB', approx(4 / Math.tan(a)));
@@ -75,32 +87,38 @@
     t.writeName('C', T('lblC'));
   }
 
+  /* A, taken in hand (W.cornerGrab): dragged along the base towards B.
+     The closer line is said once, as A passes 74° -- not on the catch
+     at 90°, which has its own line. */
+  function buildGrab() {
+    grab = W.cornerGrab({
+      group: dom.g, dot: t.dots.A,
+      point: function () { return t.V.A; },
+      degAt: function (p) {
+        var run = B0.x - p.x;
+        return run <= 0 ? 90 : Math.atan2(4 * UNIT, run) * 180 / Math.PI;
+      },
+      pointAt: aAt,
+      turn: function (deg) {
+        shapeAt(deg);
+        if (!saidCloser && deg >= 74 && deg < 88) {
+          saidCloser = true;
+          quiet(K.speakBySentence('s6Closer'));
+        }
+      },
+      min: START_DEG, max: 90, target: 90, snap: 2,
+      label: T('a11yCornerA')
+    });
+  }
+
   function scene() {
-    var slider = null;
     saidCloser = false;
     return K.wipeBoard()
       .then(function () { return Flow.wait(BEAT); })
       .then(function () {
         shapeAt(START_DEG);
-        quiet(K.onPhrase('s6Explore90', 'slider', function () {
-          return Flow.anim(Beats.slideGroup(dom.g, K.aside(dom.g).x, 0.9)).then(function () {
-            W.pane.show();
-            slider = W.slider({
-              min: START_DEG, max: 90, value: START_DEG, target: 90, snap: 1.5,
-              label: T('lblAngleA'),
-              onChange: function (v) {
-                shapeAt(v);
-                if (!saidCloser && v >= 74) {
-                  saidCloser = true;
-                  quiet(K.speakBySentence('s6Closer'));
-                }
-              }
-            });
-            return Flow.anim(Beats.rowIn(slider.el));
-          });
-        }));
         /* the first piece of the line is said as the triangle is drawn;
-           the rest follow one at a time */
+           the rest as A is handed over */
         var pieces = K.sentencesOf(T('s6Explore90')) || [T('s6Explore90')];
         return K.say({ text: pieces[0], vo: null }, function () {
           return Tri.draw(t, { time: 1.4, hold: 120 })
@@ -108,25 +126,15 @@
             .then(function () { return Tri.angleIn(t, 'A', T('lblDegVal', { n: START_DEG })); })
             .then(function () { return Flow.anim(Beats.marksIn([t.vals.BC, t.vals.CA, t.vals.AB], 0.4)); });
         }).then(function () {
-          return pieces.slice(1).reduce(function (chain, s) {
+          grab.turnTo(START_DEG);
+          quiet(Flow.anim(grab.show()));
+          var rest = pieces.slice(1).reduce(function (chain, s) {
             return chain.then(function () { return K.speak(s); });
           }, Promise.resolve());
+          return Promise.all([rest, grab.ask()]);
         });
       })
-      .then(function () {
-        if (!slider) {
-          /* the slider's cue never fired (the line was skipped): put it up */
-          return Flow.anim(Beats.slideGroup(dom.g, K.aside(dom.g).x, 0.9)).then(function () {
-            W.pane.show();
-            slider = W.slider({
-              min: START_DEG, max: 90, value: START_DEG, target: 90, snap: 1.5,
-              label: T('lblAngleA'), onChange: function (v) { shapeAt(v); }
-            });
-            return Flow.anim(Beats.rowIn(slider.el));
-          });
-        }
-      })
-      .then(function () { return slider.ask(); })
+      .then(function () { return grab.hide(); })
       .then(function () {
         shapeAt(90);
         M.set(t.names.A, { opacity: 0 });
@@ -142,8 +150,12 @@
         return K.speakBySentence('s6At90');
       })
       .then(function () { return Flow.wait(SHORT); })
-      .then(function () { return W.pane.drop(slider.el); })
+      /* the line steps aside for the pane */
       .then(function () {
+        return Flow.anim(Beats.slideGroup(dom.g, K.aside(dom.g).x, 0.9));
+      })
+      .then(function () {
+        W.pane.show();
         var facts = factsRow(T('lblOpp4'), T('lblAdj0'), T('lblHyp4'));
         return Promise.all([
           K.speakBySentence('s6Line'),
@@ -193,9 +205,10 @@
   }
 
   /* ---- the hooks ---------------------------------------------------------- */
-  function parts() { return t.parts(); }
+  function parts() { return t.parts().concat([grab.el]); }
   function wipe() { return []; }
   function reset() {
+    grab.reset();
     t.reset();
     saidCloser = false;
     dom.g.setAttribute('hidden', '');

@@ -5,10 +5,11 @@
  *
  *   Your turn.  The table so far, and three values to find in it: sin 30°,
  *     cos 45°, tan 60° -- each a tap on the right cell. Next.
- *   Towards 0°.  A triangle with its hypotenuse fixed at 4; the slider
- *     carries θ down to 0° and the opposite side shrinks to nothing while
- *     the other two sides come together. The triangle has become a line.
- *     Its distances -- opposite 0, adjacent 4, hypotenuse 4 -- extend the
+ *   Towards 0°.  A triangle with its hypotenuse fixed at 4, in the middle
+ *     of the board; the learner drags its far corner down, θ goes to 0°,
+ *     and the opposite side shrinks to nothing while the other two sides
+ *     come together. The triangle has become a line; it steps aside, and
+ *     its distances -- opposite 0, adjacent 4, hypotenuse 4 -- extend the
  *     three ratios to 0°. Next.
  *   The table.  The 0° values go in. Next.
  * ========================================================================== */
@@ -24,19 +25,27 @@
   var quiet = K.quiet;
 
   /* θ at A; the hypotenuse is 4 units long and stays so, the far corner
-     swinging down to the base as θ goes to 0. */
-  var A0 = { x: 300, y: 330 };
-  var UNIT = 62;
+     swinging down to the base as θ goes to 0. The line it ends as stands
+     in the middle of the board. */
+  var UNIT = 74;
   var HYP = 4 * UNIT;
+  var A0 = { x: 500 - HYP / 2, y: 340 };
   var START_DEG = 40;
+  /* Below this the triangle is too thin at A for θ's measure to sit inside
+     it, so the measure stands just left of the corner instead. */
+  var THIN_DEG = 25;
 
   var dom = null;
   var t = null;
+  var grab = null;
 
   function build() {
     dom = Object.create(K.dom());
     dom.g = document.getElementById('figS5');
-    t = Tri.create(dom.g, { A: A0, B: { x: A0.x + HYP, y: A0.y }, C: { x: A0.x + HYP, y: A0.y }, right: 'B', theta: 'A' });
+    /* the names stand further out than the lengths, so both can show */
+    t = Tri.create(dom.g, { A: A0, B: { x: A0.x + HYP, y: A0.y }, C: { x: A0.x + HYP, y: A0.y },
+                            right: 'B', theta: 'A', wordOff: 70 });
+    buildGrab();
     reset();
   }
 
@@ -49,26 +58,48 @@
     var C = { x: A0.x + HYP * Math.cos(a), y: A0.y - HYP * Math.sin(a) };
     var B = { x: C.x, y: A0.y };
     t.set(null, B, C);
+    if (grab) grab.place();
     t.writeAngle('A', T('lblDegVal', { n: Math.round(deg) }));
     t.writeVal('CA', T('val4'));
+    var ang = t.angles.A;
+    ang.setAttribute('text-anchor', 'middle');
+    if (deg < THIN_DEG) {
+      ang.setAttribute('x', A0.x - 16); ang.setAttribute('y', A0.y);
+      ang.setAttribute('dy', '.36em'); ang.setAttribute('text-anchor', 'end');
+    }
     if (deg <= 0.01) {
       t.writeVal('BC', T('val0'));
       t.writeVal('AB', T('val4'));
-      /* a line: the hypotenuse's length over it, the base's under it, the
-         opposite's nothing at the far end, and the angle just above A */
+      /* a line: the hypotenuse's length over it, the base's under it, and
+         the opposite's nothing at the far end */
       var top = { x: (A0.x + B.x) / 2, y: A0.y - 26 };
       t.vals.CA.setAttribute('x', top.x); t.vals.CA.setAttribute('y', top.y);
       t.vals.CA.setAttribute('dy', '0'); t.vals.CA.setAttribute('text-anchor', 'middle');
       t.vals.BC.setAttribute('x', B.x + 22); t.vals.BC.setAttribute('y', B.y);
       t.vals.BC.setAttribute('dy', '.36em'); t.vals.BC.setAttribute('text-anchor', 'start');
       t.vals.BC.removeAttribute('transform');
-      t.angles.A.setAttribute('x', A0.x + 52); t.angles.A.setAttribute('y', A0.y - 22);
-      t.angles.A.setAttribute('dy', '0');
       t.arcs.A.setAttribute('d', '');
     } else {
       t.writeVal('BC', approx(4 * Math.sin(a)));
       t.writeVal('AB', approx(4 * Math.cos(a)));
     }
+  }
+
+  /* The far corner, taken in hand (W.cornerGrab): dragged round on the
+     hypotenuse's 4 units, down to the base. */
+  function buildGrab() {
+    grab = W.cornerGrab({
+      group: dom.g, dot: t.dots.C,
+      point: function () { return t.V.C; },
+      degAt: function (p) { return Math.atan2(A0.y - p.y, Math.max(1, p.x - A0.x)) * 180 / Math.PI; },
+      pointAt: function (deg) {
+        var a = deg * Math.PI / 180;
+        return { x: A0.x + HYP * Math.cos(a), y: A0.y - HYP * Math.sin(a) };
+      },
+      turn: shapeAt,
+      min: 0, max: 60, target: 0, snap: 2,
+      label: T('a11yApex')
+    });
   }
 
   /* ======================================================================
@@ -110,7 +141,6 @@
    * Scene 2 -- towards 0°
    * ====================================================================== */
   function sceneZero() {
-    var slider = null;
     return W.table.hide()
       .then(function () { return Flow.wait(SHORT); })
       .then(function () {
@@ -125,26 +155,21 @@
         return Flow.anim(Beats.marksIn([t.vals.CA, t.vals.BC, t.vals.AB], 0.4));
       })
       .then(function () { return Flow.wait(SHORT); })
+      /* the far corner lit and handed over, in the middle of the board */
       .then(function () {
-        return Flow.anim(Beats.slideGroup(dom.g, K.aside(dom.g).x, 0.9));
+        grab.turnTo(START_DEG);
+        quiet(Flow.anim(grab.show()));
+        return Promise.all([K.say('s5Slide0'), grab.ask()]);
       })
-      .then(function () {
-        W.pane.show();
-        slider = W.slider({
-          min: 0, max: 60, value: START_DEG, target: 0, snap: 1.5,
-          label: T('lblAngle'),
-          onChange: function (v) { shapeAt(v); }
-        });
-        return Flow.anim(Beats.rowIn(slider.el));
-      })
-      .then(function () { return K.say('s5Slide0'); })
-      .then(function () { return slider.ask(); })
+      .then(function () { return grab.hide(); })
       .then(function () {
         shapeAt(0);
         /* the names come off the line: three words on one stroke would
            lie over each other, and the lengths say what is left */
         return Tri.unname(t);
       })
+      /* unname lays the triangle out afresh; the line's own places back */
+      .then(function () { shapeAt(0); })
       .then(function () { return Flow.wait(SHORT); })
       .then(function () {
         quiet(K.onPhrase('s5At0', 'opposite', function () {
@@ -163,8 +188,12 @@
         return K.say('s5Line');
       })
       .then(function () { return Flow.wait(SHORT); })
-      .then(function () { return W.pane.drop(slider.el); })
+      /* the line steps aside for the pane */
       .then(function () {
+        return Flow.anim(Beats.slideGroup(dom.g, K.aside(dom.g).x, 0.9));
+      })
+      .then(function () {
+        W.pane.show();
         var facts = factsRow(T('lblOpp0'), T('lblAdj4'), T('lblHyp4'));
         return Promise.all([
           K.say('s5Extend0'),
@@ -226,9 +255,10 @@
   }
 
   /* ---- the hooks ---------------------------------------------------------- */
-  function parts() { return t.parts(); }
+  function parts() { return t.parts().concat([grab.el]); }
   function wipe() { return []; }
   function reset() {
+    grab.reset();
     t.reset();
     dom.g.setAttribute('hidden', '');
   }

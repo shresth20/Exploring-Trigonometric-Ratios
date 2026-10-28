@@ -40,6 +40,7 @@
   /* The triangle as section 3 left it: in the middle, its three lengths
      and both acute angles written. */
   function triInstant() {
+    shape(S3.HALF);
     Tri.instant(t);
     t.writeVal('CA', T('val2'));
     t.writeVal('BC', T('val1'));
@@ -95,9 +96,7 @@
       })
       .then(function () { return Flow.wait(BEAT); })
       /* ---- aside, and the ratios ----------------------------------------- */
-      .then(function () {
-        return Flow.anim(Beats.moveGroup(dom.g, K.aside(dom.g), 0.9));
-      })
+      .then(function () { return Flow.anim(shrinkAside()); })
       .then(function () {
         W.pane.show();
         var row = W.eqRow(T('eqSinDeg', { a: 60 }));
@@ -124,6 +123,25 @@
       })
       .then(function () { return Flow.wait(BEAT); })
       .then(function () { return K.handOver(); });
+  }
+
+  function shape(s) { t.set(s.A, s.B, s.C); }
+  /* Section 3 left the half grown, in the middle; with its side names on,
+     it is too wide for the left half, so it goes aside back at the split's
+     size -- redrawn corner by corner as it moves, so its lines and words
+     keep theirs. Where it goes is measured at the size it ends at. */
+  function shrinkAside() {
+    var big = S3.HALF, small = S3.HALF_SMALL;
+    shape(small);
+    var to = K.aside(dom.g);
+    shape(big);
+    var p = { k: 0 };
+    function at(v) { return { x: big[v].x + (small[v].x - big[v].x) * p.k, y: big[v].y + (small[v].y - big[v].y) * p.k }; }
+    var tl = M.timeline({ willChange: dom.g, willChangeValue: 'transform' });
+    tl.to(dom.g, { x: to.x, y: to.y, duration: M.dur(0.9), ease: 'power2.inOut' }, 0);
+    tl.to(p, { k: 1, duration: M.dur(0.9), ease: 'power2.inOut',
+      onUpdate: function () { t.set(at('A'), at('B'), at('C')); } }, 0);
+    return tl;
   }
 
   function showWords(row, n, d) {
@@ -191,6 +209,7 @@
       return;
     }
     triInstant();
+    shape(S3.HALF_SMALL);
     t.setTheta('C');
     t.colourRoles(true);
     M.set(dom.g, K.aside(dom.g));

@@ -413,7 +413,8 @@
   flex-direction: column;
   align-items: flex-start;
   gap: .05em;
-  padding: calc(var(--s) * 58) calc(var(--s) * 70) calc(var(--s) * 84);
+  /* clear of the frame on every side, so no word runs onto the moss */
+  padding: calc(var(--s) * 74) calc(var(--s) * 124) calc(var(--s) * 100);
   border: 0 solid transparent;
   border-image: var(--art-box-alt) 72 150 92 150 fill /
     calc(var(--s) * 72) calc(var(--s) * 150)
@@ -653,23 +654,61 @@
 
 /* ---- The rows added once the first three are complete ------------------
    cosec, sec and cot stay out of the table until the lesson adds them;
-   with them in, the table is set closer, so all seven rows and the foot
-   still stand clear of the header. */
+   with them in, the letters are set a little smaller so all seven rows and
+   the foot stand clear of the header, but each row keeps its full height. */
 .ttable__row[hidden] { display: none; }
 .ttable--long {
-  font-size: clamp(12px, calc(var(--board-w) * .0172), 27px);
-  padding: .6em .8em .7em;
+  font-size: clamp(12px, calc(var(--board-w) * .0182), 28px);
+  padding: .7em .85em .8em;
+  row-gap: .3em;
 }
-.ttable--long .ttable__cell { min-height: 1.95em; padding: .14em .35em; }
-/* A row being asked: a blank in every cell, its list over the rows near it. */
-.ttable__cell.is-pick { padding: .14em .2em; }
+.ttable--long .ttable__cell { min-height: 2.45em; padding: .22em .38em; }
+/* A row being asked: a blank in every cell, its list over the rows near it.
+   The blank is a parchment slot the size of the cell, ringed in the
+   table's own orange, so it reads as a cell waiting to be filled. */
+.ttable__cell.is-pick { padding: .16em .2em; }
+.ttable__cell.is-pick .ttable__v { width: 100%; }
 .ttable__cell:has(.dd.is-open) { z-index: 5; }
-.ttable .dd { font-size: .78em; margin: 0; }
-.ttable .dd__face { min-width: 4.2em; min-height: 1.7em; }
-.ttable .dd__opt { min-height: 1.9em; }
+.ttable .dd { font-size: .82em; margin: 0; width: 100%; }
+.ttable .dd__face {
+  width: 100%;
+  min-width: 0;
+  min-height: 1.95em;
+  border-color: var(--orange-border);
+  background: linear-gradient(180deg, var(--cell-top) 0%,
+              color-mix(in srgb, var(--amber-fill) 18%, var(--cream)) 100%);
+  color: var(--brown-ink);
+  text-shadow: none;
+}
+.ttable .dd__val.is-placeholder { color: color-mix(in srgb, var(--brown-ink) 45%, transparent); }
+.ttable .dd__caret path { stroke: var(--orange-deep); }
+.ttable .dd.is-asking .dd__face { animation-name: ttable-dd-call; }
+@keyframes ttable-dd-call {
+  0%, 100% { box-shadow: 0 0 0 0 color-mix(in srgb, var(--orange-fill) 0%, transparent); }
+  50%      { box-shadow: 0 0 0 .22em color-mix(in srgb, var(--orange-fill) 55%, transparent); }
+}
+.ttable .dd.is-open .dd__face { background: color-mix(in srgb, var(--amber-fill) 34%, var(--cream)); }
+.ttable .dd__face:focus-visible { outline-color: color-mix(in srgb, var(--orange-fill) 70%, transparent); }
+.ttable .dd__menu {
+  border: .12em solid var(--orange-fill);
+  background: linear-gradient(180deg, var(--cream) 0%, var(--cream-deep) 100%);
+  box-shadow: 0 0 0 .06em var(--orange-deep), 0 .5em 1.2em var(--shadow-deep);
+}
+.ttable .dd__opt { min-height: 2em; color: var(--brown-ink); }
+.ttable .dd__opt:hover,
+.ttable .dd__opt:focus-visible { background: color-mix(in srgb, var(--amber-fill) 40%, var(--cream)); }
+.ttable .dd.is-wrong .dd__face {
+  border-color: var(--wrong-border);
+  background: color-mix(in srgb, var(--wrong-fill) 30%, var(--cream));
+}
+.ttable .dd.is-right .dd__face {
+  border-color: var(--right-border);
+  background: color-mix(in srgb, var(--right-fill) 34%, var(--cream));
+  color: color-mix(in srgb, var(--right-border) 45%, var(--text-outline));
+}
 
 /* The foot: the formula a new row is worked from, on a parchment plate
-   like the table's own, and the Check beside it. */
+   like the table's own. */
 .table-wrap { align-content: center; row-gap: clamp(8px, 2.2%, 18px); }
 .ttable-foot {
   display: flex;
@@ -694,15 +733,11 @@
 }
 .ttable-note .frac { height: auto; font-size: 1.3em; }
 .ttable-note .frac__n, .ttable-note .frac__d { font-size: .62em; padding-left: .3em; padding-right: .3em; }
-.ttable-check { font-size: inherit; min-height: 2.2em; }
-.ttable-check:disabled { cursor: default; filter: grayscale(.85); opacity: .6; }
-.ttable-check.is-asking { animation: dd-call 1.8s ease-in-out infinite; }
 
 /* ---- Reduced motion ------------------------------------------------------- */
 @media (prefers-reduced-motion: reduce) {
   .tri__side, .dd__face, .dd__caret, .slider__thumb, .ttable__cell,
   .ttable__cell--lhs::before { transition: none !important; }
   .dd.is-asking .dd__face, .slider.is-asking .slider__thumb, .choice--big.is-asking,
-  .ttable-check.is-asking,
   .grab.is-asking .grab__halo { animation: none !important; }
 }
