@@ -12,8 +12,11 @@
  *      ends of dashed leaders, one per side, and the three names arrive
  *      in the tray. "Can you match each side to its
  *      name?" -- the drag is shown, and each name dropped right colours
- *      its side. "That's correct! These are the opposite side, adjacent
- *      side and hypotenuse." -- each side lit as it is named. Next.
+ *      its side. A box given two wrong names is answered for the learner,
+ *      its side and box lit as the reason is said ("This side is opposite
+ *      θ."). "That's correct! These are the opposite side, adjacent side
+ *      and hypotenuse." -- each side lit, with its box, as it is named.
+ *      Next.
  *   3. The boxes go and the sides lose their colours. "What if we look at
  *      the triangle from this angle instead?" -- θ travels from A to C.
  *      Then the match of page 2 again, for θ at C: the same boxes on the
@@ -21,8 +24,8 @@
  *      Once the names are in, they are written beside the sides. "Did you
  *      notice?" Two labelled views stand side by side: the first angle's
  *      and this one's. "The opposite and adjacent swap roles. The
- *      hypotenuse stays the same." -- the sides lit in both as they are
- *      named. Next.
+ *      hypotenuse stays the same." -- the sides and their names lit in
+ *      both as they are named. Next.
  * ========================================================================== */
 (function (global) {
   'use strict';
@@ -40,6 +43,8 @@
      page begins with. */
   var A = { x: 350, y: 345 }, B = { x: 650, y: 345 }, C = { x: 650, y: 135 };
   var DRAW_TIME = 2.4;
+  /* How far each of the two triangles shrinks to stand side by side */
+  var PAIR_K = 0.92;
 
   /* The three boxes round the triangle, each tied to its side by a leader
      that ends ON it. The adjacent box sits below the base, so its leader
@@ -56,15 +61,19 @@
       return Object.keys(ROLE).filter(function (n) { return r[ROLE[n]] === side; })[0];
     }
     return [
-      { name: nameOn('CA'), x: 220, y: 160,
+      { name: nameOn('CA'), x: 230, y: 162,
         anchor: { x: A.x + (C.x - A.x) * HYP_AT, y: A.y + (C.y - A.y) * HYP_AT } },
-      { name: nameOn('BC'), x: 720, y: 219, anchor: t.midOf('BC') },
-      { name: nameOn('AB'), x: 160, y: 366, anchor: t.midOf('AB') }
+      { name: nameOn('BC'), x: 730, y: 221, anchor: t.midOf('BC') },
+      { name: nameOn('AB'), x: 170, y: 368, anchor: t.midOf('AB') }
     ];
   }
 
   /* The side a name is for: the box names a role, the role a side. */
   var ROLE = { lblOpposite: 'opp', lblAdjacent: 'adj', lblHypotenuse: 'hyp' };
+  /* A box answered for the learner after this many wrong names, and the
+     line that says why, by the name it wants. */
+  var REVEAL_AFTER = 2;
+  var HINT = { lblOpposite: 's1HintOpp', lblAdjacent: 's1HintAdj', lblHypotenuse: 's1HintHyp' };
 
   var dom = null;
   var t = null, t2 = null;
@@ -102,11 +111,25 @@
     return boxes.filter(function (b) { return b.name === name; })[0];
   }
 
+  /* A side and its box lit together: what names it. */
+  function lightSide(box) {
+    return Promise.all([
+      Flow.anim(Beats.linePulse(t.side(ROLE[box.name]))),
+      Flow.anim(Beats.boxPulse(box))
+    ]);
+  }
+  /* A box answered for the learner: its side and box lit as the reason
+     is said. */
+  function explain(box) {
+    return K.say(HINT[box.name], function () { return lightSide(box); });
+  }
+
   /* The match, for θ where it is now. The boxes arrive on the ends of
      their leaders, the names in the tray, and the instruction is said --
      with the drag shown, if `guided`. Each name dropped right colours its
-     side; once all three are in, the confetti, and each side lit as it is
-     named. */
+     side; a box given two wrong names is answered for the learner
+     (explain). Once all three are in, the confetti, and each side lit
+     with its box as it is named. */
   function matchSides(guided) {
     buildBoxes();
     dom.boxes.removeAttribute('hidden');
@@ -127,12 +150,15 @@
         }).then(function () {
           return K.armQuiz({ boxes: boxes }, K.chips(), {
             group: dom.boxes,
-            onWrong: function () { quiet(K.speak(K.keyed('fbNotQuite'))); },
+            revealAfter: REVEAL_AFTER,
+            onWrong: function () { return quiet(K.speak(K.keyed('fbNotQuite'))); },
             onRight: function (box) {
               var role = ROLE[box.name];
               t.side(role).classList.add('tri__side--' + role);
-              quiet(Flow.anim(Beats.linePulse(t.side(role))));
-            }
+              /* an answer given is lit by explain, with its line */
+              if (!box.revealed) quiet(Flow.anim(Beats.linePulse(t.side(role))));
+            },
+            onReveal: explain
           }).then(function () { if (guide) guide.stop(); });
         });
       })
@@ -140,9 +166,8 @@
       .then(function () {
         K.celebrate();
         ['opposite', 'adjacent', 'hypotenuse'].forEach(function (w) {
-          quiet(K.onPhrase('s1MatchDone', w, function () {
-            return Flow.anim(Beats.linePulse(t.side(ROLE['lbl' + w.charAt(0).toUpperCase() + w.slice(1)])));
-          }));
+          var box = boxFor('lbl' + w.charAt(0).toUpperCase() + w.slice(1));
+          quiet(K.onPhrase('s1MatchDone', w, function () { return lightSide(box); }));
         });
         return Flow.wait(Beats.ringing()).then(function () {
           return K.speakBySentence('s1MatchDone');
@@ -258,24 +283,31 @@
         t2.writeWord('adj', T('lblAdjacent'), 'A');
         t2.writeWord('hyp', T('lblHypotenuse'), 'A');
         M.set([t2.arcs.A, t2.angles.A].concat(Object.keys(t2.words).map(function (s) { return t2.words[s]; })), { opacity: 1 });
-        M.set(dom.g2, { opacity: 0, x: -520, scale: 0.84, svgOrigin: '500 240' });
         dom.g2.removeAttribute('hidden');
+        /* each shrunk a little and centred in its own half, measured with
+           its words, so the pair splits the stage evenly */
+        var o = { x: 500, y: 240 };
+        var k = Math.min(PAIR_K, K.aside(dom.g2, .25).fit, K.aside(dom.g, .75).fit);
+        var left = K.aside(dom.g2, .25, k, o), right = K.aside(dom.g, .75, k, o);
+        M.set(dom.g2, { opacity: 0, x: left.x - 270, y: left.y, scale: k, svgOrigin: '500 240' });
         return Promise.all([
-          Flow.anim(Beats.moveGroup(dom.g, { x: 250, scale: 0.84, svgOrigin: '500 240' }, 0.9)),
-          Flow.anim(Beats.moveGroup(dom.g2, { x: -250, opacity: 1, scale: 0.84, svgOrigin: '500 240' }, 0.9))
+          Flow.anim(Beats.moveGroup(dom.g, { x: right.x, y: right.y, scale: k, svgOrigin: '500 240' }, 0.9)),
+          Flow.anim(Beats.moveGroup(dom.g2, { x: left.x, opacity: 1, scale: k, svgOrigin: '500 240' }, 0.9))
         ]);
       })
       .then(function () { return Flow.wait(SHORT); })
       .then(function () {
-        quiet(K.onPhrase('s1Swap', 'opposite', function () {
-          return Flow.anim(Beats.linePulse([t2.side('opp', 'A'), t.side('opp', 'C')]));
-        }));
-        quiet(K.onPhrase('s1Swap', 'adjacent', function () {
-          return Flow.anim(Beats.linePulse([t2.side('adj', 'A'), t.side('adj', 'C')]));
-        }));
-        quiet(K.onPhrase('s1Swap', 'hypotenuse', function () {
-          return Flow.anim(Beats.linePulse([t2.side('hyp', 'A'), t.side('hyp', 'C')]));
-        }));
+        /* each role lit in both views as it is named -- the sides and
+           the names beside them -- in both sentences of the line */
+        function both(role) {
+          return Promise.all([
+            Flow.anim(Beats.linePulse([t2.side(role, 'A'), t.side(role, 'C')])),
+            Flow.anim(Beats.textPulse([t2.word(role, 'A'), t.word(role, 'C')], 2))
+          ]);
+        }
+        quiet(K.onPhrase('s1Swap', 'opposite', function () { return both('opp'); }));
+        quiet(K.onPhrase('s1Swap', 'adjacent', function () { return both('adj'); }));
+        quiet(K.onPhrase('s1Swap', 'hypotenuse', function () { return both('hyp'); }));
         return K.speakBySentence('s1Swap');
       })
       .then(function () { return Flow.wait(BEAT); })

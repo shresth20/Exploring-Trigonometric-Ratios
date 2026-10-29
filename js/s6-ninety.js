@@ -190,10 +190,13 @@
     var row = W.eqRow(T(lhsKey, { a: deg }));
     row.A.n.className = 'eq__n c-' + n;
     row.A.d.className = 'eq__d c-' + d;
-    return Promise.all([K.say(sayKey), Flow.anim(Beats.rowIn(row.el))])
+    /* the definition said first; then the row, its distances carried in
+       from the line */
+    return K.say(sayKey)
+      .then(function () { return Flow.anim(Beats.rowIn(row.el)); })
       .then(function () {
         quiet(Flow.anim(Beats.linePulse([t.side(n), t.side(d)])));
-        return Flow.anim(row.showA(nv, dv));
+        return row.flyA(nv, dv, t.val(n), t.val(d));
       })
       .then(function () { return Flow.wait(SHORT); })
       .then(function () {

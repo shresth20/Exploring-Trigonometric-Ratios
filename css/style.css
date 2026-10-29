@@ -7,23 +7,31 @@
    ========================================================================== */
 
 /* ---- Fonts (bundled, offline only -- no CDN) ---------------------------- */
-/* Lilita One is the game's one typeface, for every word in it. It comes in
-   a single weight, so every rule below sets weight 400 and the browser is
-   told never to fake a bold (font-synthesis on body): a smeared, synthetic
-   bold of a face this heavy is the one way it could look wrong. It has no
-   θ and no √ -- θ comes from Trig Theta below, and √ is drawn
-   (mathtext.js) rather than set. */
+/* Trig Text is the game's one typeface, for every word in it: Lilita One
+   (lilita_one/, kept as its source) made lighter. Every outline is
+   drawn in by 18 units a side, its corners kept sharp, so a stem loses
+   36 of its 182 (an em is 1000) and only the thinnest rings, the degree
+   sign's among them, lose less, in step with their own weight. The
+   advance widths are Lilita
+   One's own, so every word is still exactly as wide and as large as it
+   was. OFL like its source, and named apart from it as that licence asks.
+   It comes in a single weight, so every rule below sets weight 400 and
+   the browser is told never to fake a bold (font-synthesis on body): a
+   smeared, synthetic bold of a face this heavy is the one way it could
+   look wrong. It has no θ and no √ -- θ comes from Trig Theta below, and
+   √ is drawn (mathtext.js) rather than set. */
 @font-face {
-  font-family: "Lilita One";
-  src: url("../assets/fonts/lilita_one/lilitaone-regular.woff2") format("woff2");
+  font-family: "Trig Text";
+  src: url("../assets/fonts/trig_text/trigtext-regular.woff2") format("woff2");
   font-weight: 400;
   font-display: swap;
 }
 /* The θ Lilita One lacks, cut from its own digit zero with a bar through
-   the counter, so it stands at the face's weight (the system θ it would
-   fall back to is a hairline beside it). One glyph, OFL like the face it
-   is cut from, and named apart from it as that licence asks. Every font
-   stack lists it straight after Lilita One. */
+   the counter and drawn in by the same 18 units a side, so it stands at
+   Trig Text's weight (the system θ it would fall back to is a hairline
+   beside it). One glyph, OFL like the face it is cut from, and named
+   apart from it as that licence asks. Every font stack lists it straight
+   after Trig Text. */
 @font-face {
   font-family: "Trig Theta";
   src: url("../assets/fonts/trig_theta/trigtheta-regular.woff2") format("woff2");
@@ -164,9 +172,9 @@
   --ink: var(--text-primary);
   --ink-soft: var(--text-secondary);
 
-  --font-display: "Lilita One", "Trig Theta", system-ui, sans-serif;
-  --font-body: "Lilita One", "Trig Theta", system-ui, sans-serif;
-  --font-title: "Lilita One", "Trig Theta", system-ui, sans-serif;
+  --font-display: "Trig Text", "Trig Theta", system-ui, sans-serif;
+  --font-body: "Trig Text", "Trig Theta", system-ui, sans-serif;
+  --font-title: "Trig Text", "Trig Theta", system-ui, sans-serif;
 
   /* ---- artwork (script.js preloads the same files) ----------------------
      The swamp is behind everything; the board is the same night, dimmed.
@@ -419,8 +427,8 @@ body {
 /* ---- The prompt row (header) -------------------------------------------
    The line being said, on its plate (header2.png), centred in the row.
    The row is laid out from the first frame and holds its height whether or
-   not there is text in it. The plate is one width for every line, so it
-   never shifts as the lines change. */
+   not there is text in it. The plate is as wide as its line, and eases
+   from one line's size to the next's (see typer.js, morphBox). */
 .prompt {
   display: flex;
   align-items: flex-end;
@@ -436,15 +444,28 @@ body {
    second row of words stretches only the plain stone sides. The plate
    stands on the row's floor and grows UP for that second row. The padding
    sets the words inside the slate, centred on it. An empty line has no
-   plate. */
+   plate.
+     Its width is its line's, between a floor that keeps some stone between
+   the corner bolts and a cap that wraps a line where the old fixed plate
+   (64% of the row) did. The sides are padded past the bolts, since the
+   plate now closes on the words. The words are held centred and on the
+   plate's floor however wide it is, and their rows are set by
+   --plate-max, never by the plate: so while the plate eases between two
+   lines' sizes the words stand still, and the plate's edge uncovers them
+   (overflow: clip) rather than pushing them. */
 .prompt__line {
+  --plate-max: calc(var(--board-w) * .614);
   margin: 0;
   align-self: flex-end;
   flex: 0 1 auto;
-  width: 64%;
-  min-width: 0;
+  display: flex;
+  justify-content: center;
+  align-items: flex-end;
+  min-width: calc(var(--plate-s) * 1100);
+  max-width: var(--plate-max);
+  overflow: clip;
   padding:
-    calc(var(--plate-s) * 108) calc(var(--plate-s) * 132)
+    calc(var(--plate-s) * 108) calc(var(--plate-s) * 210)
     calc(var(--plate-s) * 186);
   border: 0 solid transparent;
   border-image: var(--art-plate) 130 420 217 400 fill /
@@ -468,6 +489,10 @@ body {
    halves of the line are centred alike, so the live words land exactly on
    the ghost's rows. */
 .prompt__line .type { white-space: pre-wrap; text-align: center; }
+.prompt__line .type-wrap {
+  flex: none;
+  max-width: calc(var(--plate-max) - var(--plate-s) * 420);
+}
 
 /* ==========================================================================
    The figure
@@ -505,7 +530,7 @@ body {
   letter-spacing: .5px;
   paint-order: stroke fill;
   stroke: var(--text-outline);
-  stroke-width: 5px;
+  stroke-width: 3.5px;
   stroke-linejoin: round;
 }
 
@@ -587,7 +612,7 @@ body {
   stroke-linejoin: miter;
 }
 
-/* A box. Dashed and empty while it waits; solid green with a tick once it
+/* A box. Dashed and empty while it waits; a solid green border once it
    has its name; red for a beat when it is given the wrong one. */
 .q-box {
   outline: none;
@@ -631,20 +656,12 @@ body {
   stroke-width: 3.6;
   stroke-dasharray: none;
 }
+/* A box lit with the side it names (Beats.boxPulse): its border bloomed. */
+.q-box.is-lit .q-box__rect { filter: url(#partGlow); }
 .q-box__text {
   fill: var(--text-primary);
   font-size: 22px;
   opacity: 0;
-}
-/* The tick beside a right answer. */
-.q-badge { opacity: 0; }
-.q-badge__ring { fill: var(--right-border); }
-.q-badge__tick {
-  fill: none;
-  stroke: var(--white);
-  stroke-width: 3;
-  stroke-linecap: round;
-  stroke-linejoin: round;
 }
 
 /* ---- The names to drag --------------------------------------------------
@@ -682,7 +699,7 @@ body {
 
   font-family: var(--font-display);
   font-weight: 400;
-  font-size: clamp(12px, min(3vh, 1.9vw), 26px);
+  font-size: clamp(13px, min(3.35vh, 2.1vw), 29px);
   line-height: 1.1;
   letter-spacing: .5px;
   color: var(--text-primary);
@@ -773,6 +790,8 @@ body {
     0 calc(var(--edge) + 3px) 10px var(--shadow-soft);
 }
 .choice.is-done { cursor: default; pointer-events: none; }
+/* The answers shut while a wrong one is said to be wrong. */
+.is-held > .choice { cursor: default; pointer-events: none; }
 /* A refused answer, spent: it steps back so the eye is left on the rest. */
 .choice.is-out { opacity: .45; }
 
@@ -907,16 +926,18 @@ body {
 .next-btn svg { width: 100%; height: 100%; display: block; }
 
 /* ---- The speech bubble --------------------------------------------------
-   The welcome's first line, said before the board exists, on a plate of its
-   own in the middle of the frame. Centred by margin rather than by a
-   transform, so the scale it pops in with (bubbleIn) has the transform to
-   itself. The box is a mossy plate (box1.png), 9-sliced in em so it scales
-   with the words and keeps its bolts at any size; the plate stands OUT of
-   the box by --bub-out on every side (border-image-outset). */
+   The welcome's first line, said before the board exists: a parchment
+   speech bubble with a dark outline, its tail pointing down and left at
+   the bird standing beside it, and the line wrapped over two rows (its
+   width is capped in em, so it wraps the same at every board size). It is
+   centred by margin, then moved right by half the room the bird and the
+   tail take, so the bird and the bubble stand centred TOGETHER; `translate`
+   rather than a transform, so the scale it pops in with (bubbleIn) has
+   the transform to itself. */
 .bubble {
-  --bub-u:       1em;
-  --bub-plate:   calc(var(--bub-u) * .0118);
-  --bub-out:     calc(var(--bub-u) * .42);
+  --bird-h: calc(var(--board-w) * 9 / 16 * .4);
+  --tail-w: 1.5em;
+  --bub-line: .12em;
 
   position: absolute;
   z-index: var(--z-bubble);
@@ -924,43 +945,61 @@ body {
   margin: auto;
   width: fit-content;
   height: fit-content;
-  max-width: 72%;
+  max-width: 20em;
+  translate: calc((var(--tail-w) * .95 + var(--bird-h) * .62) / 2) 0;
 
-  padding: .5em .8em;
-  border: 4px solid transparent;
-  border-image: var(--art-box) 70 90 95 90 fill /
-    calc(var(--bub-plate) * 70) calc(var(--bub-plate) * 90)
-    calc(var(--bub-plate) * 95) calc(var(--bub-plate) * 90) /
-    var(--bub-out);
-  /* The shadow follows the plate's own outline, moss and all. */
-  filter: drop-shadow(0 .2em .35em var(--shadow-deep));
+  padding: .55em .95em .62em;
+  border: var(--bub-line) solid var(--text-outline);
+  border-radius: .95em;
+  background: linear-gradient(180deg, var(--white) 0%, var(--cream) 100%);
+  box-shadow:
+    inset 0 -.14em 0 color-mix(in srgb, var(--cream-deep) 70%, transparent),
+    0 .3em .7em var(--shadow-deep);
 
   font-family: var(--font-display);
   font-weight: 400;
   font-size: clamp(14px, calc(var(--board-w) * .0236), 44px);
-  line-height: 1.2;
+  line-height: 1.22;
   letter-spacing: .5px;
   text-align: center;
-  color: var(--bubble-ink);
-  text-shadow: 0 .06em 0 var(--text-outline);
+  color: var(--brown-ink);
   pointer-events: none;
 }
 .bubble[hidden] { display: none; }
 
 .bubble .type-wrap { display: inline-block; vertical-align: top; }
 
-/* ---- The bird under the bubble ------------------------------------------
-   Swiftee appears on this screen only, standing on the field under the
-   plate's left end and speaking the line. A child of the plate, so it is
-   placed against the plate at any width and leaves with it (bubbleOut).
-   Its cell is square; the ink fills 11%-88% of it top to bottom, so the
-   head is lifted to just under the plate's outset edge. */
-.bubble__bird {
-  --bird-h: calc(var(--board-w) * 9 / 16 * .44);
-
+/* The tail, drawn over the bubble's left edge a little below its middle:
+   40 units wide to --tail-w, so a 3.2-unit stroke is the border's .12em,
+   and its fill reaches a hair into the bubble to cover the border where
+   the two join. */
+.bubble__tail {
   position: absolute;
-  left: calc(-4px - var(--bub-out) - var(--bird-h) * .4);
-  top: calc(100% + 4px + var(--bub-out) + .1em - var(--bird-h) * .113);
+  left: calc(1px - var(--tail-w));
+  top: 46%;
+  width: var(--tail-w);
+  height: calc(var(--tail-w) * 34 / 40);
+  overflow: visible;
+}
+.bubble__tail-fill { fill: color-mix(in srgb, var(--white) 35%, var(--cream)); }
+.bubble__tail-line {
+  fill: none;
+  stroke: var(--text-outline);
+  stroke-width: 3.2;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+
+/* ---- The bird beside the bubble -----------------------------------------
+   Swiftee appears on this screen only, standing to the left of the bubble
+   and speaking the line, the tail's tip at its head. A child of the
+   bubble, so it is placed against the bubble at any width and leaves with
+   it (bubbleOut). Its cell is square, the ink filling about 18%-82% of it
+   across and 11%-88% down; the head's right edge is set at the tail's tip. */
+.bubble__bird {
+  position: absolute;
+  left: calc(var(--tail-w) * -.95 - var(--bird-h) * .8);
+  top: calc(46% + var(--tail-w) * .72 - var(--bird-h) * .42);
   width: var(--bird-h);
   height: var(--bird-h);
 }
@@ -1097,6 +1136,9 @@ body {
   .loader, .loader__fill { animation: none; transition: none; }
 }
 
+/* ---- Start ----------------------------------------------------------------
+   A round orange key with a play mark (index.html), standing on its wall
+   like the game's other keys. It breathes (start-pulse) until pressed. */
 .start-btn {
   grid-row: 2;
 
@@ -1106,15 +1148,14 @@ body {
 
   align-self: center;
   justify-self: center;
-  font-family: inherit;
-  font-weight: 400;
-  font-size: clamp(30px, 5vh, 40px);
-  letter-spacing: 1px;
-  color: var(--button-text);
-  text-shadow: 0 .07em 0 var(--orange-deep);
-  padding: clamp(8px, 1.8vh, 18px) clamp(28px, 5vw, 55px);
+  display: grid;
+  place-items: center;
+  width: clamp(96px, 17vh, 150px);
+  aspect-ratio: 1;
+  padding: 0;
   border: 4px solid var(--text-outline);
-  border-radius: clamp(16px, 2.6vh, 24px);
+  border-radius: 50%;
+  -webkit-tap-highlight-color: transparent;
   background: linear-gradient(180deg, var(--next-face-1) 0%, var(--button-bg) 50%, var(--orange-border) 100%);
   box-shadow:
     inset 0 3px 0 color-mix(in srgb, var(--white) 35%, transparent),
@@ -1149,3 +1190,4 @@ body {
               transform .42s cubic-bezier(.2, .9, .3, 1.4),
               filter .18s ease;
 }
+.start-btn svg { width: 100%; height: 100%; display: block; }

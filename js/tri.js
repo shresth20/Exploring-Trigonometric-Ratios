@@ -55,9 +55,31 @@
   var ARC_R = 40;          /* the angle arc's radius                      */
   var SQ = 20;             /* the right angle's square, along each side   */
   var WORD_OFF = 34;       /* a word beside a side, out from it           */
-  var VAL_OFF = 30;        /* a length beside a side, the same            */
+  var LEVEL_WORD_OFF = 12; /* a word under a level side: its letters hang
+                              clear of the line, so it can stand closer    */
+  var VAL_OFF = 30;       /* a length beside a side, the same            */
   var ANG_OFF = 66;        /* the angle's word, in from its vertex        */
   var VTX_OFF = 26;        /* A, B, C: out from the vertex                */
+  /* The angle's word is a box this size round its middle -- in picture
+     units, at .tri__angle's 24px: half its height, and half its width per
+     letter -- and stands this far clear of both sides and of the arc. */
+  var ANG_HALF_H = 11, ANG_HALF_CH = 7.2, ANG_CLEAR = 4;
+
+  /* How far in from a vertex the angle's word goes, along the bisector
+     `bis`: at least ANG_OFF, and further where the angle is narrow, so the
+     whole word stands inside the triangle, clear of both sides (normals
+     `n1`, `n2`) and past the arc. Never past the middle of the shorter
+     side either, so a small triangle keeps its word inside it. */
+  function angleReach(text, bis, n1, n2, half, shortest) {
+    var hw = Math.max(1, String(text || '').length) * ANG_HALF_CH, hh = ANG_HALF_H;
+    if (!text) return ANG_OFF;
+    var s = Math.sin(half);
+    var need = ARC_R + ANG_CLEAR + Math.abs(bis.x) * hw + Math.abs(bis.y) * hh;
+    [n1, n2].forEach(function (n) {
+      if (s > 0.01) need = Math.max(need, (Math.abs(n.x) * hw + Math.abs(n.y) * hh + ANG_CLEAR) / s);
+    });
+    return Math.max(ANG_OFF, Math.min(need, shortest * 0.5));
+  }
 
   function opposite(v) {
     return Object.keys(SIDES).filter(function (s) { return SIDES[s].indexOf(v) < 0; })[0];
@@ -133,6 +155,8 @@
     var right = spec.right === undefined ? 'B' : spec.right;
     var theta = spec.theta || 'A';
     var wordOff = spec.wordOff || WORD_OFF;
+    /* a figure that sets its words under the lengths keeps the one offset */
+    var levelOff = spec.wordOff || LEVEL_WORD_OFF;
     var valOff = spec.valOff || VAL_OFF;
 
     group.classList.add('figure__tri');
@@ -215,8 +239,9 @@
         var p = V[SIDES[s][0]], q = V[SIDES[s][1]];
         sides[s].setAttribute('d', 'M' + pt(p) + ' L' + pt(q));
         var third = V[other(SIDES[s][0], SIDES[s][1])];
+        var level = Math.abs(q.y - p.y) < Math.abs(q.x - p.x) && !slant(p, q);
         var wv = outside(p, q, third, valOff);
-        var ww = outside(p, q, third, wordOff);
+        var ww = outside(p, q, third, level ? levelOff : wordOff);
         /* beside an upright side both words read rightward from the same
            edge, so the name is set UNDER the length rather than past it */
         var upright = Math.abs(q.y - p.y) >= Math.abs(q.x - p.x) && !slant(p, q);
@@ -236,11 +261,8 @@
         } else {
           arcs[v].setAttribute('d', arcPath(P, P1, P2, ARC_R));
         }
+        placeAngle(v);
         var bis = unit(add(unit(sub(P1, P)), unit(sub(P2, P))));
-        var inside = add(P, mul(bis, v === right ? ANG_OFF * 0.9 : ANG_OFF));
-        angles[v].setAttribute('x', round2(inside.x));
-        angles[v].setAttribute('y', round2(inside.y));
-        angles[v].setAttribute('dy', '.36em');
         var out = add(P, mul(bis, -VTX_OFF));
         names[v].setAttribute('x', round2(out.x));
         names[v].setAttribute('y', round2(out.y));
@@ -250,6 +272,27 @@
       tip.setAttribute('cy', round2(A.y));
     }
     t.layout = layout;
+
+    /* The word at vertex v, inside the angle on its bisector: as far in as
+       the word it holds needs (angleReach), so it is placed again whenever
+       it is rewritten. */
+    function placeAngle(v) {
+      var P = V[v];
+      var o = ['A', 'B', 'C'].filter(function (w) { return w !== v; });
+      var P1 = V[o[0]], P2 = V[o[1]];
+      var u1 = unit(sub(P1, P)), u2 = unit(sub(P2, P));
+      var bis = unit(add(u1, u2));
+      var reach = ANG_OFF * 0.9;
+      if (v !== right) {
+        var half = Math.acos(Math.max(-1, Math.min(1, u1.x * u2.x + u1.y * u2.y))) / 2;
+        reach = angleReach(angles[v].textContent, bis, { x: -u1.y, y: u1.x }, { x: -u2.y, y: u2.x },
+                           half, Math.min(dist(P, P1), dist(P, P2)));
+      }
+      var inside = add(P, mul(bis, reach));
+      angles[v].setAttribute('x', round2(inside.x));
+      angles[v].setAttribute('y', round2(inside.y));
+      angles[v].setAttribute('dy', '.36em');
+    }
     t.set = function (a, b, c) {
       if (a) V.A = a;
       if (b) V.B = b;
@@ -257,7 +300,7 @@
       layout();
     };
     t.setTheta = function (v) { theta = v; };
-    t.setWordOff = function (n) { wordOff = n; layout(); };
+    t.setWordOff = function (n) { wordOff = levelOff = n; layout(); };
 
     function slotOf(map, which, at) {
       return map[SIDES[which] ? which : roles(at)[which]];
@@ -268,7 +311,7 @@
     t.writeVal = function (which, text, at) {
       var e = slotOf(vals, which, at); e.textContent = text; return e;
     };
-    t.writeAngle = function (v, text) { angles[v].textContent = text; return angles[v]; };
+    t.writeAngle = function (v, text) { angles[v].textContent = text; placeAngle(v); return angles[v]; };
     t.writeName = function (v, text) { names[v].textContent = text; return names[v]; };
 
     t.angleAt = function (v) {

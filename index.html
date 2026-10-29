@@ -48,15 +48,21 @@
          control are both positioned against THIS. -->
     <div class="frame" id="frame">
 
-      <!-- The welcome's first line, on a plate of its own in the middle of
-           the frame, before the board exists. The bird stands under the
-           plate's left end: this is the only screen it appears on, and it
-           comes and goes with the plate. -->
+      <!-- The welcome's first line, in a speech bubble in the middle of the
+           frame, before the board exists, its tail pointing at the bird
+           beside it. This is the only screen the bird appears on, and it
+           comes and goes with the bubble. The tail is drawn over the
+           bubble's edge: its fill covers the border where the two meet,
+           and its outline is only the two slanted strokes. -->
       <div class="bubble" id="bubble" hidden>
         <span class="type-wrap" id="bubbleType">
           <span class="type-ghost"></span>
           <span class="type" aria-live="polite"><span class="txt"></span></span>
         </span>
+        <svg class="bubble__tail" viewBox="0 0 40 34" aria-hidden="true" focusable="false">
+          <path class="bubble__tail-fill" d="M41 3 L2 29 L41 19 Z" />
+          <path class="bubble__tail-line" d="M40 3 L2 29 L40 19" />
+        </svg>
         <div class="bubble__bird" id="bubbleBird" aria-hidden="true"></div>
       </div>
 
@@ -105,6 +111,20 @@
                   <feMergeNode in="SourceGraphic" />
                 </feMerge>
               </filter>
+              <!-- The light on a word while it is spoken of (.is-glowing-text):
+                   a soft gold halo round the word's own shape. -->
+              <filter id="hiGlow" filterUnits="userSpaceOnUse"
+                      x="-200" y="-200" width="1400" height="820">
+                <feMorphology in="SourceAlpha" operator="dilate" radius="2" result="fat" />
+                <feGaussianBlur in="fat" stdDeviation="5" result="soft" />
+                <feFlood class="hi-glow__ink" result="ink" />
+                <feComposite in="ink" in2="soft" operator="in" result="halo" />
+                <feMerge>
+                  <feMergeNode in="halo" />
+                  <feMergeNode in="halo" />
+                  <feMergeNode in="SourceGraphic" />
+                </feMerge>
+              </filter>
             </defs>
 
             <!-- Section 1: the right-angled triangle and its sides -->
@@ -118,7 +138,8 @@
             <g id="figS3R" hidden></g>
             <!-- Section 4: the 60° angle, on the same half -->
             <g id="figS4" hidden></g>
-            <!-- Section 5: towards 0° -->
+            <!-- Section 5: the triangles of "your turn", and towards 0° -->
+            <g id="figS5F" hidden></g>
             <g id="figS5" hidden></g>
             <!-- Section 6: towards 90° -->
             <g id="figS6" hidden></g>
@@ -198,7 +219,20 @@
           <span class="loader__line"><span class="loader__fill" id="loaderFill"></span></span>
         </span>
       </div>
-      <button class="start-btn" id="startBtn" type="button" hidden data-i18n="btnStart">Start</button>
+      <!-- Start: a round orange key, the Next key's kin, with a play mark
+           outlined in the same dark and a gloss across its top. The mark
+           is centred on its centroid, so it sits in the middle to the eye. -->
+      <button class="start-btn" id="startBtn" type="button" hidden data-i18n-attr="aria-label:btnStart" aria-label="Start">
+        <svg viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+          <ellipse cx="50" cy="20" rx="28" ry="10" fill="var(--white)" opacity=".24" />
+          <path d="M37 25 L76 50 L37 75 Z"
+                fill="var(--text-outline)" stroke="var(--text-outline)" stroke-width="16"
+                stroke-linejoin="round" />
+          <path d="M37 25 L76 50 L37 75 Z"
+                fill="var(--next-arrow)" stroke="var(--next-arrow)" stroke-width="8.75"
+                stroke-linejoin="round" />
+        </svg>
+      </button>
     </section>
   </main>
 

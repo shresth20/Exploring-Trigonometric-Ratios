@@ -276,14 +276,15 @@ var I18n = (function () {
   /* say(key): play the key's clip; one clip at a time. Resolves with true
      when it has ended, false when there was no clip, it could not play
      (autoplay blocked, file not recorded yet) or it was cut by a later say
-     or by stop(). */
-  function say(key) {
+     or by stop(). say(key, { from, to }) plays one stretch of the clip,
+     in seconds -- one sentence of a line said a sentence at a time. */
+  function say(key, part) {
     var p = _pack();
     /* only a recorded line: a key with no clip yet is silence, not a 404 */
     var url = p && p.urls && p.urls[key];
     stop();
     if (!url || !window.GameAudio) return Promise.resolve(false);
-    var h = _playing = GameAudio.play(url);
+    var h = _playing = GameAudio.play(url, part ? { from: part.from, to: part.to } : undefined);
     return h.done.then(function (ok) {
       if (_playing === h) _playing = null;
       return ok;

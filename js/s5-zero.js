@@ -3,8 +3,14 @@
  * --------------------------------------------------------------------------
  * Storyboard pages 58-70. Three scenes:
  *
- *   Your turn.  The table so far, and three values to find in it: sin 30°,
- *     cos 45°, tan 60° -- each a tap on the right cell. Next.
+ *   Your turn.  Three values to find, each from a triangle of its own
+ *     (storyboard pages 58-60): the table stands aside, a triangle with
+ *     new side lengths is drawn -- 6, 3 and 3√3 for sin 30°; 4, 4 and
+ *     4√2 for cos 45°; 4, 2 and 2√3 for tan 60° -- the first in the middle
+ *     of the board, stepping aside to the left once drawn, the others on
+ *     the left -- and the ratio is asked on the right, its two lengths
+ *     chosen from dropdowns of the triangle's lengths; then its value.
+ *     Next after each.
  *   Towards 0°.  A triangle with its hypotenuse fixed at 4, in the middle
  *     of the board; the learner drags its far corner down, θ goes to 0°,
  *     and the opposite side shrinks to nothing while the other two sides
@@ -35,21 +41,43 @@
      it, so the measure stands just left of the corner instead. */
   var THIN_DEG = 25;
 
+  /* The triangles of the first scene, one per value to find: the corners
+     (θ's at A, or at C for 60°), the measure marked at θ, the length on
+     each side, and the ratio asked -- its lengths, and the value they
+     come to. 30° triangles have a base 330 long, the 45° one 260. */
+  var FINDS = [
+    { ask: 's5FindSin30', lhs: 'eqSinDeg', deg: 30, at: 'A', angle: 'lblDeg30',
+      A: { x: 335, y: 350 }, B: { x: 665, y: 350 }, C: { x: 665, y: 159.47 },
+      vals: { CA: 'val6', BC: 'val3', AB: 'val3Root3' },
+      num: 'val3', den: 'val6', value: 'valHalf' },
+    { ask: 's5FindCos45', lhs: 'eqCosDeg', deg: 45, at: 'A', angle: 'lblDeg45',
+      A: { x: 370, y: 385 }, B: { x: 630, y: 385 }, C: { x: 630, y: 125 },
+      vals: { CA: 'val4Root2', BC: 'val4', AB: 'val4' },
+      num: 'val4', den: 'val4Root2', value: 'valOneOverRoot2' },
+    { ask: 's5FindTan60', lhs: 'eqTanDeg', deg: 60, at: 'C', angle: 'lblDeg60',
+      A: { x: 335, y: 350 }, B: { x: 665, y: 350 }, C: { x: 665, y: 159.47 },
+      vals: { CA: 'val4', BC: 'val2', AB: 'val2Root3' },
+      num: 'val2Root3', den: 'val2', value: 'valRoot3' }
+  ];
+
   var dom = null;
   var t = null;
+  var tF = null;
   var grab = null;
 
   function build() {
     dom = Object.create(K.dom());
     dom.g = document.getElementById('figS5');
+    dom.gF = document.getElementById('figS5F');
     /* the names stand further out than the lengths, so both can show */
     t = Tri.create(dom.g, { A: A0, B: { x: A0.x + HYP, y: A0.y }, C: { x: A0.x + HYP, y: A0.y },
                             right: 'B', theta: 'A', wordOff: 70 });
+    tF = Tri.create(dom.gF, { A: FINDS[0].A, B: FINDS[0].B, C: FINDS[0].C, right: 'B', theta: 'A' });
     buildGrab();
     reset();
   }
 
-  function notQuite() { quiet(K.speak(K.keyed('fbNotQuite'))); }
+  function notQuite() { return quiet(K.speak(K.keyed('fbNotQuite'))); }
   function approx(n) { return T('lblApprox', { v: (Math.round(n * 100) / 100).toFixed(2) }); }
 
   /* The triangle at θ = deg, and the lengths beside its sides. */
@@ -105,32 +133,86 @@
   /* ======================================================================
    * Scene 1 -- your turn
    * ====================================================================== */
+  /* Each value found is a page of its own: Next, and the next one. */
   function sceneYourTurn() {
-    return ensureTable()
+    return W.table.hide()
       .then(function () { return Flow.wait(SHORT); })
-      .then(function () { return find('s5FindSin30', 'sin', 30, false); })
-      .then(function () { return find('s5FindCos45', 'cos', 45, false); })
-      .then(function () { return find('s5FindTan60', 'tan', 60, true); })
+      .then(function () { return find(0); })
+      .then(nextFind)
+      .then(function () { return find(1); })
+      .then(nextFind)
+      .then(function () { return find(2); })
       .then(function () { return Flow.wait(BEAT); })
-      .then(function () { return K.handOver(); });
+      .then(nextFind);
   }
-  function find(askKey, r, a, last) {
-    return K.say(askKey)
+  function nextFind() { return K.handOver().then(findOut); }
+  /* One value found: its triangle drawn, its lengths on its sides, and
+     set on the left; the question said; then the ratio on the right, its
+     two lengths chosen from dropdowns of the triangle's lengths, and the
+     value they come to. */
+  function find(n) {
+    var f = FINDS[n], last = n === FINDS.length - 1;
+    var lengths = Object.keys(f.vals).map(function (s) { return T(f.vals[s]); })
+      .filter(function (v, i, all) { return all.indexOf(v) === i; });
+    return findIn(f, n === 0)
+      .then(function () { return K.say(f.ask); })
       .then(function () {
-        return W.table.ask(r, a, { onWrong: notQuite });
+        W.pane.show();
+        var row = W.eqRow(T(f.lhs, { a: f.deg }));
+        return Flow.anim(Beats.rowIn(row.el))
+          .then(function () {
+            return W.askLengths(row, { frac: 'A', num: T(f.num), den: T(f.den), options: lengths, onWrong: notQuite });
+          })
+          .then(function () { return Flow.wait(SHORT); })
+          .then(function () { return Flow.anim(row.showVal(T(f.value))); });
       })
       .then(function () {
         return last ? K.praise() : K.speak(K.keyed('fbCorrect'));
       })
-      .then(function () { return Flow.wait(SHORT); })
-      .then(function () { W.table.settle(r, a); });
+      .then(function () { return Flow.wait(BEAT); });
   }
-  function ensureTable() {
-    var d = dom;
-    if (!d.tableWrap.hasAttribute('hidden')) return Promise.resolve();
-    rememberAll();
-    return W.table.show();
+  /* The triangle drawn: laid out and measured whole first, so where it
+     stands -- the left half, or the middle of the board when `centre` --
+     is known, then put out of sight and drawn there: the pen round it,
+     θ's arc and measure, and the lengths landing one by one. Drawn in the
+     middle, it then steps aside to the left half for the pane. */
+  function findIn(f, centre) {
+    tF.reset();
+    tF.set(f.A, f.B, f.C);
+    tF.setTheta(f.at);
+    Object.keys(f.vals).forEach(function (s) { tF.writeVal(s, T(f.vals[s])); });
+    tF.writeAngle(f.at, T(f.angle));
+    Tri.instant(tF);
+    var marks = vals(tF).concat([tF.arcs[f.at], tF.angles[f.at]]);
+    M.set(marks, { opacity: 1 });
+    M.set(dom.gF, { x: 0, y: 0, opacity: 1 });
+    var left = K.aside(dom.gF);
+    M.set(dom.gF, centre ? K.aside(dom.gF, .5) : left);
+    M.set(tF.parts(), { opacity: 0 });
+    return Tri.draw(tF, { time: 1.2, hold: 100 })
+      .then(function () { return Tri.angleIn(tF, f.at, T(f.angle)); })
+      .then(function () {
+        return ['CA', 'BC', 'AB'].reduce(function (chain, s) {
+          return chain.then(function () {
+            return Flow.anim(Beats.labelIn(tF.vals[s])).then(function () { return Flow.wait(100); });
+          });
+        }, Promise.resolve());
+      })
+      .then(function () {
+        if (!centre) return;
+        return Flow.wait(SHORT)
+          .then(function () { return Flow.anim(Beats.moveGroup(dom.gF, left, 0.9)); });
+      });
   }
+  /* ...and taken away with its working, for the next. */
+  function findOut() {
+    return Promise.all([W.pane.out(), Flow.anim(Beats.clearFigure(tF.parts()))])
+      .then(function () {
+        dom.gF.setAttribute('hidden', '');
+        tF.reset();
+      });
+  }
+  function vals(tri) { return Object.keys(tri.vals).map(function (s) { return tri.vals[s]; }); }
   function rememberAll() {
     W.table.remember('sin', 45, T('valOneOverRoot2')); W.table.remember('cos', 45, T('valOneOverRoot2')); W.table.remember('tan', 45, T('val1'));
     W.table.remember('sin', 30, T('valHalf')); W.table.remember('cos', 30, T('valRoot3Over2')); W.table.remember('tan', 30, T('valOneOverRoot3'));
@@ -217,16 +299,17 @@
     return row;
   }
 
-  /* One ratio extended: the definition said, the row with its numbers,
-     and the value. */
+  /* One ratio extended: the definition said first; then the row, its
+     numbers carried in from the line, and the value. */
   function ratio(sayKey, lhsKey, deg, n, d, nv, dv, value) {
     var row = W.eqRow(T(lhsKey, { a: deg }));
     row.A.n.className = 'eq__n c-' + n;
     row.A.d.className = 'eq__d c-' + d;
-    return Promise.all([K.say(sayKey), Flow.anim(Beats.rowIn(row.el))])
+    return K.say(sayKey)
+      .then(function () { return Flow.anim(Beats.rowIn(row.el)); })
       .then(function () {
         quiet(Flow.anim(Beats.linePulse([t.side(n), t.side(d)])));
-        return Flow.anim(row.showA(nv, dv));
+        return row.flyA(nv, dv, t.val(n), t.val(d));
       })
       .then(function () { return Flow.wait(SHORT); })
       .then(function () { return Flow.anim(row.showVal(value)); })
@@ -255,12 +338,15 @@
   }
 
   /* ---- the hooks ---------------------------------------------------------- */
-  function parts() { return t.parts().concat([grab.el]); }
+  function parts() { return t.parts().concat([grab.el], tF.parts()); }
   function wipe() { return []; }
   function reset() {
     grab.reset();
     t.reset();
+    tF.reset();
     dom.g.setAttribute('hidden', '');
+    dom.gF.setAttribute('hidden', '');
+    M.set(dom.gF, { clearProps: 'transform,opacity' });
   }
   function stage(local) {
     rememberAll();

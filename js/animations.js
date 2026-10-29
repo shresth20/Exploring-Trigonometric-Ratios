@@ -338,39 +338,142 @@
     return tl;
   }
 
-  /* A word lit while it is spoken of: a slow breath, `times` over. */
+  /* A word lit while it is spoken of -- a length, an angle's measure: a
+     gold halo round it (.is-glowing-text, the #hiGlow filter) and a swell
+     and settle of its size, `times` over, so the eye is taken straight to
+     it. A word beside a slanted side carries its turn as a transform
+     attribute; it is handed back as it was when the light goes off. */
+  var TEXT_SWELL = 1.32;
+  var TEXT_BEAT = 0.7;
   function textPulse(els, times) {
     var list = [].concat(els).filter(Boolean);
-    function off() {
-      list.forEach(function (m) {
-        m.classList.remove('is-glowing-text');
-        if (m.style) m.style.removeProperty('--pulse-times');
-      });
-    }
-    var tl = M.timeline({ revert: off });
+    var n = times || 2;
+    var turns = list.map(function (m) { return m.getAttribute ? m.getAttribute('transform') : null; });
+    var tl = M.timeline({
+      willChange: list, willChangeValue: 'transform',
+      revert: function () {
+        list.forEach(function (m, i) {
+          m.classList.remove('is-glowing-text');
+          M.set(m, { clearProps: 'transform' });
+          if (turns[i]) m.setAttribute('transform', turns[i]);
+        });
+      }
+    });
     tl.call(function () {
-      list.forEach(function (m) {
-        m.classList.remove('is-glowing-text');
-        void m.getBoundingClientRect().width;
-        if (m.style) m.style.setProperty('--pulse-times', String(times || 2));
-        m.classList.add('is-glowing-text');
-      });
+      list.forEach(function (m) { m.classList.add('is-glowing-text'); });
     }, null, 0);
-    tl.call(function () {}, null, M.gap(PULSE_SECS * (times || 2)));
+    for (var i = 0; i < n; i++) {
+      tl.to(list, { scale: TEXT_SWELL, transformOrigin: 'center center',
+                    duration: M.dur(0.26), ease: 'power2.out' }, M.gap(i * TEXT_BEAT))
+        .to(list, { scale: 1, duration: M.dur(0.44), ease: 'power2.inOut' }, M.gap(i * TEXT_BEAT + 0.26));
+    }
+    tl.to({}, { duration: M.dur(0.3) });
     return tl;
   }
 
   /* A stroke swelling and settling, written into a timeline the caller
      owns: what lights a side once. */
+  var LINE_SWELL = 2.1;
   function swellTo(tl, paths, w, at) {
-    tl.to(paths, { strokeWidth: w * 1.6, duration: M.dur(0.26), ease: 'power2.out' }, M.gap(at))
-      .to(paths, { strokeWidth: w, duration: M.dur(0.5), ease: M.POP }, M.gap(at + 0.26));
+    tl.to(paths, { strokeWidth: w * LINE_SWELL, duration: M.dur(0.24), ease: 'power2.out' }, M.gap(at))
+      .to(paths, { strokeWidth: w, duration: M.dur(0.38), ease: 'power2.inOut' }, M.gap(at + 0.24));
   }
+  /* A side -- or an arc, or the right angle's square -- lit while it is
+     spoken of: its own ink bloomed under it (.is-lit, #partGlow) and the
+     stroke swelling and settling twice, so it is plainly picked out of the
+     triangle, then let go. `w` is the stroke's resting width. A mark lit
+     already (a corner in hand) keeps its light. */
   var PART_W = 4;
   function linePulse(paths, w) {
     var list = [].concat(paths).filter(Boolean);
-    var tl = M.timeline({ revert: function () { M.set(list, { clearProps: 'strokeWidth' }); } });
+    var lit = list.filter(function (p) { return !p.classList.contains('is-lit'); });
+    var tl = M.timeline({
+      revert: function () {
+        lit.forEach(function (p) { p.classList.remove('is-lit'); });
+        M.set(list, { clearProps: 'strokeWidth' });
+      }
+    });
+    tl.call(function () { lit.forEach(function (p) { p.classList.add('is-lit'); }); }, null, 0);
     swellTo(tl, list, w || PART_W, 0);
+    swellTo(tl, list, w || PART_W, 0.62);
+    tl.to({}, { duration: M.dur(0.35) });
+    return tl;
+  }
+
+  /* A name's box lit with the side it names: it swells and settles twice
+     in step with linePulse, its border bloomed. */
+  function boxPulse(box) {
+    var tl = M.timeline({
+      willChange: box.g, willChangeValue: 'transform',
+      revert: function () {
+        box.g.classList.remove('is-lit');
+        M.set(box.g, { clearProps: 'transform' });
+      }
+    });
+    tl.call(function () { box.g.classList.add('is-lit'); }, null, 0);
+    [0, 0.62].forEach(function (at) {
+      tl.to(box.g, { scale: 1.1, transformOrigin: 'center center',
+                     duration: M.dur(0.24), ease: 'power2.out' }, M.gap(at))
+        .to(box.g, { scale: 1, duration: M.dur(0.38), ease: 'power2.inOut' }, M.gap(at + 0.24));
+    });
+    tl.to({}, { duration: M.dur(0.35) });
+    return tl;
+  }
+
+  /* A value carried out of the picture into the working: a copy of it
+     lifts off the label it is read from (`from`, on the figure), flies in
+     a shallow arc to the slot it fills (`to`, in the pane) -- growing or
+     shrinking from the label's size to the slot's -- and the slot takes
+     over from it as it lands. The slot is written already and waits
+     invisible; where it is is read every frame, so a column still gliding
+     to its place round it is followed, not missed. */
+  var FLY_LIFT = 46;          /* px the arc rises at its middle */
+  function flyTo(from, to, text) {
+    var copy = document.createElement('span');
+    copy.className = 'fly-copy';
+    copy.setAttribute('aria-hidden', 'true');
+    if (global.MathText) global.MathText.write(copy, text);
+    else copy.textContent = text;
+    var cs = getComputedStyle(to);
+    copy.style.fontSize = cs.fontSize;
+    copy.style.color = cs.color;
+    document.body.appendChild(copy);
+    M.set(to, { opacity: 0 });
+
+    function centre(el) {
+      var r = el.getBoundingClientRect();
+      return { x: r.left + r.width / 2, y: r.top + r.height / 2, h: r.height };
+    }
+    var a = centre(from);
+    var box = copy.getBoundingClientRect();
+    var w = box.width || 1, h = box.height || 1;
+    var k0 = Math.max(0.5, Math.min(2.5, a.h / h));
+    var p = { t: 0 };
+    function place() {
+      var b = centre(to), e = p.t;
+      M.set(copy, {
+        x: a.x + (b.x - a.x) * e - w / 2,
+        y: a.y + (b.y - a.y) * e - Math.sin(e * Math.PI) * FLY_LIFT - h / 2,
+        scale: k0 + (1 - k0) * e
+      });
+    }
+    M.set(copy, { opacity: 0, transformOrigin: '50% 50%' });
+    place();
+
+    var tl = M.timeline({
+      willChange: copy, willChangeValue: 'transform, opacity',
+      revert: function () {
+        if (copy.parentNode) copy.parentNode.removeChild(copy);
+        M.set(to, { clearProps: 'opacity' });
+      }
+    });
+    tl.to(copy, { opacity: 1, duration: M.dur(0.18), ease: 'power2.out' }, 0);
+    tl.to(p, { t: 1, duration: M.dur(0.8), ease: 'power2.inOut', onUpdate: place }, M.gap(0.12));
+    tl.call(function () {
+      M.set(to, { opacity: 1 });
+      M.set(copy, { opacity: 0 });
+      pop();
+    }, null, M.gap(0.92));
     return tl;
   }
 
@@ -500,6 +603,12 @@
     sfx('wrong');
     return M.incorrect(btn);
   }
+  /* A refused answer, spent: it fades back, so it plainly cannot be
+     pressed again and the eye is left on the rest. */
+  var SPENT_ALPHA = 0.38;
+  function choiceOut(btn) {
+    return M.to(btn, { opacity: SPENT_ALPHA, duration: M.dur(0.3), ease: 'power2.out' });
+  }
 
   /* A name let go of somewhere that is not its box: back to the tray. */
   function chipHome(chip) {
@@ -524,28 +633,26 @@
     });
   }
 
-  /* The box, answered: the border turns green, the word pops in, the tick
-     lands beside it, and the box gives one short pulse. */
+  /* The box, answered: the border turns green, the word pops in, and the
+     box gives one short pulse. The green border is the verdict; there is
+     no tick. */
   function boxRight(box) {
     box.g.classList.remove('is-wrong', 'is-over');
     box.g.classList.add('is-right');
     sfx('correct');
 
     M.set(box.text, { opacity: 0, scale: 0.7, transformOrigin: 'center center' });
-    M.set(box.badge, { opacity: 1, scale: 0, transformOrigin: 'center center' });
-    var tl = M.timeline({
-      willChange: [box.text, box.badge], willChangeValue: 'transform, opacity'
-    });
+    var tl = M.timeline({ willChange: box.text, willChangeValue: 'transform, opacity' });
     tl.to(box.rect, { scale: 1.05, transformOrigin: 'center center',
                       duration: M.dur(0.14), ease: 'power2.out' }, 0)
       .to(box.rect, { scale: 1, duration: M.dur(0.3), ease: M.POP }, M.gap(0.14))
-      .to(box.text, { opacity: 1, scale: 1, duration: M.dur(0.36), ease: 'back.out(1.7)' }, M.gap(0.06))
-      .to(box.badge, { scale: 1, duration: M.dur(0.34), ease: M.POP }, M.gap(0.16));
+      .to(box.text, { opacity: 1, scale: 1, duration: M.dur(0.36), ease: 'back.out(1.7)' }, M.gap(0.06));
     return tl;
   }
 
-  /* The box, refused: it turns red and shakes its head, and holds the red
-     for a beat before it is a plain box again. */
+  /* The box, refused: the wrong name written in it pops in, and the box
+     turns red and shakes its head. The red and the name stay -- held there
+     while it is said to be wrong -- until boxFree gives them back. */
   var SHAKE = [-5, 5, -5, 5, -4, 4, 0];
 
   function boxWrong(box) {
@@ -553,19 +660,35 @@
     box.g.classList.add('is-wrong');
     sfx('wrong');
 
+    M.set(box.text, { opacity: 0, scale: 0.7, transformOrigin: 'center center' });
     var tl = M.timeline({
-      willChange: box.g, willChangeValue: 'transform',
-      revert: function () {
-        box.g.classList.remove('is-wrong');
-        M.set(box.g, { clearProps: 'transform' });
-      }
+      willChange: [box.g, box.text], willChangeValue: 'transform, opacity',
+      revert: function () { M.set(box.g, { clearProps: 'transform' }); }
     });
+    tl.to(box.text, { opacity: 1, scale: 1, duration: M.dur(0.36), ease: 'back.out(1.7)' }, M.gap(0.06));
     var each = M.dur(0.3) / SHAKE.length;
     SHAKE.forEach(function (x, i) {
       tl.to(box.g, { x: x, duration: each,
-                     ease: i === SHAKE.length - 1 ? 'power2.out' : 'none' });
+                     ease: i === SHAKE.length - 1 ? 'power2.out' : 'none' }, i * each);
     });
-    tl.to({}, { duration: M.dur(0.5) });
+    return tl;
+  }
+  /* ...and given back: the wrong name goes out of the box with the red,
+     and is lifted out and carried back to its place in the tray -- from
+     `at`, the box, in the chip's own moves. */
+  function boxFree(box, chip, at) {
+    box.g.classList.remove('is-wrong');
+    chip.classList.remove('is-docked');
+    var tl = M.timeline({
+      willChange: [box.text, chip], willChangeValue: 'transform, opacity',
+      revert: function () {
+        if (!box.g.classList.contains('is-right')) box.text.textContent = '';
+      }
+    });
+    tl.to(box.text, { opacity: 0, scale: 0.7, duration: M.dur(0.2), ease: 'power2.in' }, 0)
+      .fromTo(chip, { x: at.x, y: at.y, scale: 0.55, opacity: 0 },
+        { x: 0, y: 0, scale: 1, opacity: 1, duration: M.dur(0.4), ease: 'power2.out',
+          overwrite: 'auto' }, M.gap(0.08));
     return tl;
   }
 
@@ -610,17 +733,18 @@
    * Text boxes and controls
    * ====================================================================== */
 
-  /* The bubble is a plate in the middle of the screen with no tail, so it
-     grows from, and shrinks back into, its own centre. */
+  /* The speech bubble grows out of its tail -- out of the bird's beak --
+     and shrinks back into it. */
+  var BUBBLE_ORIGIN = '0% 72%';
   function bubbleArm(bubble) {
     bubble.removeAttribute('hidden');
-    M.set(bubble, { opacity: 0, scale: 0.15, transformOrigin: '50% 50%' });
+    M.set(bubble, { opacity: 0, scale: 0.15, transformOrigin: BUBBLE_ORIGIN });
   }
 
   function bubbleIn(bubble) {
     var tl = M.timeline({ willChange: bubble, willChangeValue: 'transform, opacity' });
     tl.to(bubble, {
-      opacity: 1, scale: 1, transformOrigin: '50% 50%',
+      opacity: 1, scale: 1, transformOrigin: BUBBLE_ORIGIN,
       duration: M.dur(0.44), ease: 'back.out(1.6)'
     });
     return tl;
@@ -634,15 +758,15 @@
       }
     });
     tl.to(bubble, {
-      opacity: 0, scale: 0.9, transformOrigin: '50% 50%',
+      opacity: 0, scale: 0.9, transformOrigin: BUBBLE_ORIGIN,
       duration: M.dur(0.24), ease: 'power2.in'
     });
     return tl;
   }
 
-  /* The bird under the bubble: out of sight while the plate arms, then up
-     onto its mark, squashing on its feet as it lands. It leaves with the
-     plate, so it has no way out of its own. */
+  /* The bird beside the bubble: out of sight while the bubble arms, then
+     up onto its mark, squashing on its feet as it lands. It leaves with
+     the bubble, so it has no way out of its own. */
   function birdArm(bird) {
     M.set(bird, { opacity: 0, yPercent: 30, transformOrigin: '50% 88%' });
   }
@@ -976,6 +1100,8 @@
     pulseRelease: pulseRelease,
     textPulse: textPulse,
     linePulse: linePulse,
+    boxPulse: boxPulse,
+    flyTo: flyTo,
     slideGroup: slideGroup,
     moveGroup: moveGroup,
     splitApart: splitApart,
@@ -990,10 +1116,12 @@
     trayOut: trayOut,
     choiceRight: choiceRight,
     choiceWrong: choiceWrong,
+    choiceOut: choiceOut,
     chipHome: chipHome,
     chipDock: chipDock,
     boxRight: boxRight,
     boxWrong: boxWrong,
+    boxFree: boxFree,
     shakeWrong: shakeWrong,
     /* clearing up */
     clearFigure: clearFigure,

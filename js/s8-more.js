@@ -8,9 +8,11 @@
  *     worked from, and its formula stands under the table: "Remember, cosec
  *     is the reciprocal of sine." Next.
  *   Your turn.  "Can you use the sine values to complete this new row?" A
- *     blank in each of its five cells, three values to choose from in
- *     each, judged as it is picked: a right one kept, a wrong one struck
- *     off and emptied for another go, until the whole row is right.
+ *     blank in each of its five cells, asked one at a time from 0° to
+ *     90°, three values to choose from in each -- a list opening upward
+ *     -- judged as it is picked: a right one kept and the next blank
+ *     called, a wrong one struck off and emptied for another go, until
+ *     the whole row is right.
  *   Right.  "That's right! Each cosec value is the reciprocal of the sine
  *     value." Next.
  *
@@ -90,7 +92,7 @@
     return o;
   }
 
-  function notQuite() { quiet(K.speak(K.keyed('fbNotQuite'))); }
+  function notQuite() { return quiet(K.speak(K.keyed('fbNotQuite'))); }
 
   function rememberAll() {
     var t = W.table;

@@ -10,13 +10,17 @@
  *   The 45° triangle.  "We'll start with 45°." The rows give way and the
  *     triangle comes to the middle of the board, set low so it has room to
  *     grow; its top corner glows, and the learner drags it up until the
- *     angle is 45°. The missing angle is asked for with the answers under
- *     the triangle. Next. The triangle goes back to the left half, the two
- *     equal sides are given 1 unit each, the hypotenuse is found by
- *     Pythagoras (√2), and sin 45° is worked; cos 45° and tan 45° are the
- *     learner's. Next.
- *   The table.  The three values go into the table. "Next up are 30° and
- *     60°." Next.
+ *     angle is 45°. "We know two angles" lights the 45° and the right
+ *     angle; "the missing one" draws the third angle's arc and its ?, and
+ *     the answers wait under the triangle. Next. The triangle goes back to
+ *     the left half, the two equal sides are given 1 unit each, the
+ *     hypotenuse is lit and given its ?, and found by Pythagoras (√2) from
+ *     a dropdown. With all three lengths it comes to the middle; sin 45°
+ *     is said, then worked aside, its lengths carried in from the
+ *     triangle; cos 45° and tan 45° are the learner's, their lengths
+ *     chosen from dropdowns. Next.
+ *   The table.  The three values go into the table, their column lit.
+ *     "Next up are 30° and 60°" lights those two columns. Next.
  * ========================================================================== */
 (function (global) {
   'use strict';
@@ -35,6 +39,9 @@
      triangle is as tall as its base is long, and its top corner -- and
      the drag past 45° -- needs the room above it. */
   var DROP = 50;
+  /* The resting widths of an angle's arc and the right angle's square,
+     as css/trig.css draws them, for a pulse to settle back to. */
+  var ARC_W = 3.6, SQUARE_W = 2.6;
 
   var dom = null;
   var t = null;
@@ -213,8 +220,12 @@
   }
   function roleOf(key) { return { wOpposite: 'opp', wAdjacent: 'adj', wHypotenuse: 'hyp' }[key]; }
 
-  /* A wrong pick in a blank: the header says so. */
-  function notQuite() { quiet(K.speak(K.keyed('fbNotQuite'))); }
+  /* A wrong pick in a blank: the voice says so -- handed back, so the
+     pick is held while it is said. */
+  function notQuite() { return quiet(K.speak(K.keyed('fbNotQuite'))); }
+
+  /* The 45° triangle's side lengths: what its blanks offer. */
+  function lengths45() { return [T('val1'), T('valRoot2')]; }
 
   /* ======================================================================
    * Scene 1 -- recall the ratios
@@ -273,7 +284,7 @@
    * Scene 2 -- the 45° triangle
    * ====================================================================== */
   function sceneForty5() {
-    var hypRow = null, hypPills = null;
+    var hypRow = null, hypAsk = null;
     return ensureRows()
       .then(function () { return K.say('s2Start45'); })
       .then(function () { return Flow.wait(SHORT); })
@@ -303,13 +314,41 @@
       })
       .then(function () { return Flow.wait(SHORT); })
 
-      /* ---- the missing angle: the answers under the triangle -------------- */
+      /* ---- the missing angle: the answers under the triangle --------------
+         "We know two angles" writes the right angle's 90° in, and lights
+         the two that are known, the 45° and the 90°; "the missing one" draws the
+         third one's arc, and its ? lands in it, lit. The ? is placed where
+         its answer will stand, so the answer takes its place without a
+         jump. */
       .then(function () {
-        t.writeAngle('C', T('lblQ'));
-        return Promise.all([
-          K.say('s2Missing'),
-          Flow.anim(Beats.labelIn(t.angles.C))
-        ]);
+        var known = null, asked = null;
+        function knownIn() {
+          if (!known) {
+            t.writeAngle('B', T('lblDeg90'));
+            /* the 90° lands, and then both angles glow as one */
+            known = Flow.anim(Beats.labelIn(t.angles.B)).then(function () {
+              return Promise.all([
+                Flow.anim(Beats.linePulse(t.arcs.A, ARC_W)),
+                Flow.anim(Beats.linePulse(t.square, SQUARE_W)),
+                Flow.anim(Beats.textPulse([t.angles.A, t.angles.B], 2))
+              ]);
+            });
+          }
+          return known;
+        }
+        function missingIn() {
+          if (!asked) {
+            asked = Flow.anim(Beats.growLine(t.arcs.C, 0.45, 'power2.inOut')).then(function () {
+              t.writeAngle('C', T('lblDeg45'));
+              t.angles.C.textContent = T('lblQ');
+              return Flow.anim(Beats.labelIn(t.angles.C));
+            }).then(function () { return Flow.anim(Beats.textPulse(t.angles.C, 2)); });
+          }
+          return asked;
+        }
+        quiet(K.onPhrase('s2Missing', 'two angles', knownIn));
+        quiet(K.onPhrase('s2Missing', 'missing', missingIn));
+        return K.speakBySentence('s2Missing').then(knownIn).then(missingIn);
       })
       .then(function () {
         var btns = K.buildChoices(dom.choices, K.shuffle([T('lblDeg30'), T('lblDeg45'), T('lblDeg60')]));
@@ -320,7 +359,6 @@
         }).then(function () {
           return Promise.all([
             Flow.anim(Beats.relabel(t.angles.C, function () { t.angles.C.textContent = T('lblDeg45'); })),
-            Flow.anim(Beats.growLine(t.arcs.C, 0.45, 'power2.inOut')),
             K.speak(K.keyed('fbCorrect'))
           ]);
         });
@@ -339,9 +377,17 @@
         return Flow.wait(SHORT);
       })
 
-      /* ---- the two equal sides ------------------------------------------- */
+      /* ---- the two equal sides -------------------------------------------
+         "Both angles are 45°" lights the two angles; "so the sides
+         opposite them are equal" lights the two sides. */
       .then(function () {
-        quiet(K.onPhrase('s2Both45', 'equal', function () {
+        quiet(K.onPhrase('s2Both45', 'angles', function () {
+          return Promise.all([
+            Flow.anim(Beats.linePulse([t.arcs.A, t.arcs.C], ARC_W)),
+            Flow.anim(Beats.textPulse([t.angles.A, t.angles.C], 2))
+          ]);
+        }));
+        quiet(K.onPhrase('s2Both45', 'sides opposite', function () {
           return Flow.anim(Beats.linePulse([t.sides.AB, t.sides.BC]));
         }));
         return K.say('s2Both45');
@@ -364,37 +410,35 @@
         }));
         return K.say('s2TwoSides');
       })
+      /* the side still to find lit first, and then its ? */
+      .then(function () {
+        quiet(Flow.anim(Beats.linePulse(t.sides.CA)));
+        return Flow.wait(SHORT * 2);
+      })
       .then(function () {
         return Flow.anim(Beats.labelIn(t.writeVal('CA', T('lblQ'))));
       })
       .then(function () { return Flow.wait(SHORT); })
 
-      /* ---- Pythagoras ---------------------------------------------------- */
+      /* ---- Pythagoras: the question said, and then asked on the right,
+         its answer chosen from a dropdown ---------------------------------- */
+      .then(function () {
+        quiet(K.onPhrase('s2PythHyp', 'hypotenuse', function () {
+          return Flow.anim(Beats.textPulse(t.vals.CA, 2));
+        }));
+        return K.say('s2PythHyp');
+      })
       .then(function () {
         hypRow = W.eqRow(T('eqHyp'), 'eq--ask');
-        W.write(hypRow.val, T('lblQ'));
-        hypRow.val.removeAttribute('hidden');
-        return Promise.all([
-          K.say('s2PythHyp'),
-          Flow.anim(Beats.rowIn(hypRow.el))
-        ]);
+        hypAsk = W.valueBlank(hypRow, {
+          answer: T('valRoot2'), options: [T('val2'), T('valRoot2'), T('val1')], onWrong: notQuite
+        });
+        return Flow.anim(Beats.rowIn(hypRow.el));
       })
+      .then(function () { return hypAsk.ask(); })
       .then(function () {
-        hypPills = W.pills(K.shuffle([T('val2'), T('valRoot2'), T('val1')]));
-        return Flow.anim(Beats.rowIn(hypPills.el));
+        return Flow.anim(Beats.relabel(t.vals.CA, function () { t.vals.CA.textContent = T('valRoot2'); }));
       })
-      .then(function () {
-        var right = hypPills.btns.map(function (b) { return b.dataset.name; }).indexOf(T('valRoot2'));
-        return K.askUntilRight(hypPills.btns, right, { onWrong: notQuite });
-      })
-      .then(function () {
-        return Promise.all([
-          Flow.anim(Beats.swapIn(hypRow.val, function () { W.write(hypRow.val, T('valRoot2')); }))
-            .then(function () { return Flow.anim(Beats.slotRight(hypRow.val)); }),
-          Flow.anim(Beats.relabel(t.vals.CA, function () { t.vals.CA.textContent = T('valRoot2'); }))
-        ]);
-      })
-      .then(function () { return W.pane.drop(hypPills.el); })
       .then(function () {
         quiet(K.onPhrase('s2HypRoot2', 'hypotenuse', function () {
           return Flow.anim(Beats.linePulse(t.sides.CA));
@@ -402,26 +446,33 @@
         return K.say('s2HypRoot2');
       })
       .then(function () { return Flow.wait(SHORT); })
+      /* all three lengths: the working on the right is done with, and the
+         triangle comes to the middle as the line is said, its lengths lit */
       .then(function () {
         quiet(K.onPhrase('s2AllThree', 'three', function () {
           return Flow.anim(Beats.textPulse([t.vals.AB, t.vals.BC, t.vals.CA], 2));
         }));
-        return K.say('s2AllThree');
+        return K.say('s2AllThree', function () {
+          return W.pane.out().then(function () {
+            return Flow.anim(Beats.moveGroup(dom.g, K.aside(dom.g, 0.5), 0.9));
+          });
+        });
       })
       .then(function () { return Flow.wait(SHORT); })
-      .then(function () { return W.pane.drop(hypRow.el); })
 
-      /* ---- sin 45°, worked ----------------------------------------------- */
+      /* ---- sin 45°, worked: said with the triangle in the middle; then
+         the triangle stands aside and the row is written, its lengths
+         carried in from the triangle -------------------------------------- */
+      .then(function () { return K.say('s2Sin45'); })
+      .then(function () { return Flow.anim(Beats.moveGroup(dom.g, K.aside(dom.g), 0.9)); })
       .then(function () {
+        W.pane.show();
         var row = W.eqRow(T('eqSinDeg', { a: 45 }));
         rows.sin45 = row;
-        return Promise.all([
-          K.say('s2Sin45'),
-          Flow.anim(Beats.rowIn(row.el))
-        ]).then(function () {
-          return showWords(row, 'opp', 'hyp');
-        }).then(function () { return Flow.wait(SHORT); })
-          .then(function () { return Flow.anim(row.showB(T('val1'), T('valRoot2'))); });
+        return Flow.anim(Beats.rowIn(row.el))
+          .then(function () { return showWords(row, 'opp', 'hyp'); })
+          .then(function () { return Flow.wait(SHORT); })
+          .then(function () { return row.flyB(T('val1'), T('valRoot2'), t.val('opp'), t.val('hyp')); });
       })
       .then(function () { return Flow.wait(BEAT); })
 
@@ -456,19 +507,18 @@
     return Flow.anim(row.showA(T(names[n]), T(names[d])));
   }
 
-  /* One of the learner's ratios: the row with its two blanks, asked; then
-     the lengths put in after it, and the value if it simplifies. */
+  /* One of the learner's ratios: the row with its sides named, and a
+     dropdown blank for each length, asked; then the value if it
+     simplifies. */
   function yourTurn(which, deg, num, den, lengths, value) {
     var key = { sin: 'eqSinDeg', cos: 'eqCosDeg', tan: 'eqTanDeg' }[which];
     var row = W.eqRow(T(key, { a: deg }));
     rows[which + deg] = row;
     return Flow.anim(Beats.rowIn(row.el))
+      .then(function () { return showWords(row, roleOf(num), roleOf(den)); })
+      .then(function () { return Flow.wait(SHORT); })
       .then(function () {
-        return W.askRatio(row, { num: num, den: den, onWrong: notQuite });
-      })
-      .then(function () {
-        quiet(Flow.anim(Beats.linePulse([t.side(roleOf(num)), t.side(roleOf(den))])));
-        return Flow.anim(row.showB(lengths[0], lengths[1]));
+        return W.askLengths(row, { num: lengths[0], den: lengths[1], options: lengths45(), onWrong: notQuite });
       })
       .then(function () {
         if (value == null) return;
@@ -517,7 +567,11 @@
         return W.table.fillColumn(45, { sin: T('valOneOverRoot2'), cos: T('valOneOverRoot2'), tan: T('val1') });
       })
       .then(function () { return Flow.wait(BEAT); })
-      .then(function () { return K.say('s2Next3060'); })
+      /* the two angles still to find, lit as they are named */
+      .then(function () {
+        quiet(K.onPhrase('s2Next3060', '30°', function () { W.table.focusCols([30, 60]); }));
+        return K.say('s2Next3060');
+      })
       .then(function () { return Flow.wait(BEAT); })
       .then(function () { return K.handOver(); });
   }

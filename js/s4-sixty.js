@@ -7,9 +7,11 @@
  *     1, √3 and 2 and both acute angles. "Let's use 60° as our reference
  *     angle this time." -- the 60° angle lights and the 30° one stands
  *     back. "Now √3 is opposite and 1 is adjacent. The hypotenuse is still
- *     2." -- the names go on beside the lengths. The triangle stands aside;
- *     sin 60° is worked, cos 60° and tan 60° are the learner's. Next.
- *   The table.  The 60° values go in. Next.
+ *     2." -- the names go on beside the lengths. "Sine is opposite over
+ *     hypotenuse." is said; then the triangle stands aside and sin 60° is
+ *     worked, its lengths carried in from the triangle; cos 60° and tan 60°
+ *     are the learner's, their lengths chosen from dropdowns. Next.
+ *   The table.  The 60° values go in, their column lit. Next.
  * ========================================================================== */
 (function (global) {
   'use strict';
@@ -34,8 +36,10 @@
     reset();
   }
 
-  function notQuite() { quiet(K.speak(K.keyed('fbNotQuite'))); }
+  function notQuite() { return quiet(K.speak(K.keyed('fbNotQuite'))); }
   function vals() { return Object.keys(t.vals).map(function (s) { return t.vals[s]; }); }
+  /* The triangle's side lengths: what its blanks offer. */
+  function lengths60() { return [T('val1'), T('valRoot3'), T('val2')]; }
 
   /* The triangle as section 3 left it: in the middle, its three lengths
      and both acute angles written. */
@@ -44,7 +48,7 @@
     Tri.instant(t);
     t.writeVal('CA', T('val2'));
     t.writeVal('BC', T('val1'));
-    t.writeVal('AB', T('lblRoot3Units'));
+    t.writeVal('AB', T('valRoot3'));
     t.writeAngle('A', T('lblDeg30'));
     t.writeAngle('C', T('lblDeg60'));
     M.set(vals().concat([t.arcs.C, t.angles.C, t.arcs.A, t.angles.A]), { opacity: 1 });
@@ -95,16 +99,18 @@
         return K.speakBySentence('s4Roles');
       })
       .then(function () { return Flow.wait(BEAT); })
-      /* ---- aside, and the ratios ----------------------------------------- */
+      /* ---- the ratio said, then aside, and worked: its lengths carried
+         in from the triangle ---------------------------------------------- */
+      .then(function () { return K.say('defSine'); })
       .then(function () { return Flow.anim(shrinkAside()); })
       .then(function () {
         W.pane.show();
         var row = W.eqRow(T('eqSinDeg', { a: 60 }));
         rows.sin60 = row;
-        return Promise.all([K.say('defSine'), Flow.anim(Beats.rowIn(row.el))])
+        return Flow.anim(Beats.rowIn(row.el))
           .then(function () { return showWords(row, 'opp', 'hyp'); })
           .then(function () { return Flow.wait(SHORT); })
-          .then(function () { return Flow.anim(row.showB(T('valRoot3'), T('val2'))); });
+          .then(function () { return row.flyB(T('valRoot3'), T('val2'), t.val('opp'), t.val('hyp')); });
       })
       .then(function () { return Flow.wait(BEAT); })
       .then(function () {
@@ -152,15 +158,18 @@
     return Flow.anim(row.showA(T(names[n]), T(names[d])));
   }
   function roleOf(key) { return { wOpposite: 'opp', wAdjacent: 'adj', wHypotenuse: 'hyp' }[key]; }
+  /* One of the learner's ratios: the row with its sides named, and a
+     dropdown blank for each length, asked; then the value if it
+     simplifies. */
   function yourTurn(which, deg, num, den, lengths, value) {
     var key = { sin: 'eqSinDeg', cos: 'eqCosDeg', tan: 'eqTanDeg' }[which];
     var row = W.eqRow(T(key, { a: deg }));
     rows[which + deg] = row;
     return Flow.anim(Beats.rowIn(row.el))
-      .then(function () { return W.askRatio(row, { num: num, den: den, onWrong: notQuite }); })
+      .then(function () { return showWords(row, roleOf(num), roleOf(den)); })
+      .then(function () { return Flow.wait(SHORT); })
       .then(function () {
-        quiet(Flow.anim(Beats.linePulse([t.side(roleOf(num)), t.side(roleOf(den))])));
-        return Flow.anim(row.showB(lengths[0], lengths[1]));
+        return W.askLengths(row, { num: lengths[0], den: lengths[1], options: lengths60(), onWrong: notQuite });
       })
       .then(function () {
         if (value == null) return;

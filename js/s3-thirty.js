@@ -10,12 +10,18 @@
  *     upright side and the 60° angle are halved (1 and 1, 30° and 30°),
  *     and each half shows its right angle. Next.
  *   The 30° triangle.  The lower half goes, then the upper one comes to
- *     the middle and grows: 30° at the left, 2 on the hypotenuse, 1 on the upright, b on
- *     the base. It stands aside and b is found by Pythagoras (√3); sin 30°
- *     is worked, cos 30° and tan 30° are the learner's. Next.
- *   The table.  The 30° values go in. "That leaves 60°. Can we use the
- *     triangle we already have?" The table fades, the half comes back, and
- *     "Yes! The other acute angle in this triangle is 60°." Next.
+ *     the middle and grows: 30° at the left, 2 on the hypotenuse, 1 on the
+ *     upright, b on the base. The two lengths known are lit, then b, and
+ *     the Pythagoras question is said with the triangle still in the
+ *     middle; then it stands aside and b is chosen from a dropdown (√3).
+ *     With all three lengths it comes back to the middle; sin 30° is said,
+ *     then worked aside, its lengths carried in from the triangle; cos 30°
+ *     and tan 30° are the learner's, their lengths chosen from dropdowns.
+ *     Next.
+ *   The table.  The 30° values go in, their column lit. "That leaves
+ *     60°." lights the 60° column; "Can we use the triangle we already
+ *     have?" -- the table fades and the half comes back. "Yes! The other
+ *     acute angle in this triangle is 60°." Next.
  * ========================================================================== */
 (function (global) {
   'use strict';
@@ -66,8 +72,10 @@
     reset();
   }
 
-  function notQuite() { quiet(K.speak(K.keyed('fbNotQuite'))); }
+  function notQuite() { return quiet(K.speak(K.keyed('fbNotQuite'))); }
   function vals(t) { return Object.keys(t.vals).map(function (s) { return t.vals[s]; }); }
+  /* The half's side lengths: what its blanks offer. */
+  function lengths30() { return [T('val1'), T('valRoot3'), T('val2')]; }
 
   /* The halves written in whole as the split leaves them: the lengths on
      the hypotenuses, 60° at the far corners, 30° at the left, 1 on each
@@ -309,7 +317,7 @@
    * Scene 2 -- the 30° triangle
    * ====================================================================== */
   function sceneThirty() {
-    var bRow = null, bPills = null;
+    var bRow = null, bAsk = null;
     return ensureHalves()
       .then(function () {
         var kept = null;
@@ -327,66 +335,85 @@
         return Flow.anim(Beats.labelIn(tL.writeVal('AB', T('lblB'))));
       })
       .then(function () { return Flow.wait(SHORT); })
+      /* ---- the lengths known, and the one to find, lit in turn; the
+         triangle stays in the middle until the question has been said -- */
       .then(function () {
         quiet(K.onPhrase('s3TwoLengths', 'two', function () {
-          return Flow.anim(Beats.textPulse([tL.vals.CA, tL.vals.BC], 2));
+          return Promise.all([
+            Flow.anim(Beats.linePulse([tL.sides.CA, tL.sides.BC])),
+            Flow.anim(Beats.textPulse([tL.vals.CA, tL.vals.BC], 2))
+          ]);
         }));
         return K.say('s3TwoLengths');
       })
       .then(function () {
         quiet(K.onPhrase('s3Third', 'third', function () {
-          return Flow.anim(Beats.textPulse([tL.vals.AB], 2));
+          return Promise.all([
+            Flow.anim(Beats.linePulse(tL.sides.AB)),
+            Flow.anim(Beats.textPulse([tL.vals.AB], 2))
+          ]);
         }));
         return K.say('s3Third');
       })
       .then(function () { return Flow.wait(SHORT); })
-      /* ---- aside, and b by Pythagoras ------------------------------------ */
+      .then(function () {
+        quiet(K.onPhrase('s3PythB', 'find b', function () {
+          return Promise.all([
+            Flow.anim(Beats.linePulse(tL.sides.AB)),
+            Flow.anim(Beats.textPulse([tL.vals.AB], 2))
+          ]);
+        }));
+        return K.say('s3PythB');
+      })
+      /* ---- aside, and b chosen from a dropdown --------------------------- */
       .then(function () {
         return Flow.anim(Beats.moveGroup(dom.gL, K.aside(dom.gL), 0.9));
       })
       .then(function () {
         W.pane.show();
         bRow = W.eqRow(T('eqB'), 'eq--ask');
-        W.write(bRow.val, T('lblQ'));
-        bRow.val.removeAttribute('hidden');
-        return Promise.all([
-          K.say('s3PythB'),
-          Flow.anim(Beats.rowIn(bRow.el))
-        ]);
+        bAsk = W.valueBlank(bRow, {
+          answer: T('valRoot3'), options: [T('val3'), T('valRoot3'), T('valRoot5')], onWrong: notQuite
+        });
+        return Flow.anim(Beats.rowIn(bRow.el));
       })
+      .then(function () { return bAsk.ask(); })
       .then(function () {
-        bPills = W.pills(K.shuffle([T('val3'), T('valRoot3'), T('valRoot5')]));
-        return Flow.anim(Beats.rowIn(bPills.el));
+        return Flow.anim(Beats.relabel(tL.vals.AB, function () { tL.vals.AB.textContent = T('valRoot3'); }));
       })
+      /* all three lengths: the working on the right is done with, and the
+         triangle comes back to the middle as it is said, its lengths lit */
       .then(function () {
-        var right = bPills.btns.map(function (b) { return b.dataset.name; }).indexOf(T('valRoot3'));
-        return K.askUntilRight(bPills.btns, right, { onWrong: notQuite });
-      })
-      .then(function () {
-        return Promise.all([
-          Flow.anim(Beats.swapIn(bRow.val, function () { W.write(bRow.val, T('valRoot3')); }))
-            .then(function () { return Flow.anim(Beats.slotRight(bRow.val)); }),
-          Flow.anim(Beats.relabel(tL.vals.AB, function () { tL.vals.AB.textContent = T('lblRoot3Units'); }))
-        ]);
-      })
-      .then(function () { return W.pane.drop(bPills.el); })
-      .then(function () {
+        var centred = null;
+        function centre() {
+          if (!centred) {
+            centred = W.pane.out().then(function () {
+              return Flow.anim(Beats.moveGroup(dom.gL, K.aside(dom.gL, 0.5), 0.9));
+            });
+          }
+          return centred;
+        }
+        quiet(K.onPhrase('s3Root3', 'now we have', centre));
         quiet(K.onPhrase('s3Root3', 'three', function () {
           return Flow.anim(Beats.textPulse(vals(tL), 2));
         }));
-        return K.speakBySentence('s3Root3');
+        return K.speakBySentence('s3Root3').then(centre);
       })
       .then(function () { return Flow.wait(SHORT); })
-      .then(function () { return W.pane.drop(bRow.el); })
 
-      /* ---- sin 30°, worked ---------------------------------------------- */
+      /* ---- sin 30°, worked: said with the triangle in the middle; then
+         it stands aside and the row is written, its lengths carried in
+         from the triangle ------------------------------------------------- */
+      .then(function () { return K.say('s3Sin30'); })
+      .then(function () { return Flow.anim(Beats.moveGroup(dom.gL, K.aside(dom.gL), 0.9)); })
       .then(function () {
+        W.pane.show();
         var row = W.eqRow(T('eqSinDeg', { a: 30 }));
         rows.sin30 = row;
-        return Promise.all([K.say('s3Sin30'), Flow.anim(Beats.rowIn(row.el))])
+        return Flow.anim(Beats.rowIn(row.el))
           .then(function () { return showWords(row, 'opp', 'hyp'); })
           .then(function () { return Flow.wait(SHORT); })
-          .then(function () { return Flow.anim(row.showB(T('val1'), T('val2'))); });
+          .then(function () { return row.flyB(T('val1'), T('val2'), tL.val('opp'), tL.val('hyp')); });
       })
       .then(function () { return Flow.wait(BEAT); })
       .then(function () {
@@ -415,15 +442,18 @@
     return Flow.anim(row.showA(T(names[n]), T(names[d])));
   }
   function roleOf(key) { return { wOpposite: 'opp', wAdjacent: 'adj', wHypotenuse: 'hyp' }[key]; }
+  /* One of the learner's ratios: the row with its sides named, and a
+     dropdown blank for each length, asked; then the value if it
+     simplifies. */
   function yourTurn(which, deg, num, den, lengths, value) {
     var key = { sin: 'eqSinDeg', cos: 'eqCosDeg', tan: 'eqTanDeg' }[which];
     var row = W.eqRow(T(key, { a: deg }));
     rows[which + deg] = row;
     return Flow.anim(Beats.rowIn(row.el))
-      .then(function () { return W.askRatio(row, { num: num, den: den, onWrong: notQuite }); })
+      .then(function () { return showWords(row, roleOf(num), roleOf(den)); })
+      .then(function () { return Flow.wait(SHORT); })
       .then(function () {
-        quiet(Flow.anim(Beats.linePulse([tL.side(roleOf(num)), tL.side(roleOf(den))])));
-        return Flow.anim(row.showB(lengths[0], lengths[1]));
+        return W.askLengths(row, { num: lengths[0], den: lengths[1], options: lengths30(), onWrong: notQuite });
       })
       .then(function () {
         if (value == null) return;
@@ -476,16 +506,27 @@
         return W.table.fillColumn(30, { sin: T('valHalf'), cos: T('valRoot3Over2'), tan: T('valOneOverRoot3') });
       })
       .then(function () { return Flow.wait(BEAT); })
-      .then(function () { return K.say('s3Leaves60'); })
+      /* "That leaves 60°." lights the 60° column; with "Can we use the
+         triangle we already have?" the table fades and the same half
+         comes back, whole, in the middle */
+      .then(function () {
+        var back = null;
+        function backToHalf() {
+          if (!back) {
+            back = W.table.hide().then(function () {
+              halfCentred();
+              M.set(dom.gL, { opacity: 0 });
+              return Flow.anim(Beats.marksIn([dom.gL], 0.5));
+            });
+          }
+          return back;
+        }
+        quiet(K.onPhrase('s3Leaves60', '60°', function () { W.table.focusCols(60); }));
+        quiet(K.onPhrase('s3Leaves60', 'can we', backToHalf));
+        return K.speakBySentence('s3Leaves60').then(backToHalf);
+      })
       .then(function () { return Flow.wait(BEAT); })
       .then(function () { return K.autoTurn(); })
-      /* the table fades and the same half comes back, whole, in the middle */
-      .then(function () { return W.table.hide(); })
-      .then(function () {
-        halfCentred();
-        M.set(dom.gL, { opacity: 0 });
-        return Flow.anim(Beats.marksIn([dom.gL], 0.5));
-      })
       .then(function () { return Flow.wait(SHORT); })
       .then(function () {
         quiet(K.onPhrase('s3Yes60', 'other acute', function () {
@@ -509,7 +550,7 @@
     Tri.instant(tL);
     tL.writeVal('CA', T('val2'));
     tL.writeVal('BC', T('val1'));
-    tL.writeVal('AB', T('lblRoot3Units'));
+    tL.writeVal('AB', T('valRoot3'));
     tL.writeAngle('A', T('lblDeg30'));
     tL.writeAngle('C', T('lblDeg60'));
     M.set(vals(tL).concat([tL.arcs.C, tL.angles.C, tL.arcs.A, tL.angles.A]), { opacity: 1 });

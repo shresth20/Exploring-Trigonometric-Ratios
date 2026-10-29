@@ -212,6 +212,27 @@
       list.forEach(function (e) { e.removeAttribute('hidden'); });
       return Beats.popIn(list, { stagger: 0.08 });
     }
+    /* A fraction's values read off the picture: the fraction (and what
+       comes in with it, `shown`) arrives with its bar, and each value is
+       carried to its half from the label on the figure it is read from
+       (`fromN`, `fromD`), the numerator first -- a copy lifting off the
+       label as it lights. Each value stands in a span of its own, so the
+       bar, the denominator's top edge, shows while they fly. */
+    function flyInto(F, shown, n, d, fromN, fromD) {
+      F.n.textContent = ''; F.d.textContent = '';
+      var vn = write(h('span', 'eq__v', F.n), n);
+      var vd = write(h('span', 'eq__v', F.d), d);
+      M.set([vn, vd], { opacity: 0 });
+      function fly(v, from, text) {
+        if (!from) return Flow.anim(Beats.popIn(v));
+        quiet(Flow.anim(Beats.textPulse(from, 1)));
+        return Flow.anim(Beats.flyTo(from, v, text));
+      }
+      return Flow.anim(reveal(shown))
+        .then(function () { return fly(vn, fromN, n); })
+        .then(function () { return Flow.wait(120); })
+        .then(function () { return fly(vd, fromD, d); });
+    }
     var r = {
       el: row, lhs: l, A: A, B: B, val: val, eq1: eq1, eq2: eq2,
       /* the first fraction's two halves written and shown */
@@ -219,12 +240,18 @@
       /* ...or shown empty, for dropdowns to be set into */
       openA: function () { return reveal(A.el); },
       showB: function (n, d) { write(B.n, n); write(B.d, d); return reveal([eq1, B.el]); },
+      /* ...or shown empty, for the lengths' dropdowns (askLengths) */
+      openB: function () { return reveal([eq1, B.el]); },
+      /* The second fraction's lengths read off the picture (flyInto). */
+      flyB: function (n, d, fromN, fromD) { return flyInto(B, [eq1, B.el], n, d, fromN, fromD); },
       /* a plain value after the first fraction (no second fraction) */
       showVal: function (v) {
         write(val, v);
         var eq = B.el.hasAttribute('hidden') ? eq1 : eq2;
         return reveal([eq, val]);
       },
+      /* ...and the first fraction's, for a row with no words in it. */
+      flyA: function (n, d, fromN, fromD) { return flyInto(A, A.el, n, d, fromN, fromD); },
       /* a value straight after the lhs, with no fraction at all */
       showOnly: function (v) { write(val, v); return reveal(val); },
       /* the words in A changed for others, in place */
@@ -242,16 +269,17 @@
   /* ======================================================================
    * The dropdown blank
    * A dashed slot in the sentence, with a chevron: tap it and the choices
-   * drop out under it. Waiting, it breathes; a wrong one shows red in the
-   * slot for a moment, shakes, and is struck off the list; the right one
-   * stays, green, with a tick on the corner.
+   * drop out under it. Waiting, it breathes; a wrong one stays red in the
+   * slot, shaken and shut, while the voice says so, and is struck off the
+   * list; the right one stays, green, with a tick on the corner. After
+   * K.TRIES wrong ones the right one is set in for the learner.
    *   Or a free choice (choose): a pick is only set in the slot, and
    * the caller judges it -- settle() for right, refuse() for wrong.
    * ====================================================================== */
   function dropdown(host, opts, right, o) {
     o = o || {};
     var hold = o.placeholder != null ? o.placeholder : T('lblChooseSide');
-    var dd = h('span', 'dd' + (o.up ? ' dd--up' : ''), host);
+    var dd = h('span', 'dd' + (o.side ? ' dd--side' : o.up ? ' dd--up' : ''), host);
     var face = h('button', 'dd__face', dd);
     face.type = 'button';
     face.setAttribute('aria-label', o.label || T('a11yDropdown'));
@@ -276,18 +304,25 @@
     svgEl('path', { d: 'M7 12.5 10.5 16 17 8.5' }, tick);
     var good = items[right];
     var chosen = null;
+    var locked = false;
 
     var row = dd.closest('.pane__row');
     function open(on) {
       dd.classList.toggle('is-open', on);
       if (row) row.classList.toggle('has-open', on);
       menu.hidden = !on;
-      if (on) {
-        var up = opensUp();
-        dd.classList.toggle('dd--up', up);
-        quiet(Flow.anim(M.fromTo(menu, { opacity: 0, y: up ? 6 : -6 },
-          { opacity: 1, y: 0, duration: M.dur(0.22), ease: 'power2.out' })));
+      if (!on) return;
+      if (o.side) {
+        var left = opensLeft();
+        dd.classList.toggle('dd--left', left);
+        quiet(Flow.anim(M.fromTo(menu, { opacity: 0, x: left ? 6 : -6 },
+          { opacity: 1, x: 0, duration: M.dur(0.22), ease: 'power2.out' })));
+        return;
       }
+      var up = opensUp();
+      dd.classList.toggle('dd--up', up);
+      quiet(Flow.anim(M.fromTo(menu, { opacity: 0, y: up ? 6 : -6 },
+        { opacity: 1, y: 0, duration: M.dur(0.22), ease: 'power2.out' })));
     }
     /* Which way the menu opens, worked out as it opens: the side `o.up`
        asks for, unless the list would run off the window there and the
@@ -300,6 +335,17 @@
       var below = global.innerHeight - f.bottom, above = f.top;
       if (o.up) return need <= above || above >= below;
       return need > below && above > below;
+    }
+    /* A list laid along its row (`o.side`) opens to the right of its blank,
+       over the blanks beside it, unless it would run off the table there
+       -- the last columns' open to the left. */
+    function opensLeft() {
+      var f = face.getBoundingClientRect();
+      var box = dd.closest('.ttable');
+      var edge = box ? box.getBoundingClientRect() : { left: 0, right: global.innerWidth };
+      var need = menu.offsetWidth + MENU_EDGE;
+      var right = edge.right - f.right, left = f.left - edge.left;
+      return need > right && left > right;
     }
     function setVal(text) {
       val.classList.remove('is-placeholder');
@@ -318,6 +364,35 @@
         { opacity: 1, scale: 1, duration: M.dur(0.4), ease: M.POP }));
     }
 
+    /* Shut, or open again: no list opened, nothing picked. */
+    function lock(on) {
+      locked = on;
+      face.disabled = on || dd.classList.contains('is-right');
+      if (on) open(false);
+    }
+    /* A wrong pick, held: red in the slot, shaken, struck off the list,
+       and the blank shut until `said` -- the voice saying so -- is heard
+       out. Left red, for retry() to empty or win() to answer. */
+    function miss(b, said) {
+      if (b) {
+        b.__out = true;
+        b.classList.add('is-out');
+        setVal(b.dataset.name);
+      }
+      dd.classList.remove('is-asking');
+      dd.classList.add('is-wrong');
+      lock(true);
+      return K.heldWrong(M.incorrect(face), said).then(function () { lock(false); });
+    }
+    /* ...and emptied for another go. */
+    function retry() {
+      if (chosen || dd.classList.contains('is-right')) return;
+      dd.classList.remove('is-wrong');
+      val.classList.add('is-placeholder');
+      val.textContent = hold;
+      dd.classList.add('is-asking');
+    }
+
     /* Only one menu open at a time: a press anywhere else shuts this one. */
     function onDoc(ev) {
       if (!dd.classList.contains('is-open')) return;
@@ -332,12 +407,20 @@
       arm: function () { dd.classList.add('is-asking'); },
       disarm: function () { dd.classList.remove('is-asking'); open(false); },
       /* Ask, and wait for the right answer. q.onWrong(i) answers a wrong
-         pick; q.onOpen fires on the first open (to stop a hand nudge). */
+         pick, handing back the voice saying so, which the wrong pick is
+         held for; q.onOpen fires on the first open (to stop a hand nudge). */
       ask: function (q) {
         q = q || {};
         dd.classList.add('is-asking');
         document.addEventListener('pointerdown', onDoc, true);
-        var opened = false;
+        var opened = false, misses = 0;
+        function got() {
+          if (!opened) { opened = true; if (q.onOpen) q.onOpen(); }
+          document.removeEventListener('pointerdown', onDoc, true);
+          return win().then(function () {
+            if (q.burst !== false) burstAt(face);
+          });
+        }
         function loop() {
           var live = [face].concat(items.filter(function (i) { return !i.__out; }));
           return waitPick(live, good).then(function (b) {
@@ -346,30 +429,17 @@
               open(menu.hidden);
               return loop();
             }
-            if (b === good) {
-              if (!opened) { opened = true; if (q.onOpen) q.onOpen(); }
-              document.removeEventListener('pointerdown', onDoc, true);
-              return win().then(function () {
-                if (q.burst !== false) burstAt(face);
-              });
-            }
+            if (b === good) return got();
             open(false);
-            b.__out = true;
-            b.classList.add('is-out');
-            setVal(b.dataset.name);
-            dd.classList.add('is-wrong');
+            misses++;
             Beats.sfx('wrong');
-            quiet(Flow.anim(M.incorrect(face)).then(function () {
-              if (dd.classList.contains('is-right')) return;
-              return Flow.wait(350).then(function () {
-                if (dd.classList.contains('is-right')) return;
-                dd.classList.remove('is-wrong');
-                val.classList.add('is-placeholder');
-                val.textContent = hold;
-              });
-            }));
-            if (q.onWrong) q.onWrong(items.indexOf(b), b.dataset.name);
-            return loop();
+            var said = q.onWrong ? q.onWrong(items.indexOf(b), b.dataset.name) : null;
+            return miss(b, said).then(function () {
+              /* missed too often: the right one is set in for the learner */
+              if (misses >= K.TRIES) return got();
+              retry();
+              return loop();
+            });
           });
         }
         return loop().then(null, function (err) {
@@ -385,13 +455,13 @@
       choose: function (fn, onOpen) {
         dd.classList.add('is-asking');
         function onFace() {
-          if (dd.classList.contains('is-right')) return;
+          if (locked || dd.classList.contains('is-right')) return;
           if (onOpen) onOpen();
           open(menu.hidden);
         }
         function onItem(ev) {
           var b = ev.currentTarget;
-          if (b.__out || dd.classList.contains('is-right')) return;
+          if (b.__out || locked || dd.classList.contains('is-right')) return;
           chosen = b;
           setVal(b.dataset.name);
           dd.classList.remove('is-asking', 'is-wrong');
@@ -419,22 +489,16 @@
         return win(true);
       },
       /* Judged wrong: red in the slot and a shake, that choice struck off
-         the list, and the slot empty again for another go. */
-      refuse: function () {
+         the list, and the blank shut until `said` -- the voice saying so
+         -- is heard out; then the slot is empty again for another go,
+         unless `last`: then it is left for settle(). */
+      refuse: function (said, last) {
         var b = chosen;
         chosen = null;
-        if (b) { b.__out = true; b.classList.add('is-out'); }
-        dd.classList.add('is-wrong');
-        return Flow.anim(M.incorrect(face))
-          .then(function () { return Flow.wait(350); })
-          .then(function () {
-            if (chosen || dd.classList.contains('is-right')) return;
-            dd.classList.remove('is-wrong');
-            val.classList.add('is-placeholder');
-            val.textContent = hold;
-            dd.classList.add('is-asking');
-          });
-      }
+        return miss(b, said).then(function () { if (!last) retry(); });
+      },
+      /* Shut while another blank's miss is said, and opened again. */
+      lock: lock
     };
   }
 
@@ -737,6 +801,7 @@
     c0.textContent = T('lblRatio');
     ANGLES.forEach(function (a) {
       var c = h('div', 'ttable__cell ttable__cell--head', head);
+      c.dataset.angle = String(a);
       c.textContent = T('lblDegVal', { n: a });
     });
     ROWS.forEach(function (r) {
@@ -772,6 +837,7 @@
   function paintTable() {
     syncRows();
     focusRow(null);
+    focusCols(null);
     Object.keys(cells).forEach(function (k) {
       var c = cells[k];
       c.el.classList.remove('is-new', 'is-ask', 'is-right', 'is-wrong', 'is-pick');
@@ -792,6 +858,16 @@
     var on = [].concat(r || []);
     tableEl.classList.toggle('has-focus', on.length > 0);
     ROWS.forEach(function (k) { rows[k].classList.toggle('is-focus', on.indexOf(k) >= 0); });
+  }
+  /* The same for columns: one angle lit -- or several, given a list --
+     its key and its cells, and the other angles faded back; null brings
+     them all back. */
+  function focusCols(a) {
+    var on = [].concat(a == null ? [] : a).map(String);
+    tableEl.classList.toggle('has-colfocus', on.length > 0);
+    Array.prototype.slice.call(tableEl.querySelectorAll('[data-angle]')).forEach(function (c) {
+      c.classList.toggle('is-colfocus', on.indexOf(c.dataset.angle) >= 0);
+    });
   }
   function rowCells(r) {
     return Array.prototype.slice.call(rows[r].children);
@@ -826,6 +902,8 @@
     },
     /* Rows lit, by name or a list of names; null for none. */
     focus: function (r) { if (tableEl) focusRow(r); },
+    /* Columns lit, by angle or a list of angles; null for none. */
+    focusCols: function (a) { if (tableEl) focusCols(a); },
 
     /* A new row taken into the table: the rows already there close up to
        make room for it, and its cells come in after. */
@@ -871,12 +949,16 @@
       return Flow.anim(Beats.rowOut(footEl)).then(clearFoot);
     },
 
-    /* A whole row asked at once: a blank in each of its five cells, each
-       with its own short list. A pick is judged the moment it is made: a
-       right one is kept, green; a wrong one is struck off its list and
-       emptied for another go, and `spec.onWrong(n)` is told. Once the
-       whole row is right, the blanks give way to the values, which are
-       remembered.
+    /* A whole row asked, one cell at a time: a blank in each of its five
+       cells, each with its own short list, but only one open to a pick --
+       0° first, and each of the others waiting, dimmed, until the one
+       before it is right. A pick is judged the moment it is made: a right
+       one is kept, green, and the next blank called; a wrong one is held
+       red in its blank, shut, while `spec.onWrong(n)` has the voice say so
+       (the promise it hands back), and is then struck off its list and
+       emptied for another go -- or, the blank's K.TRIES-th, the right one
+       is set in for the learner. Once the whole row is right, the blanks
+       give way to the values, which are remembered.
          spec: { answers: { 0: text, 30: text, ... },
                  options: { 0: [text, ...], 30: [...], ... }, onWrong(n) }.
        Under a skip, the right values are set in for the learner. */
@@ -886,8 +968,11 @@
         var opts = spec.options[a];
         c.v.textContent = '';
         c.el.classList.add('is-pick');
+        /* each list opens upward, its choices stacked in its own column
+           over the two cells above it, so it never covers the row it is
+           worked from or the formula under the table */
         var dd = dropdown(c.v, opts, opts.indexOf(spec.answers[a]), {
-          keepOrder: true, placeholder: '',
+          keepOrder: true, placeholder: '', up: true,
           label: T('a11yCellPick', { ratio: T(RATIO_LBL[r]), angle: T('lblDegVal', { n: a }) })
         });
         return { a: a, c: c, dd: dd, ok: false };
@@ -899,24 +984,43 @@
         touched = true;
         if (stopHand) { stopHand(); stopHand = null; }
       }
-      /* each pick judged as it is made; the last right one opens the gate */
+      /* The blank whose turn it is called and opened to a pick; the ones
+         after it shut, dimmed and still. */
+      function call(i) {
+        picks.forEach(function (q, j) {
+          if (q.ok) return;
+          q.c.el.classList.toggle('is-waiting', j !== i);
+          if (j === i) { q.dd.lock(false); q.dd.arm(); } else { q.dd.disarm(); q.dd.lock(true); }
+        });
+      }
+      /* each pick judged as it is made; a right one calls the next blank,
+         and the last opens the gate */
+      function right(p) {
+        if (p.ok) return;
+        p.ok = true;
+        Beats.sfx('correct');
+        quiet(p.dd.settle());
+        var next = picks.findIndex(function (q) { return !q.ok; });
+        if (next < 0) dom().gate.click();
+        else call(next);
+      }
       function judge(p) {
         if (p.ok) return;
-        if (p.dd.isRight()) {
-          p.ok = true;
-          Beats.sfx('correct');
-          quiet(p.dd.settle());
-          if (picks.every(function (q) { return q.ok; })) dom().gate.click();
-          return;
-        }
+        if (p.dd.isRight()) return right(p);
+        p.misses = (p.misses || 0) + 1;
+        var last = p.misses >= K.TRIES;
         Beats.sfx('wrong');
-        if (spec.onWrong) spec.onWrong(1);
-        quiet(p.dd.refuse());
+        var said = spec.onWrong ? spec.onWrong(1) : null;
+        quiet(p.dd.refuse(said, last).then(function () {
+          if (last) right(p);
+        }));
       }
       var offs = picks.map(function (p) { return p.dd.choose(function () { judge(p); }, hush); });
+      call(0);
       function off() {
         hush();
         offs.forEach(function (f) { f(); });
+        picks.forEach(function (p) { p.c.el.classList.remove('is-waiting'); });
       }
       var allRight = Flow.once(dom().gate, { auto: true });
 
@@ -952,11 +1056,12 @@
           }));
         }, function (err) { off(); throw err; });
     },
-    /* One value landing in its cell, and remembered. */
-    fill: function (r, a, text) {
+    /* One value landing in its cell, and remembered; its row lit unless
+       `keepFocus` (a column is lit instead). */
+    fill: function (r, a, text, keepFocus) {
       var c = cells[r + ':' + a];
       filled[r + ':' + a] = text;
-      focusRow(r);
+      if (!keepFocus) focusRow(r);
       write(c.v, text);
       c.el.classList.add('is-filled', 'is-new');
       Beats.sfx('correct');
@@ -964,11 +1069,14 @@
         return Flow.wait(K.SHORT);
       });
     },
-    /* The three values of one angle, one after another. */
+    /* The three values of one angle, one after another, the angle's
+       column lit while they land and the others faded back. */
     fillColumn: function (a, vals) {
+      focusRow(null);
+      focusCols(a);
       return RATIOS.reduce(function (chain, r) {
-        return chain.then(function () { return table.fill(r, a, vals[r]); });
-      }, Promise.resolve()).then(function () { focusRow(null); });
+        return chain.then(function () { return table.fill(r, a, vals[r], true); });
+      }, Promise.resolve()).then(function () { focusCols(null); });
     },
     /* What has been found, for a later scene to stage. */
     remember: function (r, a, text) { filled[r + ':' + a] = text; },
@@ -1037,26 +1145,52 @@
      than jumping. */
   function plainA(row, num, den) {
     var A = row.A;
-    var near = [row.lhs, row.eq1, row.B.el, row.eq2, row.val].concat(
-      pane.rows().filter(function (r) { return r !== row.el; }));
+    return plainFrac(row, A, [row.lhs, row.eq1, row.B.el, row.eq2, row.val], function () {
+      A.n.className = 'eq__n c-' + ROLE_OF[num];
+      A.d.className = 'eq__d c-' + ROLE_OF[den];
+      write(A.n, T(num)); write(A.d, T(den));
+    });
+  }
+  /* A fraction's blanks giving way to what `change` writes in their
+     place: the fraction fades, comes back plain, and whatever the change
+     of size moves -- the rest of its row, `near`, and the other rows --
+     glides there. */
+  function plainFrac(row, F, near, change) {
+    near = near.concat(pane.rows().filter(function (r) { return r !== row.el; }));
     function at(e) { var b = e.getBoundingClientRect(); return { x: b.left, y: b.top }; }
-    return Flow.anim(M.to(A.el, { opacity: 0, scale: 0.92, duration: M.dur(0.22), ease: 'power2.in' }))
+    return Flow.anim(M.to(F.el, { opacity: 0, scale: 0.92, duration: M.dur(0.22), ease: 'power2.in' }))
       .then(function () {
         var before = near.map(at);
-        A.n.className = 'eq__n c-' + ROLE_OF[num];
-        A.d.className = 'eq__d c-' + ROLE_OF[den];
-        write(A.n, T(num)); write(A.d, T(den));
-        var tl = M.timeline({ willChange: near.concat(A.el), willChangeValue: 'transform, opacity' });
+        change();
+        var tl = M.timeline({ willChange: near.concat(F.el), willChangeValue: 'transform, opacity' });
         near.forEach(function (e, i) {
           var now = at(e), dx = before[i].x - now.x, dy = before[i].y - now.y;
           if (!dx && !dy) return;
           tl.fromTo(e, { x: '+=' + dx, y: '+=' + dy }, { x: 0, y: 0, duration: M.dur(0.42), ease: 'power2.out' }, 0);
         });
-        tl.fromTo(A.el, { opacity: 0, scale: 0.92 },
+        tl.fromTo(F.el, { opacity: 0, scale: 0.92 },
           { opacity: 1, scale: 1, duration: M.dur(0.34), ease: 'power2.out' }, M.gap(0.06));
         return Flow.anim(tl);
       });
   }
+  /* One blank asked until it is right, a faint hand tapping it until it
+     is opened; `onWrong(name)` hears a wrong pick, and hands back the
+     voice saying so. */
+  function askBlank(d, onWrong) {
+    var stop = null, opened = false;
+    quiet(Flow.wait(K.SHORT * 3).then(function () {
+      if (!opened && d.el.classList.contains('is-asking')) stop = handNudge(d.face);
+    }));
+    return d.ask({
+      burst: false,
+      onOpen: function () { opened = true; if (stop) stop(); },
+      onWrong: function (i, name) { return onWrong ? onWrong(name) : null; }
+    }).then(function () {
+      opened = true;
+      if (stop) stop();
+    }, function (err) { opened = true; if (stop) stop(); throw err; });
+  }
+
   function askRatio(row, spec) {
     var options = spec.options || ['wOpposite', 'wAdjacent', 'wHypotenuse'];
     var labels = options.map(function (k) { return T(k); });
@@ -1066,19 +1200,9 @@
       pair[0].el.dataset.role = ROLE_OF[pair[1]];
     });
     function one(d) {
-      var stop = null, opened = false;
-      quiet(Flow.wait(K.SHORT * 3).then(function () {
-        if (!opened && d.el.classList.contains('is-asking')) stop = handNudge(d.face);
-      }));
-      return d.ask({
-        burst: false,
-        onOpen: function () { opened = true; if (stop) stop(); },
-        onWrong: function (i, name) { if (spec.onWrong) spec.onWrong(name); }
-      }).then(function () {
-        opened = true;
-        if (stop) stop();
+      return askBlank(d, spec.onWrong).then(function () {
         d.el.classList.add('c-' + d.el.dataset.role);
-      }, function (err) { opened = true; if (stop) stop(); throw err; });
+      });
     }
     return row.openA()
       .then(function () { return Flow.wait(K.SHORT); })
@@ -1087,6 +1211,63 @@
       .then(function () { return one(dd); })
       .then(function () { return plainA(row, spec.num, spec.den); })
       .then(function () { return { num: dn, den: dd }; });
+  }
+
+  /* ======================================================================
+   * A ratio's lengths asked: the side names already stand in the row's
+   * first fraction, and the second has a dropdown blank in each half --
+   * the numerator asked first, the denominator after -- each listing the
+   * triangle's side lengths. Once both are right the blanks give way to
+   * the plain lengths, as plainA does for the names. With `frac: 'A'` the
+   * blanks are the first fraction's instead, for a row with no names.
+   *   spec: { num, den } the right lengths, as text; `options` the lengths
+   * offered; `onWrong(text)` a wrong pick's answer.
+   * ====================================================================== */
+  function lengthBlank(host, options, right, more) {
+    return dropdown(host, options, options.indexOf(right), Object.assign({
+      placeholder: T('lblChoose'), label: T('a11yDropdownLen')
+    }, more || {}));
+  }
+  function askLengths(row, spec) {
+    var first = spec.frac === 'A';
+    var F = first ? row.A : row.B;
+    var near = first ? [row.lhs, row.eq1, row.B.el, row.eq2, row.val]
+                     : [row.lhs, row.A.el, row.eq1, row.eq2, row.val];
+    F.n.textContent = ''; F.d.textContent = '';
+    var dn = lengthBlank(F.n, spec.options, spec.num);
+    var dd = lengthBlank(F.d, spec.options, spec.den, { up: false });
+    return Flow.anim(first ? row.openA() : row.openB())
+      .then(function () { return Flow.wait(K.SHORT); })
+      .then(function () { return askBlank(dn, spec.onWrong); })
+      .then(function () { return Flow.wait(K.SHORT); })
+      .then(function () { return askBlank(dd, spec.onWrong); })
+      .then(function () {
+        return plainFrac(row, F, near, function () {
+          write(F.n, spec.num); write(F.d, spec.den);
+        });
+      });
+  }
+
+  /* A value asked in the row's own value slot -- "Hypotenuse = [ ]" --
+     from a dropdown of lengths. Set in place as the row is built, so it
+     arrives with the row; ask() waits for the right one, and the blank
+     then gives way to the value, green.
+       spec: { answer, options, onWrong(text) }. */
+  function valueBlank(row, spec) {
+    row.val.textContent = '';
+    row.val.removeAttribute('hidden');
+    var d = lengthBlank(row.val, spec.options, spec.answer);
+    return {
+      dd: d,
+      ask: function () {
+        return askBlank(d, spec.onWrong).then(function () {
+          return Flow.anim(Beats.swapIn(row.val, function () {
+            write(row.val, spec.answer);
+            row.val.classList.add('is-right');
+          }));
+        });
+      }
+    };
   }
 
   /* ======================================================================
@@ -1245,6 +1426,8 @@
     pane: pane,
     eqRow: eqRow,
     askRatio: askRatio,
+    askLengths: askLengths,
+    valueBlank: valueBlank,
     dropdown: dropdown,
     pills: pills,
     button: button,

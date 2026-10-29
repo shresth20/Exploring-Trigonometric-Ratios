@@ -1,7 +1,9 @@
 /* ==========================================================================
    Motion layer. Transform/opacity/filter only -- never width, height, top or
-   left, with one deliberate exception: the speech bubble's box morph, which
-   is a Flip and so is measured rather than guessed.
+   left, with one deliberate exception: the box morph of the speech bubble
+   and the header's plate, which is a Flip and so is measured rather than
+   guessed. Both are 9-sliced, and a scale would stretch their bolts and
+   moss; each is alone in its row, so nothing else reflows round it.
    ========================================================================== */
 
 /* Compositor hint, added for the length of a move and dropped after. */
@@ -23,7 +25,10 @@
   white-space: nowrap;
 }
 .heading .type { text-align: center; }
-.bubble  .type { text-align: center; }
+/* The bubble's line wraps onto a second row where its box does, as the
+   header's does: each word keeps its trailing space, which hangs at the
+   end of a row rather than breaking it. */
+.bubble  .type { text-align: center; white-space: pre-wrap; }
 
 .wd { opacity: 0; }
 .wd.in { animation: wd-in .46s cubic-bezier(.2, .7, .3, 1) both; }
@@ -87,14 +92,33 @@
 }
 .end-dot.is-pulsing { --pulse-ink: var(--tri-point); }
 
-/* A word on the figure or in a pane lit while it is spoken of: a slow
-   breath of scale, once per beat. */
-.is-glowing-text {
-  animation: text-breathe 1.05s ease-in-out var(--pulse-times, 2);
+/* A word on the figure lit while it is spoken of: a gold halo round its
+   own shape (#hiGlow in index.html), held while Beats.textPulse swells
+   and settles it. In the pane, the same gold as a soft shadow. */
+.figure .is-glowing-text { filter: url(#hiGlow); }
+.pane .is-glowing-text {
+  filter: drop-shadow(0 0 .25em color-mix(in srgb, var(--amber-fill) 85%, transparent));
 }
-@keyframes text-breathe {
-  0%, 100% { opacity: 1; }
-  50%      { opacity: .55; }
+
+/* A value carried from the figure into the working (Beats.flyTo): a copy
+   of it, over everything, lettered as the pane is. Sized and coloured by
+   the slot it flies to; placed by transform alone. */
+.fly-copy {
+  position: fixed;
+  left: 0;
+  top: 0;
+  z-index: var(--z-next);
+  display: inline-flex;
+  align-items: center;
+  font-family: var(--font-display);
+  font-weight: 400;
+  line-height: 1.1;
+  white-space: nowrap;
+  text-shadow:
+    0 .05em 0 var(--text-outline),
+    0 0 .3em color-mix(in srgb, var(--text-outline) 80%, transparent);
+  pointer-events: none;
+  opacity: 0;
 }
 
 /* A name picked up by a tap, waiting for its box: it breathes so it is

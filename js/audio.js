@@ -24,11 +24,13 @@
  * not fall asleep between lines.
  *
  *   GameAudio.load(url)            -> Promise<bool>: the clip is here
- *   GameAudio.play(url, {volume, rate, keep})
+ *   GameAudio.play(url, {volume, rate, keep, from, to})
  *                                   -> { done: Promise<bool>, stop() }
- *                                      done: true when it ran to its end,
- *                                      false when it could not play or
- *                                      was stopped
+ *                                      done: true when it ran to its end
+ *                                      (or to `to`), false when it could
+ *                                      not play or was stopped. `from` and
+ *                                      `to` are seconds into the clip: one
+ *                                      stretch of it, played on its own
  *   GameAudio.warm(url)            -> decode ahead of time
  *
  * Load order: before js/i18n.js and js/animations.js
@@ -312,7 +314,9 @@ var GameAudio = (function (global) {
       source.connect(gain);
       gain.connect(out);
       source.onended = function () { settle(!cut); };
-      source.start(0);
+      var from = Math.max(0, Math.min(o.from || 0, buf.duration));
+      if (o.to != null && o.to > from) source.start(0, from, o.to - from);
+      else source.start(0, from);
     });
     var handle = {
       done: done,
@@ -328,11 +332,12 @@ var GameAudio = (function (global) {
 
   function playElement(url, o) {
     var a = element(url);
-    var settled = false, resolveDone;
+    var settled = false, resolveDone, upTo = 0;
     var done = new Promise(function (r) { resolveDone = r; });
     function settle(ok) {
       if (settled) return;
       settled = true;
+      clearTimeout(upTo);
       a.removeEventListener('ended', onEnd);
       a.removeEventListener('error', onErr);
       resolveDone(ok);
@@ -341,12 +346,23 @@ var GameAudio = (function (global) {
     function onErr() { settle(false); }
     a.addEventListener('ended', onEnd);
     a.addEventListener('error', onErr);
+    /* a stretch of the clip: a player has no end time of its own, so it
+       is paused when the stretch has run, timed from when it starts */
+    function endAt() {
+      if (o.to == null || settled) return;
+      var left = (o.to - (o.from || 0)) * 1000 / (o.rate || 1);
+      upTo = setTimeout(function () {
+        try { a.pause(); } catch (e) {}
+        settle(true);
+      }, Math.max(0, left));
+    }
     try {
       a.volume = o.volume != null ? o.volume : 1;
       a.playbackRate = o.rate || 1;
-      a.currentTime = 0;
+      a.currentTime = o.from || 0;
       var p = a.play();
-      if (p && p.catch) p.catch(function () { settle(false); });
+      if (p && p.then) p.then(endAt, function () { settle(false); });
+      else endAt();
     } catch (e) { settle(false); }
     return {
       done: done,

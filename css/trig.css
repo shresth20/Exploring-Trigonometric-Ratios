@@ -44,9 +44,14 @@
 .tri__side--opp { stroke: var(--side-opp); }
 .tri__side--adj { stroke: var(--side-adj); }
 .tri__side--hyp { stroke: var(--side-hyp); }
-/* A side spoken of, lit: its own ink bloomed under it. */
-.tri__side.is-lit { filter: url(#partGlow); }
+/* A side spoken of, lit: its own ink bloomed under it -- an angle's arc
+   and the right angle's square the same. */
+.tri__side.is-lit,
+.tri__arc.is-lit,
+.tri__right.is-lit { filter: url(#partGlow); }
 .end-dot.is-lit { filter: url(#partGlow); }
+/* The gold of the halo a word is lit with (#hiGlow, index.html). */
+.hi-glow__ink { flood-color: var(--amber-fill); flood-opacity: .9; }
 
 /* A point the learner drags -- the 45° triangle's corner (s2-ratios.js),
    the start of the split (s3-thirty.js): a gold halo breathing round it,
@@ -97,10 +102,14 @@
   opacity: 0;
 }
 /* The words. A side's name in its side's ink; a length in the plain ink;
-   the angle's word in the angle's amber; a vertex's letter in the ink. */
+   the angle's word in the angle's amber; a vertex's letter in the ink.
+   A side's name wears only a fine outline: a heavy one reads as bold
+   lettering and blurs the name. */
 .tri__word {
   font-size: 24px;
   fill: var(--tri-line);
+  stroke-width: 2px;
+  letter-spacing: .6px;
   opacity: 0;
 }
 .tri__word--opp { fill: var(--side-opp); }
@@ -177,9 +186,11 @@
   font-size: var(--pane-fs);
   font-weight: 400;
   color: var(--text-primary);
+  /* a slight drop and a soft dark haze to stand the words off the swamp;
+     no heavier, or the lettering reads as bold */
   text-shadow:
-    0 .07em 0 var(--text-outline),
-    0 0 .3em color-mix(in srgb, var(--text-outline) 80%, transparent);
+    0 .04em 0 var(--text-outline),
+    0 0 .25em color-mix(in srgb, var(--text-outline) 75%, transparent);
 }
 .pane[hidden] { display: none; }
 .pane__body {
@@ -300,6 +311,7 @@
   transition: border-color .25s ease, background .25s ease, box-shadow .25s ease;
 }
 .dd__face:focus-visible { outline: 3px solid color-mix(in srgb, var(--blue-fill) 70%, transparent); outline-offset: 2px; }
+.dd__face:disabled { cursor: default; }
 .dd__val { min-width: 2.2em; text-align: center; }
 .dd__val.is-placeholder { color: var(--text-secondary); }
 .dd__caret {
@@ -335,6 +347,17 @@
   pointer-events: auto;
 }
 .dd--up .dd__menu { top: auto; bottom: calc(100% + .3em); }
+/* A list laid along its row (a table cell's): beside the blank, its
+   choices side by side, opening right -- or left from the last column. */
+.dd--side .dd__menu {
+  top: 50%;
+  left: calc(100% + .3em);
+  min-width: 0;
+  flex-direction: row;
+  translate: 0 -50%;
+}
+.dd--side.dd--left .dd__menu { left: auto; right: calc(100% + .3em); }
+.dd--side .dd__opt { min-width: 2.4em; }
 .dd__menu[hidden] { display: none; }
 .dd__opt {
   appearance: none;
@@ -564,6 +587,13 @@
     0 .5em 1.2em var(--shadow-deep);
   pointer-events: auto;
 }
+/* The table and the formula under it are each brought in by a transform,
+   which makes each a layer of its own; a blank's list open in the table
+   is lifted with the table, so it lies over the formula rather than
+   under it. */
+.ttable { position: relative; }
+.ttable:has(.dd.is-open) { z-index: 2; }
+.ttable-foot { position: relative; z-index: 1; }
 .ttable__row { display: contents; }
 .ttable__cell {
   display: flex;
@@ -620,6 +650,21 @@
 /* One row lit: the others step back. */
 .ttable.has-focus .ttable__row:not(.ttable__row--head):not(.is-focus) > .ttable__cell { opacity: .55; }
 .ttable.has-focus .ttable__row:not(.ttable__row--head):not(.is-focus) > .ttable__cell--lhs::before { opacity: 1; }
+/* One angle lit (focusCols in widgets.js): its key ringed in gold and its
+   cells warmed, the other angles' columns stepped back. The ratios stay. */
+.ttable.has-colfocus .ttable__cell[data-angle]:not(.is-colfocus) { opacity: .42; }
+.ttable.has-colfocus .ttable__cell--head.is-colfocus {
+  box-shadow:
+    inset 0 .12em 0 color-mix(in srgb, var(--white) 40%, transparent),
+    0 .1em 0 var(--head-rim),
+    0 0 0 .14em var(--amber-fill),
+    0 0 .8em .12em color-mix(in srgb, var(--amber-fill) 70%, transparent);
+}
+.ttable.has-colfocus .ttable__cell--val.is-colfocus {
+  border-color: var(--amber-border);
+  background: linear-gradient(180deg, var(--cell-top) 0%,
+              color-mix(in srgb, var(--amber-fill) 22%, var(--cream)) 100%);
+}
 .ttable__v { display: inline-flex; align-items: center; }
 .ttable .frac { height: auto; }
 /* the sides only: the gaps either side of the bar are kept (css/style.css) */
@@ -679,7 +724,10 @@
               color-mix(in srgb, var(--amber-fill) 18%, var(--cream)) 100%);
   color: var(--brown-ink);
   text-shadow: none;
+  transition: border-color .25s ease, background .25s ease, box-shadow .25s ease, opacity .25s ease;
 }
+/* The row is asked a cell at a time: the blanks still to come wait, dimmed. */
+.ttable__cell.is-waiting .dd__face { opacity: .45; }
 .ttable .dd__val.is-placeholder { color: color-mix(in srgb, var(--brown-ink) 45%, transparent); }
 .ttable .dd__caret path { stroke: var(--orange-deep); }
 .ttable .dd.is-asking .dd__face { animation-name: ttable-dd-call; }

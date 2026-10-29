@@ -35,6 +35,8 @@
   var AUTO_TURN = 2500;     /* ms: a self-turning page, left to be looked at */
   var LOOK = 1400;          /* ms: a finished mark looked at before the next */
   var BIRD_LAG = 160;       /* ms: the bird hops up once the plate is mostly in */
+  var TRIES = 2;            /* wrong answers to one question before it is answered for the learner */
+  var WRONG_HOLD = 350;     /* ms: a wrong answer left red after its shake, at the least */
 
   /* The figure's own coordinates: the picture is 1000 x 420, from y = 45
      (the viewBox in index.html), so centred on (500, 255). SHIFT is how far
@@ -52,21 +54,31 @@
      too -- on the middle of the left half, level with the middle of the
      pane. Measured, not fixed, so a triangle with a long word out to one
      side is centred as it is seen. Read in the group's own units, before
-     its own move, so the answer is the same however far it has slid. */
-  function aside(g) {
+     its own move, so the answer is the same however far it has slid.
+     `at` is how far across the stage the middle goes (a quarter unless
+     said: .75 is the middle of the right half), and `k` a scale the group
+     wears about `origin` alongside the move, so two triangles shrunk to
+     stand side by side are each centred in a half. */
+  function aside(g, at, k, origin) {
+    if (at == null) at = .25;
     var box = shownBox(g);
     var fig = dom.figure, stage = fig.parentNode;
     var fw = fig.clientWidth, fh = fig.clientHeight;
     var s = Math.min(fw / VB_W, fh / VB_H);
-    if (!box || !s) return { x: SHIFT, y: 0 };
+    if (!box || !s) return { x: round2(SHIFT * (.5 - at) / .25), y: 0, fit: 1 };
     /* the stage's corner, in the picture's units (it is drawn centred) */
     var left = (stage.clientWidth - fw) / 2 + (fw - VB_W * s) / 2;
     var top = parseFloat(getComputedStyle(fig).top) + (fh - VB_H * s) / 2;
-    var cx = (stage.clientWidth / 4 - left) / s;
+    var cx = (stage.clientWidth * at - left) / s;
     var cy = (stage.clientHeight / 2 - top) / s + (CY - VB_H / 2);
+    var bx = box.x + box.width / 2, by = box.y + box.height / 2;
+    if (k == null) k = 1;
+    var o = origin || { x: bx, y: by };
     return {
-      x: round2(cx - (box.x + box.width / 2)),
-      y: round2(cy - (box.y + box.height / 2))
+      x: round2(cx - o.x - (bx - o.x) * k),
+      y: round2(cy - o.y - (by - o.y) * k),
+      /* the largest scale at which it still fits its half, a margin spare */
+      fit: round2(stage.clientWidth * .47 / (box.width * s))
     };
   }
   /* The box round every mark of a group that can be seen, in the group's
@@ -92,7 +104,7 @@
   }
 
   /* The activity's boxes: the same proportions as a name in the tray. */
-  var BOX_W = 210, BOX_H = 42;
+  var BOX_W = 190, BOX_H = 38;
   var BOX_R = BOX_H / 2;
   var LEAD_STUB = 42;
 
@@ -116,6 +128,7 @@
 
       board:    $('board'),
       promptLine: document.querySelector('.prompt__line'),
+      promptWords: $('promptType'),
 
       figure:    $('figure'),
       figNudges: $('figNudges'),
@@ -178,19 +191,13 @@
     var g = el('g', { 'class': 'q-box', 'data-name': b.name, tabindex: 0, role: 'button' });
     var rect = el('rect', { 'class': 'q-box__rect', x: b.x, y: b.y,
                             width: BOX_W, height: BOX_H, rx: BOX_R });
-    var badge = el('g', { 'class': 'q-badge' });
-    badge.appendChild(el('circle', { 'class': 'q-badge__ring', cx: b.x + 24, cy: cy, r: 10 }));
-    badge.appendChild(el('path', { 'class': 'q-badge__tick',
-      d: 'M' + (b.x + 18.5) + ' ' + cy + ' L' + (b.x + 22.5) + ' ' + (cy + 4) +
-         ' L' + (b.x + 29.5) + ' ' + (cy - 4) }));
     var text = el('text', { 'class': 'figure-label q-box__text',
-                            x: b.x + BOX_W / 2 + 9, y: cy + 7.5, 'text-anchor': 'middle' });
+                            x: b.x + BOX_W / 2, y: cy + 7.5, 'text-anchor': 'middle' });
     g.appendChild(rect);
-    g.appendChild(badge);
     g.appendChild(text);
     group.appendChild(g);
 
-    var box = { name: b.name, g: g, rect: rect, badge: badge, text: text,
+    var box = { name: b.name, g: g, rect: rect, text: text,
                 leader: leader, mask: maskPath, filled: false };
     emptyBox(box);
     return box;
@@ -330,13 +337,40 @@
 
   function clearPrompt() {
     sayPrompt.clear();
-    M.set(dom.promptLine, { clearProps: 'opacity,transform,filter' });
+    lineBack();
   }
 
-  /* Say a line in the header. The plate is one width for every line, so
-     nothing in the row has to make room for it. */
+  /* The plate and its words back to their own styles, for the next line. */
+  function lineBack() {
+    M.set([dom.promptLine, dom.promptWords], { clearProps: 'opacity,transform,filter' });
+  }
+
+  /* The words off the plate, the plate left standing: the next line eases
+     it from this line's size to its own (the typer's box morph), so the
+     plate never vanishes and comes back a different size. */
+  function wordsOut() {
+    if (!dom.promptLine.textContent.trim()) return Promise.resolve();
+    return Flow.anim(Beats.lineOut(dom.promptWords));
+  }
+
+  /* Say a line in the header. The plate is sized to its line and eases
+     from one line's size to the next's; it is alone in its row, so nothing
+     else in the row has to make room for it. */
   function sayInHeader(text, over) {
-    return sayPrompt(text, over);
+    return sayPrompt(text, over).then(markSaid);
+  }
+
+  /* A line on the plate is left up LINE_HOLD after it has been said
+     before the next one takes its place -- the same pause a line said a
+     sentence at a time leaves between its sentences (PIECE_HOLD) -- so two
+     short lines said back to back never swap the moment the first is
+     done. `saidAt` is when the plate's line was last finished. */
+  var LINE_HOLD = 800;
+  var saidAt = 0;
+  function markSaid(r) { saidAt = performance.now(); return r; }
+  function lineHeld() {
+    if (!dom.promptLine.textContent.trim()) return Promise.resolve();
+    return Flow.wait(saidAt + LINE_HOLD - performance.now());
   }
 
   var speaking = 0;
@@ -346,13 +380,32 @@
     return { text: String(text), vo: null };
   }
 
-  /* A key's recording, played and listened to the end. Listened for on
-     Flow's own waits, so a line is never held past a Skip. */
-  function hear(key) {
+  /* ---- words for the ear only -------------------------------------------
+     A verdict or a word of praise -- "Correct!", "Not quite!", "Excellent!"
+     -- is heard, never shown: its recording plays and the header keeps the
+     line it holds. A line that opens with one ("That's correct! These are
+     ...") is played whole and shows only the pieces after it. Known by its
+     words, read from the locale, so it holds in any language. */
+  var HEARD_ONLY = ['fbNotQuite', 'fbCorrect', 'fbThatsCorrect', 'fbThatsRight', 'fbThereWeGo'];
+  function heardOnly(text) {
+    var s = plain(text).trim().toLowerCase();
+    return HEARD_ONLY.concat(PRAISE).some(function (k) {
+      return plain(T(k)).trim().toLowerCase() === s;
+    });
+  }
+  /* A line for the ear only: its recording, and what is acted out beside it. */
+  function hearOnly(line, along) {
+    return Promise.all([quiet(voiceOf(line)), along ? along(line) : null]);
+  }
+
+  /* A key's recording, played and listened to the end -- or one stretch of
+     it, `part` { from, to } in seconds. Listened for on Flow's own waits,
+     so a line is never held past a Skip. */
+  function hear(key, part) {
     if (!key || !global.I18n || Flow.isFast()) return Promise.resolve(false);
     var done = false, ok = false;
-    quiet(global.I18n.say(key)).then(function (r) { done = true; ok = r; },
-                                     function () { done = true; });
+    quiet(global.I18n.say(key, part)).then(function (r) { done = true; ok = r; },
+                                           function () { done = true; });
     function heard() {
       if (Flow.isFast()) { global.I18n.stop(); return false; }
       if (done) return ok;
@@ -370,6 +423,9 @@
   /* ---- a line on its recording's clock --------------------------------- */
   var keyOfText = null;
   var patterns = null;
+  /* A sentence of a line said a sentence at a time, and when each of its
+     words is heard from the moment it is put up (speakBySentence). */
+  var pieceCues = {};
   function plain(text) { return String(text).replace(/ /g, ' '); }
   function cuesFor(text, key) {
     var I = global.I18n;
@@ -389,6 +445,7 @@
     }
     var line = plain(text);
     var found = keyOfText[line];
+    if (!found && pieceCues[line]) return pieceCues[line].slice();
     if (!found) {
       patterns.some(function (p) { if (p.re.test(line)) { found = p.key; return true; } });
     }
@@ -478,16 +535,18 @@
      several pieces is said a piece at a time (speakBySentence). */
   function speak(text, along) {
     var line = lineOf(text);
+    if (heardOnly(line.text)) return hearOnly(line, along);
     if (sentencesOf(line.text)) return speakBySentence(line, along);
     var mine = ++speaking;
-    var has = dom.promptLine.textContent.trim().length > 0;
-    var gone = has ? Flow.anim(Beats.lineOut(dom.promptLine)) : Promise.resolve();
-    return gone.then(function () {
+    return lineHeld().then(function () {
       if (mine !== speaking) return;
-      M.set(dom.promptLine, { clearProps: 'opacity,transform,filter' });
-      var heard = quiet(voiceOf(line));
-      var said = sayInHeader(line);
-      return Promise.all([said, heard, along ? along(line) : null]);
+      return wordsOut().then(function () {
+        if (mine !== speaking) return;
+        lineBack();
+        var heard = quiet(voiceOf(line));
+        var said = sayInHeader(line);
+        return Promise.all([said, heard, along ? along(line) : null]);
+      });
     });
   }
 
@@ -514,12 +573,13 @@
      words start as the header settles. */
   function arriveSaying(text, along) {
     var line = lineOf(text);
+    if (heardOnly(line.text)) return hearOnly(line, along);
     if (sentencesOf(line.text)) return speakBySentence(line, along);
     speaking++;
     var reveal = sayPrompt.reserve(line);
     return headerIn().then(function () {
       var heard = quiet(voiceOf(line));
-      return Promise.all([reveal(), heard, along ? along(line) : null]);
+      return Promise.all([reveal().then(markSaid), heard, along ? along(line) : null]);
     });
   }
 
@@ -542,9 +602,16 @@
   }
 
   /* A line of more than one sentence, said one sentence at a time from ONE
-     key and ONE clip: each sentence typed on the clip's own clock, the
-     first taken off and the next put up as the voice reaches it. */
+     key and ONE clip: each sentence typed on the clip's own clock. Where
+     the clip carries its cues it is played a sentence at a time too -- the
+     stretch each one is heard in -- and the voice waits between two of
+     them while the sentence just said is left up to be read (PIECE_HOLD):
+     a short sentence is never swapped for the next the moment it is done.
+     Without cues, the first is taken off and the next put up as the voice
+     reaches it. */
   var OUT_LEAD = 280;
+  var PIECE_HOLD = 800;     /* ms a sentence is left up after it is said  */
+  var CUT_LEAD = 60;        /* ms a stretch starts before its first word  */
 
   /* A line cut into the pieces it is said in: at every full stop,
      exclamation and question mark, and at a comma that joins two clauses
@@ -592,6 +659,7 @@
     if (Flow.isFast()) return piecesInTurn(parts, line, along);
 
     var cues = I && I.cues && line.vo ? I.cues(line.vo) : null;
+    var stretches = !!cues;
     if (!cues) {
       var clipHere = I && line.vo && global.GameAudio && global.GameAudio.has &&
                      global.GameAudio.has(I.voice(line.vo));
@@ -609,31 +677,34 @@
       var n = (s.match(/\S+\s*/g) || []).length;
       var atc = cues.slice(w, w + n);
       w += n;
-      return { text: s, at: atc };
+      return { text: s, at: atc, shown: !heardOnly(s) };
     });
+    if (!split.some(function (s) { return s.shown; })) return hearOnly(line, along);
+    if (stretches) return sayInStretches(line, split, along);
 
     var up = headerUp ? Promise.resolve() : headerIn();
     return up.then(function () {
       var mine = ++speaking;
-      var has = dom.promptLine.textContent.trim().length > 0;
-      var gone = has ? Flow.anim(Beats.lineOut(dom.promptLine)) : Promise.resolve();
+      /* a first piece for the ear only leaves the line before it standing
+         until the next piece is due */
+      var gone = split[0].shown ? wordsOut() : Promise.resolve();
       return gone.then(function () {
         if (mine !== speaking) return;
-        M.set(dom.promptLine, { clearProps: 'opacity,transform,filter' });
+        lineBack();
         var t0 = performance.now();
         var heard = quiet(voiceOf(line));
         var acted = along ? along(line) : null;
         var typed = split.reduce(function (chain, s, i) {
           return chain.then(function () {
-            if (mine !== speaking) return;
+            if (mine !== speaking || !s.shown) return;
             var out = i === 0 ? Promise.resolve() :
               Flow.wait(t0 + s.at[0] - OUT_LEAD - performance.now()).then(function () {
                 if (mine !== speaking) return;
-                return Flow.anim(Beats.lineOut(dom.promptLine));
+                return wordsOut();
               });
             return out.then(function () {
               if (mine !== speaking) return;
-              M.set(dom.promptLine, { clearProps: 'opacity,transform,filter' });
+              lineBack();
               var late = performance.now() - t0;
               return sayInHeader(s.text, {
                 at: s.at.map(function (c) { return Math.max(0, c - late); })
@@ -646,13 +717,50 @@
     });
   }
 
+  /* The sentences of a line, each put up with its own stretch of the clip
+     and typed on it, and left up PIECE_HOLD before the next is put up. A
+     sentence for the ear only plays with the line before it left standing.
+     What is acted out alongside starts with the first sentence. Each
+     sentence's cues are kept, from the moment it is put up, so a phrase
+     in it (onPhrase) is timed by its own words. */
+  function sayInStretches(line, split, along) {
+    var up = headerUp ? Promise.resolve() : headerIn();
+    return up.then(function () {
+      var mine = ++speaking;
+      var acted = null;
+      var told = split.reduce(function (chain, s, i) {
+        return chain.then(function () {
+          if (mine !== speaking) return;
+          var next = split[i + 1];
+          var from = Math.max(0, s.at[0] - CUT_LEAD);
+          var to = next ? Math.max(from, next.at[0] - CUT_LEAD) : null;
+          var at = s.at.map(function (c) { return Math.max(0, c - from); });
+          if (s.shown) pieceCues[plain(s.text)] = at;
+          return (s.shown ? lineHeld().then(wordsOut) : Promise.resolve()).then(function () {
+            if (mine !== speaking) return;
+            var heard = quiet(hear(line.vo, { from: from / 1000, to: to == null ? null : to / 1000 }));
+            if (i === 0 && along) acted = along(line);
+            if (!s.shown) return heard;
+            lineBack();
+            return Promise.all([sayInHeader(s.text, { at: at }), heard]).then(function () {
+              if (next && mine === speaking) return Flow.wait(PIECE_HOLD);
+            });
+          });
+        });
+      }, Promise.resolve());
+      return told.then(function () { return acted; });
+    });
+  }
+
   /* The pieces of a line with no cues to time them by, each its own plain
      line, the first opening the header if it is not up already. What is
      acted out alongside starts with the first piece and runs on beside
      the rest. */
   function piecesInTurn(parts, line, along) {
+    parts = parts.filter(function (s) { return !heardOnly(s); });
     var acted = null;
     function start() { if (along) acted = along(line); }
+    if (!parts.length) { start(); return Promise.resolve(acted); }
     var told = parts.reduce(function (chain, s, i) {
       return chain.then(function (n) {
         if (i > 0 && n !== speaking) return n;
@@ -713,7 +821,7 @@
     Beats.sfx('cheer');
     quiet(Flow.anim(Beats.confettiRain(dom.board)));
   }
-  /* ...and a word of praise said as the confetti comes down. */
+  /* ...and a word of praise heard as the confetti comes down. */
   function praise(key) {
     celebrate();
     return Flow.wait(Beats.ringing())
@@ -847,37 +955,58 @@
       function (err) { off(); throw err; });
   }
 
+  /* A wrong answer held up: its shake, the red left a beat after it, and
+     `said` -- the voice saying it is wrong -- heard to the end. */
+  function heldWrong(shake, said) {
+    return Promise.all([
+      Flow.anim(shake).then(function () { return Flow.wait(WRONG_HOLD); }),
+      said
+    ]);
+  }
+
   /* One press on one of several pills, tried until the right one: a wrong
-     press is refused -- the pill shakes, turns red and is spent, `onWrong`
-     is told which -- and the learner tries again among the rest. Resolves
-     with { misses } once the right one is pressed (or a skip presses it). */
+     press is refused -- the pill shakes and stays red while `onWrong`, told
+     which, has the voice say so (the promise it hands back), and nothing
+     can be pressed meanwhile; then it is spent and the learner tries again
+     among the rest. After TRIES wrong ones the right one is pressed for
+     the learner. Resolves with { misses } once the right one is pressed
+     (or a skip presses it). */
   function askUntilRight(buttons, answerIndex, opts) {
     var o = opts || {};
     var live = true;
     var misses = 0;
     var good = buttons[answerIndex];
+    var group = good.parentNode;
 
+    function right() {
+      live = false;
+      Beats.choiceRight(good);
+      dom.gate.dispatchEvent(new MouseEvent('click'));
+    }
     function onPick(ev) {
-      if (!live) return;
+      if (!live || group.classList.contains('is-held')) return;
       var btn = ev.currentTarget;
       if (btn.classList.contains('is-done')) return;
       ripple(ev, btn);
-      if (btn === good) {
-        live = false;
-        Beats.choiceRight(btn);
-        dom.gate.dispatchEvent(new MouseEvent('click'));
-        return;
-      }
+      if (btn === good) return right();
       misses++;
       btn.classList.add('is-done');
-      quiet(Flow.anim(Beats.choiceWrong(btn)).then(function () {
+      group.classList.add('is-held');
+      var said = o.onWrong ? o.onWrong(buttons.indexOf(btn), misses) : null;
+      quiet(heldWrong(Beats.choiceWrong(btn), said).then(function () {
+        group.classList.remove('is-held');
         btn.classList.remove('is-wrong');
         btn.classList.add('is-out');
+        /* spent: it fades, so it reads as no longer one to press. Faded by
+           a tween, as the tray brought it in with one (its opacity is
+           written inline, which a class could not override). */
+        quiet(Flow.anim(Beats.choiceOut(btn)));
+        if (live && misses >= TRIES) right();
       }));
-      if (o.onWrong) o.onWrong(buttons.indexOf(btn), misses);
     }
     function off() {
       live = false;
+      group.classList.remove('is-held');
       buttons.forEach(function (b) {
         b.removeEventListener('click', onPick);
         b.classList.add('is-done');
@@ -961,7 +1090,14 @@
 
   /* ---- the activity's interaction -----------------------------------------
      Names and boxes, and two ways to put one in the other: drag, or tap a
-     name then tap a box (which is what a keyboard does). */
+     name then tap a box (which is what a keyboard does).
+       A wrong name is held in the box it was given to -- written there,
+     the box red -- while `o.onWrong(box)` has the voice say so (the promise
+     it hands back), and nothing can be taken up meanwhile; then it goes
+     back to the tray. With `o.revealAfter`, a box given that many wrong
+     names is then answered for the learner: its own name goes in and
+     `o.onReveal(box)` says why (the promise it hands back is waited on,
+     the activity shut meanwhile, and again before the activity ends). */
   var TAP_SLOP = 8;
   var DROP_SLACK = 10;
 
@@ -970,9 +1106,11 @@
     var failed = false;
     var misses = 0;
     var live = true;
+    var busy = false;
     var picked = null;
     var drag = null;
     var placed = 0;
+    var hints = [];
 
     q.g = o.group;
     if (q.g) q.g.classList.add('is-live');
@@ -1013,18 +1151,23 @@
       dock(box, chip);
       if (placed >= q.boxes.length) finish();
     }
+    /* The name carried into the box, shrinking out as it arrives. Hands
+       back where the box is in the name's own moves, for the way back. */
+    function carry(box, chip) {
+      chip.classList.remove('is-lifted');
+      var c = chip.getBoundingClientRect();
+      var r = box.rect.getBoundingClientRect();
+      var dx = (r.left + r.width / 2) - (c.left + c.width / 2);
+      var dy = (r.top + r.height / 2) - (c.top + c.height / 2);
+      var at = { x: (gsap.getProperty(chip, 'x') || 0) + dx, y: (gsap.getProperty(chip, 'y') || 0) + dy };
+      Beats.chipDock(chip, dx, dy);
+      return at;
+    }
     function dock(box, chip) {
       box.filled = true;
       placed++;
       pick(null);
-      chip.classList.remove('is-lifted');
-
-      var c = chip.getBoundingClientRect();
-      var r = box.rect.getBoundingClientRect();
-      Beats.chipDock(chip,
-        (r.left + r.width / 2) - (c.left + c.width / 2),
-        (r.top + r.height / 2) - (c.top + c.height / 2));
-
+      carry(box, chip);
       box.text.textContent = T(box.name);
       box.g.setAttribute('aria-label', T('a11yBoxRight', { name: T(box.name) }));
       Beats.boxRight(box);
@@ -1033,22 +1176,60 @@
     function wrong(box, chip) {
       failed = true;
       misses++;
+      box.misses = (box.misses || 0) + 1;
       pick(null);
-      if (o.onWrong) o.onWrong(box, chip);
-      Beats.boxWrong(box);
-      home(chip);
+      var reveal = o.revealAfter && box.misses >= o.revealAfter;
+      shut(true);
+      var said = o.onWrong ? o.onWrong(box, chip) : null;
+      quiet(holdWrong(box, chip, said)
+        .then(function () { if (reveal && live) return revealBox(box); })
+        .then(function () { shut(false); }));
     }
+    /* Nothing taken up or given while a miss -- or the answer it ends
+       in -- is being said. */
+    function shut(on) {
+      busy = on;
+      if (q.g) q.g.classList.toggle('is-live', live && !on);
+    }
+    /* A wrong name held in the box it was given to: carried in and written
+       there, the box red, until `said` is heard out; then lifted out again
+       and carried back to the tray. A skip meanwhile leaves it docked. */
+    function holdWrong(box, chip, said) {
+      var at = carry(box, chip);
+      box.text.textContent = T(chip.dataset.name);
+      return heldWrong(Beats.boxWrong(box), said).then(function () {
+        if (!live) return;
+        return Flow.anim(Beats.boxFree(box, chip, at));
+      });
+    }
+    function chipFor(name) {
+      return names.filter(function (c) { return c.dataset.name === name; })[0];
+    }
+    /* The box answered for the learner, its own name carried in from the
+       tray, and why said. */
+    function revealBox(box) {
+      var chip = chipFor(box.name);
+      if (!chip || box.filled) return;
+      box.revealed = true;
+      dock(box, chip);
+      var said = quiet(Promise.resolve(o.onReveal ? o.onReveal(box, chip) : null));
+      hints.push(said);
+      if (placed >= q.boxes.length) finish();
+      return said;
+    }
+    /* Every box filled: the activity ends once any answer still being
+       explained has been. */
     function finish() {
       if (!live) return;
       live = false;
-      done();
+      Promise.all(hints).then(done, function () {});
     }
     function done() {
       dom.gate.dispatchEvent(new MouseEvent('click'));
     }
 
     function onDown(ev) {
-      if (!live || drag) return;
+      if (!live || busy || drag) return;
       var chip = ev.currentTarget;
       if (chip.classList.contains('is-docked')) return;
       ev.preventDefault();
@@ -1090,7 +1271,7 @@
       home(d.chip);
     }
     function onChipKey(ev) {
-      if (!live) return;
+      if (!live || busy) return;
       if (ev.key !== 'Enter' && ev.key !== ' ' && ev.key !== 'Spacebar') return;
       ev.preventDefault();
       var chip = ev.currentTarget;
@@ -1103,23 +1284,23 @@
       return null;
     }
     function onBoxUp(ev) {
-      if (!live || drag || !picked) return;
+      if (!live || busy || drag || !picked) return;
       var box = boxOf(ev);
       if (box) attempt(box, picked);
     }
     function onBoxKey(ev) {
-      if (!live || !picked) return;
+      if (!live || busy || !picked) return;
       if (ev.key !== 'Enter' && ev.key !== ' ' && ev.key !== 'Spacebar') return;
       ev.preventDefault();
       var box = boxOf(ev);
       if (box) attempt(box, picked);
     }
     function onBoxEnter(ev) {
-      if (!live || drag) return;
+      if (!live || busy || drag) return;
       hover(boxOf(ev));
     }
     function onBoxLeave() {
-      if (!live || drag) return;
+      if (!live || busy || drag) return;
       hover(null);
     }
 
@@ -1184,9 +1365,9 @@
    * The welcome is the swamp itself: the title drops in on its hanging
    * plate (a CSS entrance, from the first frame -- see .welcome__title),
    * and Start is offered once everything has loaded. Then the welcome
-   * stands aside, and the first line arrives on a plate of its own in the
-   * middle of the screen (the bubble), with the bird hopping up under it
-   * to say it -- the one screen the bird is on.
+   * stands aside, and the first line arrives in a speech bubble in the
+   * middle of the screen, over two rows, with the bird hopping up beside
+   * it to say it -- the one screen the bird is on.
    * ====================================================================== */
   function sceneWelcome() {
     return Flow.wait(SHORT)
@@ -1327,7 +1508,7 @@
     wipers.forEach(function (w) { if (w.reset) w.reset(); });
 
     M.set([dom.welcome, dom.title, dom.startBtn, dom.nextBtn, dom.bubble,
-           dom.board, dom.promptLine],
+           dom.board, dom.promptLine, dom.promptWords],
           { clearProps: 'opacity,transform,filter' });
   }
 
@@ -1350,9 +1531,9 @@
   function init() {
     if (dom) return { dom: dom };
     dom = collect();
-    sayBubble = onVoice(global.Typer.create($('bubbleType'), { box: dom.bubble }));
+    sayBubble = onVoice(global.Typer.create($('bubbleType'), { box: dom.bubble, fit: true }));
     mascot = global.Mascot.create({ slot: dom.bird, idle: false });
-    sayPrompt = onVoice(global.Typer.create($('promptType')));
+    sayPrompt = onVoice(global.Typer.create($('promptType'), { box: dom.promptLine, fit: true }));
     sections.forEach(function (s) { if (s.build) s.build(kit); });
     return { dom: dom };
   }
@@ -1383,7 +1564,7 @@
   /* What a section needs from this file to speak with the same voice. */
   var kit = {
     BEAT: BEAT, SHORT: SHORT, HOLD_ASK: HOLD_ASK, AUTO_TURN: AUTO_TURN, LOOK: LOOK,
-    TAP_SLOP: TAP_SLOP,
+    TAP_SLOP: TAP_SLOP, TRIES: TRIES,
     CX: CX, CY: CY, VB_W: VB_W, VB_H: VB_H, SHIFT: SHIFT, aside: aside,
     BOX_W: BOX_W, BOX_H: BOX_H, LEAD_STUB: LEAD_STUB, HAND_D: HAND_D,
     dom: function () { return dom; },
@@ -1401,7 +1582,8 @@
     onVoice: onVoice,
     wipeBoard: wipeBoard, collapseHeader: collapseHeader, openHeader: openHeader,
     resetFooter: resetFooter, addWipe: addWipe,
-    askChoice: askChoice, askUntilRight: askUntilRight, armQuiz: armQuiz, dragGuide: dragGuide,
+    askChoice: askChoice, askUntilRight: askUntilRight, heldWrong: heldWrong,
+    armQuiz: armQuiz, dragGuide: dragGuide,
     keyed: keyed, hear: hear, onWord: onWord, onPhrase: onPhrase, wordAt: wordAt,
     typedFor: typedFor, sentencesOf: sentencesOf,
     celebrate: celebrate, praise: praise, praiseKey: praiseKey,
