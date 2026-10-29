@@ -476,7 +476,7 @@ body {
    ========================================================================== */
 .figure {
   position: absolute;
-  --figure-grow: 8%;
+  --figure-grow: 20%;
   --figure-lift: 0%;
   inset: calc(var(--figure-grow) / -2);
   top: calc(var(--figure-grow) / -2 - var(--figure-lift));
@@ -973,9 +973,9 @@ body {
 }
 
 /* ---- Welcome ------------------------------------------------------------
-   No artwork of its own: the welcome is the swamp the whole lesson is set
-   on. The title sits at the top on the prompt's own plate, and Start
-   stands low and centred over the water. */
+   A painting of its own (welcome.png): the swamp by moonlight with the
+   title lettered on its plate in the sky, covering the whole window. Start
+   stands low and centred over its water. */
 .welcome {
   position: absolute;
   inset: 0;
@@ -988,47 +988,42 @@ body {
 }
 .welcome[hidden] { display: none; }
 
-/* The title, on the prompt's plate (header2.png, 9-sliced as the
-   prompt's is), near the top of the screen, lettered in gold. Balanced over
-   two rows rather than broken wherever the width runs out. It drops in
-   from above and settles with a little give -- a CSS entrance like the
-   loader's, so it runs from the very first frame, before any script has
-   had the chance to: a scripted one would show the title at rest first. */
-.welcome__title {
-  --title-s: calc(var(--board-w) / 3350);
-
-  grid-row: 1;
-  align-self: start;
-  justify-self: center;
-  max-width: min(100%, 14em);
-  margin: clamp(10px, 3.5vh, 36px) 0 0;
-  padding:
-    calc(var(--title-s) * 112) calc(var(--title-s) * 150)
-    calc(var(--title-s) * 190);
-  border: 0 solid transparent;
-  border-image: var(--art-plate) 130 420 217 400 fill /
-    calc(var(--title-s) * 130) calc(var(--title-s) * 420)
-    calc(var(--title-s) * 217) calc(var(--title-s) * 400);
-
-  font-family: var(--font-title);
-  font-weight: 400;
-  font-size: clamp(30px, calc(var(--board-w) * .052), 80px);
-  line-height: 1.06;
-  letter-spacing: .02em;
-  text-align: center;
-  text-wrap: balance;
-  color: var(--amber-fill);
-  text-shadow:
-    0 .07em 0 var(--orange-deep),
-    0 0 .35em color-mix(in srgb, var(--amber-fill) 35%, transparent);
-  animation: title-drop .7s cubic-bezier(.34, 1.45, .64, 1) .1s backwards;
+/* The painting, behind Start and the loader (the welcome is a stacking
+   context of its own). Cropped to the window rather than letterboxed,
+   held a little above centre so the lettered title is never what's cut.
+   It fades in -- a CSS entrance, so it runs from the very first frame. */
+.welcome__art {
+  position: absolute;
+  inset: 0;
+  z-index: -1;
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
+  object-position: 50% 40%;
+  pointer-events: none;
+  user-select: none;
+  animation: art-in .5s ease-out backwards;
 }
-@keyframes title-drop {
-  from { opacity: 0; transform: translateY(-70%); }
-  to   { opacity: 1; transform: none; }
+@keyframes art-in {
+  from { opacity: 0; }
+  to   { opacity: 1; }
 }
 @media (prefers-reduced-motion: reduce) {
-  .welcome__title { animation: none; }
+  .welcome__art { animation: none; }
+}
+
+/* The title is lettered into the painting; the heading stays for screen
+   readers only. */
+.welcome__title {
+  position: absolute;
+  width: 1px;
+  height: 1px;
+  margin: -1px;
+  padding: 0;
+  overflow: hidden;
+  clip-path: inset(50%);
+  white-space: nowrap;
+  border: 0;
 }
 
 /* ---- the loading line, where Start will stand --------------------------- */

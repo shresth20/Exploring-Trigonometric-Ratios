@@ -474,9 +474,11 @@
   }
 
   /* The next line, said on the header while it is already up. `along` is
-     something acted out on the figure while the line is said. */
+     something acted out on the figure while the line is said. A line of
+     several pieces is said a piece at a time (speakBySentence). */
   function speak(text, along) {
     var line = lineOf(text);
+    if (sentencesOf(line.text)) return speakBySentence(line, along);
     var mine = ++speaking;
     var has = dom.promptLine.textContent.trim().length > 0;
     var gone = has ? Flow.anim(Beats.lineOut(dom.promptLine)) : Promise.resolve();
@@ -512,6 +514,7 @@
      words start as the header settles. */
   function arriveSaying(text, along) {
     var line = lineOf(text);
+    if (sentencesOf(line.text)) return speakBySentence(line, along);
     speaking++;
     var reveal = sayPrompt.reserve(line);
     return headerIn().then(function () {
@@ -526,12 +529,12 @@
   }
 
   /* A line, said on the header: straight away if the header is up, or
-     opening it first. A line of several pieces is said a piece at a time
-     (speakBySentence); a line with something acted out alongside it is
-     said whole, so the beat and the words start together. */
+     opening it first. The header never holds more than one piece of a
+     line: a line of several is said a piece at a time (speakBySentence),
+     anything acted out alongside it starting with the first piece. */
   function say(key, along) {
     var line = typeof key === 'string' ? keyed(key) : key;
-    if (!along && sentencesOf(line.text)) return speakBySentence(line);
+    if (sentencesOf(line.text)) return speakBySentence(line, along);
     return sayWhole(line, along);
   }
   function sayWhole(line, along) {
@@ -578,30 +581,25 @@
     return out.length > 1 ? out : null;
   }
 
-  function speakBySentence(key) {
+  function speakBySentence(key, along) {
     var line = typeof key === 'string' ? keyed(key) : key;
     var I = global.I18n;
     var parts = sentencesOf(line.text);
-    if (!parts || Flow.isFast()) return sayWhole(line);
+    if (!parts) return sayWhole(line, along);
+
+    /* skipped through: the pieces put up in turn all the same, so the page
+       comes to rest on its last piece, never on the whole line */
+    if (Flow.isFast()) return piecesInTurn(parts, line, along);
 
     var cues = I && I.cues && line.vo ? I.cues(line.vo) : null;
     if (!cues) {
-      /* A clip that is here but carries no cues is said whole: a sentence
-         at a time with nothing to time the sentences by would run ahead
-         of the voice or behind it. */
       var clipHere = I && line.vo && global.GameAudio && global.GameAudio.has &&
                      global.GameAudio.has(I.voice(line.vo));
-      if (clipHere) return sayWhole(line);
-      /* no clip: each piece its own plain line, the first opening the
-         header if it is not up already */
-      return parts.reduce(function (chain, s, i) {
-        return chain.then(function (n) {
-          if (i > 0 && n !== speaking) return n;
-          var said = i === 0 ? sayWhole({ text: s, vo: null }) : speak(s);
-          var mine = speaking;
-          return said.then(function () { return mine; });
-        });
-      }, Promise.resolve(speaking));
+      /* no clip: each piece its own plain line */
+      if (!clipHere) return piecesInTurn(parts, line, along);
+      /* a clip that carries no cues (its line was changed after it was
+         recorded): the pieces timed at the typer's own speaking pace */
+      cues = pacedCues(line.text);
     }
 
     /* each piece with the cues of its own words, from the clip's start:
@@ -624,6 +622,7 @@
         M.set(dom.promptLine, { clearProps: 'opacity,transform,filter' });
         var t0 = performance.now();
         var heard = quiet(voiceOf(line));
+        var acted = along ? along(line) : null;
         var typed = split.reduce(function (chain, s, i) {
           return chain.then(function () {
             if (mine !== speaking) return;
@@ -642,8 +641,37 @@
             });
           });
         }, Promise.resolve());
-        return Promise.all([typed, heard]);
+        return Promise.all([typed, heard, acted]);
       });
+    });
+  }
+
+  /* The pieces of a line with no cues to time them by, each its own plain
+     line, the first opening the header if it is not up already. What is
+     acted out alongside starts with the first piece and runs on beside
+     the rest. */
+  function piecesInTurn(parts, line, along) {
+    var acted = null;
+    function start() { if (along) acted = along(line); }
+    var told = parts.reduce(function (chain, s, i) {
+      return chain.then(function (n) {
+        if (i > 0 && n !== speaking) return n;
+        var said = i === 0 ? sayWhole({ text: s, vo: null }, start) : speak(s);
+        var mine = speaking;
+        return said.then(function () { return mine; });
+      });
+    }, Promise.resolve(speaking));
+    return told.then(function () { return acted; });
+  }
+
+  /* Cues for a line that has none: each word heard as the typer would
+     reach it, at its default pace. */
+  function pacedCues(text) {
+    var at = 0;
+    return (text.match(/\S+\s*/g) || []).map(function (w) {
+      var c = at;
+      at += w.length * global.Typer.TYPE_MS;
+      return c;
     });
   }
 

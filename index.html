@@ -185,9 +185,11 @@
       </button>
     </div>
 
-    <!-- Welcome, over everything until Start is pressed: the title on its
-         hanging plate and Start, over the swamp. -->
+    <!-- Welcome, over everything until Start is pressed: its own painting
+         (welcome.png, the title lettered into it) and Start over its water.
+         The title is kept as a heading too, for screen readers. -->
     <section class="welcome" id="welcome">
+      <img class="welcome__art" src="assets/images/welcome.png" alt="" aria-hidden="true">
       <h1 class="welcome__title" data-i18n="uiTitle">Exploring Trigonometric Ratios</h1>
       <div class="loader" id="loader" role="progressbar" aria-valuemin="0" aria-valuemax="100"
            aria-valuenow="0" data-i18n-attr="aria-label:loadingAria">
