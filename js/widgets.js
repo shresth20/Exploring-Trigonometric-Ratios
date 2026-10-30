@@ -12,6 +12,7 @@
  *   W.eqRow(lhs)                               sin θ = [a]/[b] = [c]/[d] = v
  *   W.dropdown(host, options, right, o).ask()  the blank
  *     ... .choose(fn) / settle() / refuse()      the blank, judged by the caller
+ *   W.working(lines).write(i) / carry(...)     a question worked through
  *   W.pills(labels)                            answer pills in the pane
  *   W.slider(opts).ask()                       the angle slider
  *   W.handNudge(el) / W.handSlide(track, ...)  the pointing hand
@@ -408,7 +409,10 @@
       disarm: function () { dd.classList.remove('is-asking'); open(false); },
       /* Ask, and wait for the right answer. q.onWrong(i) answers a wrong
          pick, handing back the voice saying so, which the wrong pick is
-         held for; q.onOpen fires on the first open (to stop a hand nudge). */
+         held for; q.onOpen fires on the first open (to stop a hand nudge).
+         Missed K.TRIES times, the right one is set in for the learner --
+         or, with q.giveUp, the blank is shut as it stands and handed back
+         ({ gaveUp: true }), for the caller to work it through with them. */
       ask: function (q) {
         q = q || {};
         dd.classList.add('is-asking');
@@ -435,8 +439,14 @@
             Beats.sfx('wrong');
             var said = q.onWrong ? q.onWrong(items.indexOf(b), b.dataset.name) : null;
             return miss(b, said).then(function () {
-              /* missed too often: the right one is set in for the learner */
-              if (misses >= K.TRIES) return got();
+              /* missed too often: the right one is set in for the learner,
+                 or the blank handed back to be worked through */
+              if (misses >= K.TRIES) {
+                if (!q.giveUp) return got();
+                document.removeEventListener('pointerdown', onDoc, true);
+                lock(true);
+                return { gaveUp: true };
+              }
               retry();
               return loop();
             });
@@ -1175,19 +1185,22 @@
   }
   /* One blank asked until it is right, a faint hand tapping it until it
      is opened; `onWrong(name)` hears a wrong pick, and hands back the
-     voice saying so. */
-  function askBlank(d, onWrong) {
+     voice saying so. With `giveUp`, missed too often it is handed back
+     ({ gaveUp: true }) rather than answered for the learner. */
+  function askBlank(d, onWrong, giveUp) {
     var stop = null, opened = false;
     quiet(Flow.wait(K.SHORT * 3).then(function () {
       if (!opened && d.el.classList.contains('is-asking')) stop = handNudge(d.face);
     }));
     return d.ask({
       burst: false,
+      giveUp: giveUp,
       onOpen: function () { opened = true; if (stop) stop(); },
       onWrong: function (i, name) { return onWrong ? onWrong(name) : null; }
-    }).then(function () {
+    }).then(function (r) {
       opened = true;
       if (stop) stop();
+      return r;
     }, function (err) { opened = true; if (stop) stop(); throw err; });
   }
 
@@ -1252,7 +1265,9 @@
      from a dropdown of lengths. Set in place as the row is built, so it
      arrives with the row; ask() waits for the right one, and the blank
      then gives way to the value, green.
-       spec: { answer, options, onWrong(text) }. */
+       spec: { answer, options, onWrong(text), giveUp } -- with `giveUp`,
+     missed K.TRIES times, ask() hands back { gaveUp: true } and leaves the
+     row as it stands, for the caller to work the answer through. */
   function valueBlank(row, spec) {
     row.val.textContent = '';
     row.val.removeAttribute('hidden');
@@ -1260,11 +1275,312 @@
     return {
       dd: d,
       ask: function () {
-        return askBlank(d, spec.onWrong).then(function () {
+        return askBlank(d, spec.onWrong, spec.giveUp).then(function (r) {
+          if (r && r.gaveUp) return r;
           return Flow.anim(Beats.swapIn(row.val, function () {
             write(row.val, spec.answer);
             row.val.classList.add('is-right');
           }));
+        });
+      }
+    };
+  }
+
+  /* ======================================================================
+   * Working, line by line
+   * A question worked through with the learner, set out as it is on a
+   * board: one line under another, every equals sign in one column --
+   * each left-hand side flush against it, each right-hand side running on
+   * from it -- and a line carrying on from the one above leaving its left
+   * side empty. Every line is laid out from the start, unseen, so the
+   * column stands where it will finish and nothing moves as the lines
+   * are written in. Each term (the words between spaces) is a span of its
+   * own, so it can be lit while it is spoken of, or carried in from the
+   * picture. The last line is the answer: larger, and in gold.
+   *   lines: [{ l, r }] -- the two sides, as text; `l` '' on a carried line.
+   *   o.cls: a class for the block (work--ang writes it in the angles' ink).
+   *   .write(i)               line i written in, term by term
+   *   .writeLeft(i, from)     ...its left side only; from[n], where given,
+   *                           the word on the figure its n-th term is
+   *                           carried in from (Beats.flyTo)
+   *   .writeRight(i)          ...its equals sign and right side
+   *   .morph(i, map)          line i made from the lines above it (MORPH)
+   *   .step(i, map)           ...with nothing said: a moment to read, then
+   *                           morph()
+   *   .terms(i, side)         the terms of a side ('l' or 'r') of line i
+   *   .carry(i, label, text)  the answer, the last term of line i, carried
+   *                           back onto the picture: `label` lets go of what
+   *                           it said and says `text` from then on
+   *
+   * MORPH -- a step taken the board way: the line above is copied down,
+   * and the copy is worked on where it lands. Each term of the new line is
+   * given the term, or terms, of the lines above it is made from:
+   *   one, the same    its copy comes down and stays
+   *   one, changed     ...slides to its new place and turns into the new
+   *                    term there: 1² into 1, 2² into 4
+   *   several          ...close up into the one term they make: 45° + 90°
+   *                    into 135°, 1 + 1 into 2
+   *   with a power     the ² of h² lifted off its term and carried over
+   *                    the equals sign to stand as the root's index --
+   *                    ²√2, the square root -- and fade: h² = 2 into
+   *                    h = √2
+   * A copy crossing to the other side of the equals sign dips under the
+   * line as it goes, clear of the terms it passes (135° in "? = 180° −
+   * 135°"). Only copies move: the lines above stay as they were written,
+   * and the new line's own terms, laid out from the start, take over as
+   * the copies land. What changed glows while it changes. A source is
+   * named "line:place" -- "0:l2" the third term on line 0's left, "0:eq"
+   * its equals sign, "0:r0" the first term on its right, "0:l0^" the
+   * power of its first term.
+   * ====================================================================== */
+  var OPERATOR = /^[+=−×÷-]$/;
+  var CARRY_GAP = 0.28;          /* s between two terms carried in together */
+  var COPY_S = 0.5;              /* s: a line's copy coming down            */
+  var SETTLE_S = 0.2;            /* s: ...landed, looked at                 */
+  var MORPH_S = 0.75;            /* s: ...worked into the new line          */
+  var DIP = 0.75;                /* em a copy crossing the = dips under     */
+  var STEP_LOOK = 900;           /* ms: a line read before the next is made */
+  var COPY_FROM = 0.35;          /* a copy's opacity as it leaves its line  */
+  /* A term written in. A power (h², 2²) has its figure drawn raised at a
+     size that reads -- the face's own ² is a speck beside its numbers --
+     and the whole term named for a screen reader, as mathtext.js names a
+     fraction. */
+  var POWERS = { '²': '2', '³': '3' };
+  function writeTerm(el, text) {
+    var parts = text.split(/([²³])/);
+    if (parts.length === 1) return write(el, text);
+    parts.forEach(function (p) {
+      if (POWERS[p]) h('span', 'work__pow', el).textContent = POWERS[p];
+      else if (p) write(h('span', null, el), p);
+    });
+    el.setAttribute('role', 'img');
+    el.setAttribute('aria-label', text);
+    return el;
+  }
+  function working(lines, o) {
+    o = o || {};
+    var row = pane.row('work' + (o.cls ? ' ' + o.cls : ''));
+    var last = lines.length - 1;
+    var built = lines.map(function (ln, i) {
+      var answer = i === last ? ' work__answer' : '';
+      function side(text, cls) {
+        var s = h('span', 'work__side ' + cls + answer, row);
+        return String(text || '').split(/\s+/).filter(Boolean).map(function (w) {
+          var t = writeTerm(h('span', 'work__t' + (OPERATOR.test(w) ? ' work__op' : ''), s), w);
+          t.dataset.text = w;
+          return t;
+        });
+      }
+      var l = side(ln.l, 'work__l');
+      var eq = h('span', 'work__eq' + answer, row);
+      eq.textContent = T('symEq');
+      var r = side(ln.r, 'work__r');
+      M.set(l.concat([eq], r), { opacity: 0 });
+      return { l: l, eq: eq, r: r };
+    });
+    M.set(row, { opacity: 1 });
+
+    function writeLeft(i, from) {
+      from = from || {};
+      var terms = built[i].l;
+      return Promise.all(terms.map(function (term, n) {
+        return Flow.wait(n * CARRY_GAP * 1000).then(function () {
+          if (!from[n]) return Flow.anim(Beats.writeIn(term));
+          quiet(Flow.anim(Beats.textPulse(from[n], 1)));
+          return Flow.anim(Beats.flyTo(from[n], term, term.dataset.text));
+        });
+      }));
+    }
+    function writeRight(i) {
+      return Flow.anim(Beats.writeIn([built[i].eq].concat(built[i].r)));
+    }
+    function writeLine(i) {
+      return Flow.anim(Beats.writeIn(built[i].l.concat([built[i].eq], built[i].r)));
+    }
+
+    /* Where an element of the block stands at rest, in the block's own
+       pixels -- read from the layout, not the screen, so a term caught
+       mid-pulse is measured at its own size. */
+    function at(e) {
+      var x = 0, y = 0, n = e;
+      while (n && n !== row) { x += n.offsetLeft; y += n.offsetTop; n = n.offsetParent; }
+      return { x: x, y: y, w: e.offsetWidth, h: e.offsetHeight };
+    }
+    /* A line's places, by name: l0, l1 ... eq, r0, r1 ... */
+    function placesOf(i) {
+      var ln = built[i];
+      function place(side) {
+        return function (e, n) { return { name: side + n, el: e, side: side, text: e.dataset.text }; };
+      }
+      return ln.l.map(place('l'))
+        .concat([{ name: 'eq', el: ln.eq, side: 'eq', text: ln.eq.textContent }])
+        .concat(ln.r.map(place('r')));
+    }
+    /* A source, "line:place" -- "0:l2", "0:eq", "0:r0" -- or "0:l0^", the
+       power of that term. */
+    function sourceOf(ref) {
+      var m = /^(\d+):(eq|[lr]\d+)(\^?)$/.exec(ref);
+      var p = placesOf(+m[1]).filter(function (q) { return q.name === m[2]; })[0];
+      return { el: m[3] ? p.el.querySelector('.work__pow') : p.el, term: p.el,
+               side: p.side, text: p.text, pow: !!m[3] };
+    }
+    /* The copy of a term: the same lettering, laid over the block, moved
+       by transform alone. */
+    function copyOf(s) {
+      var c = s.el.cloneNode(true);
+      ['style', 'role', 'aria-label', 'data-text'].forEach(function (a) { c.removeAttribute(a); });
+      c.classList.remove('is-glowing-text');
+      c.classList.add('work__copy');
+      c.setAttribute('aria-hidden', 'true');
+      row.appendChild(c);
+      return c;
+    }
+    /* Where a copy lands on the term it becomes, at scale k: level with
+       it, and lined up on what the two share -- 1² on 1 and h² on h by
+       their left edges, 2 on √2 by their right ones, anything else on its
+       middle. */
+    function landing(s, r, t, k) {
+      var w = r.w * k, x = t.box.x + (t.box.w - w) / 2;
+      if (s.text !== t.text) {
+        if (s.text.indexOf(t.text) === 0) x = t.box.x;
+        else if (t.text.slice(-s.text.length) === s.text) x = t.box.x + t.box.w - w;
+      }
+      return { x: x, y: t.box.y + (t.box.h - r.h * k) / 2 };
+    }
+
+    /* Line i made from the lines above it (see MORPH above): `map` gives
+       each of its places the source -- or the several sources -- it is
+       made from, and `_` any that come down only to be dropped (the + of
+       "135° + ?" as 135° crosses over). A place with no source pops in as
+       the copies land (the − that 135° takes on the far side). */
+    function morph(i, map) {
+      var places = placesOf(i);
+      var mid = at(built[i].eq);
+      var cy = mid.y + mid.h / 2;
+      var em = parseFloat(getComputedStyle(row).fontSize) || 16;
+      var t2 = M.gap(COPY_S + SETTLE_S);
+      var land = t2 + M.gap(MORPH_S);
+      var fade = t2 + M.gap(MORPH_S * 0.55);
+      var copies = [], made = [], fresh = [];
+      var tl = M.timeline({
+        revert: function () {
+          copies.forEach(function (c) { if (c.parentNode) c.parentNode.removeChild(c); });
+          M.set(places.map(function (p) { return p.el; }), { opacity: 1, x: 0, y: 0, scale: 1 });
+        }
+      });
+
+      /* one source's copy: down to the new line with the rest, then on to
+         its place in it -- `to` null for one that is only dropped */
+      function bring(s, t, merged, withPow) {
+        var c = copyOf(s);
+        copies.push(c);
+        var r = at(s.el), term = s.pow ? at(s.term) : r;
+        var down = r.y + (cy - (term.y + term.h / 2));
+        /* it peels off its line faint, and firms up as it comes down, so
+           it reads as a copy and not the line itself moving */
+        M.set(c, { x: r.x, y: r.y, scale: 1, transformOrigin: '0 0', opacity: s.pow ? 0 : COPY_FROM });
+        tl.to(c, { y: down, duration: M.dur(COPY_S), ease: 'power2.inOut' }, 0);
+        if (!s.pow) tl.to(c, { opacity: 1, duration: M.dur(COPY_S), ease: 'power1.out' }, 0);
+        if (!t) {
+          tl.to(c, { opacity: 0, scale: 0.8, duration: M.dur(MORPH_S * 0.4), ease: 'power2.in' }, t2);
+          return;
+        }
+        var k = t.box.h / term.h;
+        /* a power goes over the top of the line -- small and high, it
+           clears the = -- and settles where a root's index is written,
+           up at the left of its sign: ²√2, the square root. Then it fades,
+           as a square root's 2 always goes unwritten. Never beside the
+           root at the height of its figures, where it would read as
+           2√2. */
+        var end = s.pow ? { x: t.box.x - r.w * k * 0.55, y: t.box.y - r.h * k * 0.35 } :
+                  merged ? { x: t.box.x + (t.box.w - r.w * k) / 2, y: t.box.y + (t.box.h - r.h * k) / 2 } :
+                  landing(s, r, t, k);
+        var crosses = !s.pow && ((s.side === 'l' && t.side === 'r') || (s.side === 'r' && t.side === 'l'));
+        var same = !merged && !s.pow && s.text === t.text;
+        if (!same || crosses) tl.call(function () { c.classList.add('is-glowing-text'); }, null, t2);
+        /* the power lifts off its term, which goes on without it */
+        if (s.pow) {
+          var own = null;
+          tl.call(function () {
+            own = copies.filter(function (o) { return o.__of === s.term; })[0];
+            if (own) M.set(own.querySelector('.work__pow'), { opacity: 0 });
+          }, null, t2);
+          tl.set(c, { opacity: 1 }, t2);
+        }
+        c.__of = s.el;
+        tl.to(c, { x: end.x, scale: merged ? k * 0.75 : k, duration: M.dur(MORPH_S), ease: 'power2.inOut' }, t2);
+        if (crosses) {
+          /* under the line as it crosses the =, clear of what it passes */
+          tl.to(c, { y: end.y + DIP * em, duration: M.dur(MORPH_S / 2), ease: 'power2.out' }, t2)
+            .to(c, { y: end.y, duration: M.dur(MORPH_S / 2), ease: 'power2.in' }, t2 + M.gap(MORPH_S / 2));
+        } else {
+          tl.to(c, { y: end.y, duration: M.dur(MORPH_S), ease: 'power2.inOut' }, t2);
+        }
+        if (merged) {
+          /* closing up: the sign between them goes first, and the numbers
+             fade as they slide together, gone before they overlap -- the
+             sum rises out of them as they meet */
+          var sign = OPERATOR.test(s.text);
+          tl.to(c, { opacity: 0, duration: M.dur(MORPH_S * (sign ? 0.25 : 0.35)), ease: 'power1.in' },
+                t2 + M.gap(MORPH_S * (sign ? 0 : 0.2)));
+        } else if (same && !withPow) {
+          tl.set(c, { opacity: 0 }, land);
+        } else {
+          tl.to(c, { opacity: 0, duration: M.dur(MORPH_S * 0.45), ease: 'power1.in' }, fade);
+        }
+      }
+
+      places.forEach(function (t) {
+        t.box = at(t.el);
+        var from = [].concat(map[t.name] || []).map(sourceOf);
+        if (!from.length) { fresh.push(t.el); return; }
+        var mains = from.filter(function (s) { return !s.pow; });
+        var merged = mains.length > 1;
+        var withPow = from.length > mains.length;
+        from.forEach(function (s) { bring(s, t, merged, withPow); });
+        var changed = merged || withPow || mains[0].text !== t.text;
+        /* the new line's own term takes over from its copies */
+        if (merged) {
+          tl.fromTo(t.el, { opacity: 0, scale: 0.7, transformOrigin: 'center center' },
+            { opacity: 1, scale: 1, duration: M.dur(0.42), ease: M.POP }, t2 + M.gap(MORPH_S * 0.4));
+        } else if (changed) {
+          tl.to(t.el, { opacity: 1, duration: M.dur(MORPH_S * 0.45), ease: 'power1.out' }, fade);
+        } else {
+          tl.set(t.el, { opacity: 1 }, land);
+        }
+        if (changed && !OPERATOR.test(t.text)) made.push(t.el);
+      });
+      [].concat(map._ || []).map(sourceOf).forEach(function (s) { bring(s, null); });
+      if (fresh.length) {
+        tl.fromTo(fresh, { opacity: 0, scale: 0.7, transformOrigin: 'center center' },
+          { opacity: 1, scale: 1, duration: M.dur(0.36), ease: M.POP }, t2 + M.gap(MORPH_S * 0.6));
+      }
+      tl.call(Beats.pop, null, t2 + M.gap(MORPH_S * 0.6));
+      return Flow.anim(tl).then(function () {
+        /* what the step made, lit once -- not the answer: the caller
+           carries that onto the picture, and lights it there */
+        if (made.length && i !== last) quiet(Flow.anim(Beats.textPulse(made, 1)));
+      });
+    }
+
+    return {
+      el: row,
+      write: writeLine,
+      writeLeft: writeLeft,
+      writeRight: writeRight,
+      morph: morph,
+      /* A line made from the lines above it with nothing said: a moment
+         to read what is there, then morph(). */
+      step: function (i, map) {
+        return Flow.wait(STEP_LOOK).then(function () { return morph(i, map); });
+      },
+      terms: function (i, s) { return built[i][s].slice(); },
+      carry: function (i, label, text) {
+        var r = built[i].r, from = r[r.length - 1];
+        return Flow.anim(Beats.labelsOut(label)).then(function () {
+          label.textContent = text;
+          quiet(Flow.anim(Beats.textPulse(from, 1)));
+          return Flow.anim(Beats.flyTo(from, label, text));
         });
       }
     };
@@ -1428,6 +1744,7 @@
     askRatio: askRatio,
     askLengths: askLengths,
     valueBlank: valueBlank,
+    working: working,
     dropdown: dropdown,
     pills: pills,
     button: button,

@@ -162,9 +162,7 @@
   --next-arrow:  var(--white);
 
   /* ---- derived: glow and shadow ----------------------------------------- */
-  --glow-start: color-mix(in srgb, var(--orange-fill) 40%, transparent);
-  --glow-start-dim: color-mix(in srgb, var(--orange-fill) 18%, transparent);
-  --glow-start-hi: color-mix(in srgb, var(--orange-fill) 60%, transparent);
+  --glow-start: color-mix(in srgb, var(--amber-fill) 55%, transparent);
   --shadow-soft: color-mix(in srgb, var(--text-outline) 45%, transparent);
   --shadow-deep: color-mix(in srgb, var(--text-outline) 70%, transparent);
 
@@ -925,6 +923,63 @@ body {
 .next-btn.is-3d { transition: filter .18s ease; }
 .next-btn svg { width: 100%; height: 100%; display: block; }
 
+/* ---- Restart ------------------------------------------------------------
+   The end's one control, centred low in the frame under the closing line:
+   an orange key standing on its wall (--edge, M.button3d) with its icon
+   and its word. Centred by margin, so the transform controlIn brings it in
+   with is its own; it breathes (`scale`) once it is there. */
+.restart-btn {
+  --edge: 5px;
+  --sink: 0px;
+  translate: 0 var(--sink);
+
+  position: absolute;
+  z-index: var(--z-next);
+  left: 0;
+  right: 0;
+  bottom: 12%;
+  width: fit-content;
+  margin: 0 auto;
+
+  display: flex;
+  align-items: center;
+  gap: .3em;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(22px, calc(var(--board-w) * .026), 40px);
+  letter-spacing: 1px;
+  color: var(--button-text);
+  text-shadow: 0 .07em 0 var(--orange-deep);
+  padding: .32em 1.1em .32em .8em;
+  border: 4px solid var(--text-outline);
+  border-radius: clamp(16px, 2.6vh, 24px);
+  background: linear-gradient(180deg, var(--next-face-1) 0%, var(--button-bg) 50%, var(--orange-border) 100%);
+  box-shadow:
+    inset 0 3px 0 color-mix(in srgb, var(--white) 35%, transparent),
+    0 var(--edge) 0 var(--horizon),
+    0 0 24px 6px var(--glow-start),
+    0 calc(var(--edge) + 1px) 2px var(--shadow-soft),
+    0 calc(var(--edge) + 5px) calc(var(--edge) * 2 + 16px) var(--shadow-deep);
+  cursor: pointer;
+  -webkit-tap-highlight-color: transparent;
+
+  opacity: 0;
+  transition: filter .18s ease;
+}
+.restart-btn[hidden] { display: none; }
+.restart-btn.is-3d:not([hidden]) { animation: start-breathe 2.1s ease-in-out .6s infinite; }
+.restart-btn:hover,
+.restart-btn:focus-visible {
+  animation-play-state: paused;
+  filter: brightness(1.08);
+  outline: none;
+}
+.restart-btn:focus-visible { outline: 3px solid var(--amber-fill); outline-offset: 3px; }
+.restart-btn__icon { width: 1.15em; height: 1.15em; flex: none; display: block; }
+@media (prefers-reduced-motion: reduce) {
+  .restart-btn.is-3d:not([hidden]) { animation: none; }
+}
+
 /* ---- The speech bubble --------------------------------------------------
    The welcome's first line, said before the board exists: a parchment
    speech bubble with a dark outline, its tail pointing down and left at
@@ -991,7 +1046,7 @@ body {
 }
 
 /* ---- The bird beside the bubble -----------------------------------------
-   Swiftee appears on this screen only, standing to the left of the bubble
+   Swiftee appears on the welcome and the end only, standing left of the bubble
    and speaking the line, the tail's tip at its head. A child of the
    bubble, so it is placed against the bubble at any width and leaves with
    it (bubbleOut). Its cell is square, the ink filling about 18%-82% of it
@@ -1137,8 +1192,11 @@ body {
 }
 
 /* ---- Start ----------------------------------------------------------------
-   A round orange key with a play mark (index.html), standing on its wall
-   like the game's other keys. It breathes (start-pulse) until pressed. */
+   The painted play key (play-btn.png), the art itself the whole button: no
+   face or wall of its own, so a press only sinks it (--sink, M.button3d).
+   It breathes until pressed -- a gentle swell (`scale`, its own property,
+   so the entrance's transform and the press's translate are left alone)
+   and a warm glow behind it coming and going (opacity). */
 .start-btn {
   grid-row: 2;
 
@@ -1146,48 +1204,64 @@ body {
   --sink: 0px;
   translate: 0 var(--sink);
 
+  position: relative;
+  isolation: isolate;
   align-self: center;
   justify-self: center;
   display: grid;
   place-items: center;
-  width: clamp(96px, 17vh, 150px);
+  width: clamp(92px, 21vh, 180px);
   aspect-ratio: 1;
   padding: 0;
-  border: 4px solid var(--text-outline);
+  border: 0;
   border-radius: 50%;
+  background: none;
   -webkit-tap-highlight-color: transparent;
-  background: linear-gradient(180deg, var(--next-face-1) 0%, var(--button-bg) 50%, var(--orange-border) 100%);
-  box-shadow:
-    inset 0 3px 0 color-mix(in srgb, var(--white) 35%, transparent),
-    0 var(--edge) 0 var(--horizon),
-    0 0 14px 2px var(--glow-start),
-    0 0 36px 12px var(--glow-start-dim),
-    0 calc(var(--edge) + 1px) 2px var(--shadow-soft),
-    0 calc(var(--edge) + 5px) calc(var(--edge) * 2 + 16px) var(--shadow-deep);
   cursor: pointer;
 
   opacity: 0;
   transform: translateY(16px) scale(.9);
   transition: opacity .42s ease,
               transform .42s cubic-bezier(.2, .9, .3, 1.4),
-              box-shadow .18s ease,
               filter .18s ease;
+}
+.start-btn::before {
+  content: "";
+  position: absolute;
+  inset: -14%;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, var(--glow-start) 0%, transparent 100%);
+  opacity: .5;
+  pointer-events: none;
+}
+.start-btn__art {
+  width: 100%;
+  height: 100%;
+  display: block;
+  object-fit: contain;
+  filter: drop-shadow(0 6px 8px var(--shadow-deep));
+  pointer-events: none;
+  user-select: none;
 }
 .start-btn[hidden] { display: none; }
 .start-btn.in {
   opacity: 1;
   transform: none;
-  animation: start-pulse 2.1s ease-in-out .5s infinite;
+  animation: start-breathe 2.1s ease-in-out .5s infinite;
 }
+.start-btn.in::before { animation: start-glow 2.1s ease-in-out .5s infinite; }
 .start-btn.in:hover,
 .start-btn.in:focus-visible {
   animation-play-state: paused;
   filter: brightness(1.08);
   outline: none;
 }
-.start-btn.is-3d {
-  transition: opacity .42s ease,
-              transform .42s cubic-bezier(.2, .9, .3, 1.4),
-              filter .18s ease;
+.start-btn.in:hover::before,
+.start-btn.in:focus-visible::before {
+  animation-play-state: paused;
+  opacity: 1;
 }
-.start-btn svg { width: 100%; height: 100%; display: block; }
+@media (prefers-reduced-motion: reduce) {
+  .start-btn, .start-btn::before { animation: none !important; transition: none; }
+}

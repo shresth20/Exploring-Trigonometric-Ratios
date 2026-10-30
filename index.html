@@ -50,7 +50,7 @@
 
       <!-- The welcome's first line, in a speech bubble in the middle of the
            frame, before the board exists, its tail pointing at the bird
-           beside it. This is the only screen the bird appears on, and it
+           beside it. The bird appears here and at the end only, and it
            comes and goes with the bubble. The tail is drawn over the
            bubble's edge: its fill covers the border where the two meet,
            and its outline is only the two slanted strokes. -->
@@ -204,6 +204,23 @@
           </g>
         </svg>
       </button>
+
+      <!-- Restart, at the end, under the closing line: an orange key, as the
+           game's keys are drawn, with an arrow coming round on itself,
+           outlined in the same dark as Next's. -->
+      <button class="restart-btn" id="restartBtn" type="button" hidden>
+        <svg class="restart-btn__icon" viewBox="0 0 100 100" aria-hidden="true" focusable="false">
+          <path d="M63 27.5 A26 26 0 1 1 37 27.5" fill="none"
+                stroke="var(--text-outline)" stroke-width="20" stroke-linecap="round" />
+          <path d="M51 19.5 L41.8 39.8 L28.8 17.2 Z" fill="var(--text-outline)"
+                stroke="var(--text-outline)" stroke-width="16" stroke-linejoin="round" />
+          <path d="M63 27.5 A26 26 0 1 1 37 27.5" fill="none"
+                stroke="var(--white)" stroke-width="10" stroke-linecap="round" />
+          <path d="M51 19.5 L41.8 39.8 L28.8 17.2 Z" fill="var(--white)"
+                stroke="var(--white)" stroke-width="7" stroke-linejoin="round" />
+        </svg>
+        <span data-i18n="btnRestart">Restart</span>
+      </button>
     </div>
 
     <!-- Welcome, over everything until Start is pressed: its own painting
@@ -219,19 +236,11 @@
           <span class="loader__line"><span class="loader__fill" id="loaderFill"></span></span>
         </span>
       </div>
-      <!-- Start: a round orange key, the Next key's kin, with a play mark
-           outlined in the same dark and a gloss across its top. The mark
-           is centred on its centroid, so it sits in the middle to the eye. -->
+      <!-- Start: the play key painted for the swamp (play-btn.png), a
+           slime-hung stone ring round a gold play mark. Named by its
+           aria-label alone. -->
       <button class="start-btn" id="startBtn" type="button" hidden data-i18n-attr="aria-label:btnStart" aria-label="Start">
-        <svg viewBox="0 0 100 100" aria-hidden="true" focusable="false">
-          <ellipse cx="50" cy="20" rx="28" ry="10" fill="var(--white)" opacity=".24" />
-          <path d="M37 25 L76 50 L37 75 Z"
-                fill="var(--text-outline)" stroke="var(--text-outline)" stroke-width="16"
-                stroke-linejoin="round" />
-          <path d="M37 25 L76 50 L37 75 Z"
-                fill="var(--next-arrow)" stroke="var(--next-arrow)" stroke-width="8.75"
-                stroke-linejoin="round" />
-        </svg>
+        <img class="start-btn__art" src="assets/images/play-btn.png" alt="" draggable="false">
       </button>
     </section>
   </main>

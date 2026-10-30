@@ -278,6 +278,57 @@
    next is worked. */
 .eq.is-done { opacity: .72; }
 
+/* ---- Working, line by line (W.working) ----------------------------------
+   A question worked through with the learner, as it is set out on a
+   board: three columns -- the left sides flush right against the equals
+   signs, the right sides running on from them -- so every = stands under
+   the one above. Laid out whole from the start; only its terms' opacity
+   and transform change as each line is written in. The numbers in the
+   plain ink and the signs in the quieter one, as the equation rows have
+   them; the last line, the answer, a step larger and in gold. */
+.pane__row.work {
+  display: grid;
+  grid-template-columns: max-content max-content max-content;
+  align-items: baseline;
+  column-gap: .34em;
+  row-gap: clamp(2px, 1.6cqh, 10px);
+  align-self: center;
+  font-size: clamp(14px, 6.2cqw, 36px);
+  line-height: 1.2;
+  white-space: nowrap;
+}
+.work__side {
+  display: inline-flex;
+  align-items: baseline;
+  gap: .3em;
+}
+.work__l { justify-self: end; }
+.work__r { justify-self: start; }
+.work__t { display: inline-block; color: var(--text-primary); }
+/* A copy of a term, laid over the block while a line is made from the
+   ones above it (W.working().morph): placed by transform alone. */
+.pane__row .work__copy {
+  position: absolute;
+  left: 0;
+  top: 0;
+  margin: 0;
+  pointer-events: none;
+}
+/* A power's figure, raised by position alone so the line keeps its height. */
+.work__pow {
+  position: relative;
+  top: -.68em;
+  margin-left: .05em;
+  font-size: .6em;
+}
+.work__op, .work__eq { color: var(--text-secondary); }
+.work__eq { display: inline-block; }
+/* The angles' working is written in the angles' ink, as the triangle
+   writes its measures, so each number points back at its corner. */
+.work--ang .work__t:not(.work__op) { color: var(--angle-ink); }
+.work__answer { font-size: 1.16em; }
+.work__answer.work__side .work__t:not(.work__op) { color: var(--amber-fill); }
+
 /* ---- The dropdown blank -------------------------------------------------
    A dashed slot, with a chevron: tap it and the choices drop out under
    it. Waiting, it breathes, so the eye finds it; answered, it is a solid

@@ -204,9 +204,11 @@
           .then(function () { return Flow.anim(Beats.moveGroup(dom.gF, left, 0.9)); });
       });
   }
-  /* ...and taken away with its working, for the next. */
+  /* ...and taken away with its working, for the next -- its question off
+     the header too, so the next triangle is never drawn under the line
+     that asked about this one. */
   function findOut() {
-    return Promise.all([W.pane.out(), Flow.anim(Beats.clearFigure(tF.parts()))])
+    return Promise.all([W.pane.out(), Flow.anim(Beats.clearFigure(tF.parts())), K.lineAway()])
       .then(function () {
         dom.gF.setAttribute('hidden', '');
         tF.reset();

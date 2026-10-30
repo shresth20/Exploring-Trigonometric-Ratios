@@ -4,10 +4,10 @@
  * Storyboard pages 71-79. One scene:
  *
  *   Triangle ABC, the right angle at B, BC fixed at 4, in the middle of the
- *   board. "Now let's explore 90°. Drag the glowing point and watch A move
- *   towards B." The learner drags A along the base towards B, and angle A
- *   grows: AB gets shorter and AC gets closer to
- *   4. At 90°, A reaches B -- the adjacent side is zero and the other two
+ *   board. "What happens as the angle approaches 90°?" "Drag the glowing
+ *   point. Watch the sides." The learner drags A along the base towards B,
+ *   and angle A grows: AB gets shorter and AC gets closer to 4. At 90°, A
+ *   reaches B -- the adjacent side has length zero and the other two
  *   sides overlap. The line steps aside, and its distances extend the ratios to 90°: sin 90° = 1,
  *   cos 90° = 0, and tan 90° = 4/0 -- undefined. Next.
  * ========================================================================== */
@@ -35,7 +35,6 @@
   var dom = null;
   var t = null;
   var grab = null;
-  var saidCloser = false;
 
   function build() {
     dom = Object.create(K.dom());
@@ -87,9 +86,7 @@
     t.writeName('C', T('lblC'));
   }
 
-  /* A, taken in hand (W.cornerGrab): dragged along the base towards B.
-     The closer line is said once, as A passes 74° -- not on the catch
-     at 90°, which has its own line. */
+  /* A, taken in hand (W.cornerGrab): dragged along the base towards B. */
   function buildGrab() {
     grab = W.cornerGrab({
       group: dom.g, dot: t.dots.A,
@@ -99,28 +96,20 @@
         return run <= 0 ? 90 : Math.atan2(4 * UNIT, run) * 180 / Math.PI;
       },
       pointAt: aAt,
-      turn: function (deg) {
-        shapeAt(deg);
-        if (!saidCloser && deg >= 74 && deg < 88) {
-          saidCloser = true;
-          quiet(K.speakBySentence('s6Closer'));
-        }
-      },
+      turn: shapeAt,
       min: START_DEG, max: 90, target: 90, snap: 2,
       label: T('a11yCornerA')
     });
   }
 
   function scene() {
-    saidCloser = false;
     return K.wipeBoard()
       .then(function () { return Flow.wait(BEAT); })
       .then(function () {
         shapeAt(START_DEG);
-        /* the first piece of the line is said as the triangle is drawn;
-           the rest as A is handed over */
-        var pieces = K.sentencesOf(T('s6Explore90')) || [T('s6Explore90')];
-        return K.say({ text: pieces[0], vo: null }, function () {
+        /* the question is asked as the triangle is drawn; the drag as A
+           is handed over */
+        return K.say('s6Explore90', function () {
           return Tri.draw(t, { time: 1.4, hold: 120 })
             .then(function () { return Flow.anim(Beats.marksIn(['A', 'B', 'C'].map(function (v) { return t.names[v]; }), 0.3)); })
             .then(function () { return Tri.angleIn(t, 'A', T('lblDegVal', { n: START_DEG })); })
@@ -128,10 +117,7 @@
         }).then(function () {
           grab.turnTo(START_DEG);
           quiet(Flow.anim(grab.show()));
-          var rest = pieces.slice(1).reduce(function (chain, s) {
-            return chain.then(function () { return K.speak(s); });
-          }, Promise.resolve());
-          return Promise.all([rest, grab.ask()]);
+          return Promise.all([K.say('s6Slide90'), grab.ask()]);
         });
       })
       .then(function () { return grab.hide(); })
@@ -157,6 +143,9 @@
       .then(function () {
         W.pane.show();
         var facts = factsRow(T('lblOpp4'), T('lblAdj0'), T('lblHyp4'));
+        quiet(K.onPhrase('s6Line', 'line', function () {
+          return Flow.anim(Beats.linePulse(t.allSides()));
+        }));
         return Promise.all([
           K.speakBySentence('s6Line'),
           Flow.anim(Beats.rowIn(facts))
@@ -213,7 +202,6 @@
   function reset() {
     grab.reset();
     t.reset();
-    saidCloser = false;
     dom.g.setAttribute('hidden', '');
   }
   function stage() {}

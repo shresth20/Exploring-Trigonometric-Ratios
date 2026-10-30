@@ -5,25 +5,24 @@
  *
  *   1. The board opens and the pen draws the triangle. Then the header
  *      comes up saying "Here's a right-angled triangle." and the caption
- *      lands. "We'll call this angle theta." -- the arc goes on at A as
+ *      lands. "Let's call this angle theta." -- the arc goes on at A as
  *      "this angle" is said, the θ as "theta" is. The page turns.
- *   2. "Before we begin, let's recall the side names for this angle."
+ *   2. "First, let's recall the side names for this angle."
  *      The caption goes once the line is said. Three boxes arrive on the
  *      ends of dashed leaders, one per side, and the three names arrive
- *      in the tray. "Can you match each side to its
- *      name?" -- the drag is shown, and each name dropped right colours
- *      its side. A box given two wrong names is answered for the learner,
- *      its side and box lit as the reason is said ("This side is opposite
- *      θ."). "That's correct! These are the opposite side, adjacent side
- *      and hypotenuse." -- each side lit, with its box, as it is named.
- *      Next.
- *   3. The boxes go and the sides lose their colours. "What if we look at
- *      the triangle from this angle instead?" -- θ travels from A to C.
+ *      in the tray. "Match each side to its name." -- the drag is shown,
+ *      and each name dropped right colours its side. A box given two
+ *      wrong names is answered for the learner, its side and box lit as
+ *      the reason is said ("This side is opposite θ."). "That's correct!
+ *      You've identified all three sides." -- the three sides lit in turn,
+ *      with their boxes, as "all three sides" is said. Next.
+ *   3. The boxes go and the sides lose their colours. "What if we use
+ *      this angle instead?" -- θ travels from A to C.
  *      Then the match of page 2 again, for θ at C: the same boxes on the
  *      same sides, but the opposite's and adjacent's have changed places.
  *      Once the names are in, they are written beside the sides. "Did you
  *      notice?" Two labelled views stand side by side: the first angle's
- *      and this one's. "The opposite and adjacent swap roles. The
+ *      and this one's. "The opposite and adjacent sides swap roles. The
  *      hypotenuse stays the same." -- the sides and their names lit in
  *      both as they are named. Next.
  * ========================================================================== */
@@ -165,10 +164,15 @@
       .then(function () { return Flow.wait(SHORT); })
       .then(function () {
         K.celebrate();
-        ['opposite', 'adjacent', 'hypotenuse'].forEach(function (w) {
-          var box = boxFor('lbl' + w.charAt(0).toUpperCase() + w.slice(1));
-          quiet(K.onPhrase('s1MatchDone', w, function () { return lightSide(box); }));
-        });
+        /* "...all three sides": the three lit in turn as it is said */
+        quiet(K.onPhrase('s1MatchDone', 'all three sides', function () {
+          return ['lblOpposite', 'lblAdjacent', 'lblHypotenuse'].reduce(function (chain, name, i) {
+            return chain.then(function () {
+              quiet(lightSide(boxFor(name)));
+              return i < 2 ? Flow.wait(150) : null;
+            });
+          }, Promise.resolve());
+        }));
         return Flow.wait(Beats.ringing()).then(function () {
           return K.speakBySentence('s1MatchDone');
         });

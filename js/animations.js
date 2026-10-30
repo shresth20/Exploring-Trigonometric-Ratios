@@ -426,7 +426,12 @@
      shrinking from the label's size to the slot's -- and the slot takes
      over from it as it lands. The slot is written already and waits
      invisible; where it is is read every frame, so a column still gliding
-     to its place round it is followed, not missed. */
+     to its place round it is followed, not missed.
+       Or the other way: an answer worked out in the pane carried back
+     onto the picture, `to` a word on the figure. The copy then lands at
+     the size the word is drawn at and in its fill, and the word is left
+     showing -- a figure's words rest invisible, so its opacity is not
+     simply handed back. */
   var FLY_LIFT = 46;          /* px the arc rises at its middle */
   function flyTo(from, to, text) {
     var copy = document.createElement('span');
@@ -434,9 +439,13 @@
     copy.setAttribute('aria-hidden', 'true');
     if (global.MathText) global.MathText.write(copy, text);
     else copy.textContent = text;
+    var onFigure = !!global.SVGElement && to instanceof global.SVGElement;
     var cs = getComputedStyle(to);
-    copy.style.fontSize = cs.fontSize;
-    copy.style.color = cs.color;
+    var px = parseFloat(cs.fontSize);
+    var ctm = onFigure && to.getScreenCTM ? to.getScreenCTM() : null;
+    if (ctm) px *= Math.sqrt(ctm.a * ctm.a + ctm.b * ctm.b);
+    copy.style.fontSize = px + 'px';
+    copy.style.color = onFigure ? cs.fill : cs.color;
     document.body.appendChild(copy);
     M.set(to, { opacity: 0 });
 
@@ -464,7 +473,7 @@
       willChange: copy, willChangeValue: 'transform, opacity',
       revert: function () {
         if (copy.parentNode) copy.parentNode.removeChild(copy);
-        M.set(to, { clearProps: 'opacity' });
+        M.set(to, onFigure ? { opacity: 1 } : { clearProps: 'opacity' });
       }
     });
     tl.to(copy, { opacity: 1, duration: M.dur(0.18), ease: 'power2.out' }, 0);
@@ -863,6 +872,22 @@
     return tl;
   }
 
+  /* A line of working written in (W.working): its terms one after another,
+     left to right, each rising a little into place as it fades up -- the
+     pace of a hand writing it on the board. */
+  function writeIn(els, opts) {
+    var o = opts || {};
+    var list = [].concat(els).filter(Boolean);
+    var tl = M.timeline({ willChange: list, willChangeValue: 'transform, opacity' });
+    if (!list.length) return tl;
+    tl.fromTo(list,
+      { opacity: 0, y: 10, scale: 0.9, transformOrigin: 'center bottom' },
+      { opacity: 1, y: 0, scale: 1, duration: M.dur(o.d || 0.34), ease: 'power3.out',
+        stagger: M.gap(o.stagger == null ? 0.09 : o.stagger) });
+    tl.call(pop, null, 0);
+    return tl;
+  }
+
   /* A value or a word landing in a slot of the working: the pop every
      label in the game lands with, in HTML. */
   function popIn(el, opts) {
@@ -1137,6 +1162,7 @@
     welcomeOut: welcomeOut,
     rowIn: rowIn,
     rowOut: rowOut,
+    writeIn: writeIn,
     popIn: popIn,
     swapIn: swapIn,
     slotRight: slotRight,

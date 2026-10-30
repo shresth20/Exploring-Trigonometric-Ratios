@@ -1,9 +1,10 @@
 /* ==========================================================================
  * s7-table.js -- Section 7: the complete table
  * --------------------------------------------------------------------------
- * Storyboard page 79. One scene: the 90° values go into the table, and
- * "Our table is complete! You've found the sine, cosine and tangent values
- * for all five angles." -- said under a shower of confetti. Next. The
+ * Storyboard page 79. One scene: "Let's add the 90° values to our table.",
+ * the 90° values go into the table, and "We now have sine, cosine and
+ * tangent values for all five angles." -- said under a shower of confetti.
+ * Next. The
  * table stays up for js/s8-more.js, which adds its last three rows.
  * ========================================================================== */
 (function (global) {
@@ -32,6 +33,7 @@
 
   function scene() {
     return Promise.resolve()
+      .then(function () { return K.say('s7AddTable'); })
       .then(function () {
         rememberAll();
         return Promise.all([

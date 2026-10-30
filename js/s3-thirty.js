@@ -13,15 +13,16 @@
  *     the middle and grows: 30° at the left, 2 on the hypotenuse, 1 on the
  *     upright, b on the base. The two lengths known are lit, then b, and
  *     the Pythagoras question is said with the triangle still in the
- *     middle; then it stands aside and b is chosen from a dropdown (√3).
+ *     middle; then it stands aside and b is chosen from a dropdown (√3) --
+ *     missed twice, b is worked through with the learner (workB), and Next.
  *     With all three lengths it comes back to the middle; sin 30° is said,
  *     then worked aside, its lengths carried in from the triangle; cos 30°
  *     and tan 30° are the learner's, their lengths chosen from dropdowns.
  *     Next.
- *   The table.  The 30° values go in, their column lit. "That leaves
- *     60°." lights the 60° column; "Can we use the triangle we already
- *     have?" -- the table fades and the half comes back. "Yes! The other
- *     acute angle in this triangle is 60°." Next.
+ *   The table.  The 30° values go in, their column lit. "Can we use this
+ *     triangle for 60° too?" -- "Can we" lights the 60° column; with "this
+ *     triangle" the table fades and the half comes back. "Yes! Its other
+ *     acute angle is 60°." Next.
  * ========================================================================== */
 (function (global) {
   'use strict';
@@ -55,6 +56,10 @@
     var k = grow == null ? GROW : grow;
     return { x: MIDDLE.x + (p.x - c.x) * k, y: MIDDLE.y + (p.y - c.y) * k };
   }
+
+  /* The resting width of an angle's arc, as css/trig.css draws it, for a
+     pulse to settle back to. */
+  var ARC_W = 3.6;
 
   var dom = null;
   var tE = null, tL = null, tR = null;
@@ -240,7 +245,7 @@
         quiet(K.onPhrase('s3AllEqual', 'equal', function () {
           return Flow.anim(Beats.linePulse(tE.allSides()));
         }));
-        quiet(K.onPhrase('s3AllEqual', 'every angle', function () {
+        quiet(K.onPhrase('s3AllEqual', 'each angle', function () {
           return ['A', 'B', 'C'].reduce(function (chain, v) {
             return chain.then(function () {
               return Tri.angleIn(tE, v, T('lblDeg60')).then(function () { return Flow.wait(120); });
@@ -321,7 +326,7 @@
     return ensureHalves()
       .then(function () {
         var kept = null;
-        quiet(K.onPhrase('s3KeepOne', 'this one', function () { return (kept = keepUpper()); }));
+        quiet(K.onPhrase('s3KeepOne', 'one half', function () { return (kept = keepUpper()); }));
         return K.speakBySentence('s3KeepOne').then(function () { return kept || keepUpper(); });
       })
       .then(function () { return Flow.wait(SHORT); })
@@ -373,13 +378,28 @@
         W.pane.show();
         bRow = W.eqRow(T('eqB'), 'eq--ask');
         bAsk = W.valueBlank(bRow, {
-          answer: T('valRoot3'), options: [T('val3'), T('valRoot3'), T('valRoot5')], onWrong: notQuite
+          answer: T('valRoot3'), options: [T('val3'), T('valRoot3'), T('valRoot5')],
+          onWrong: notQuite, giveUp: true
         });
         return Flow.anim(Beats.rowIn(bRow.el));
       })
       .then(function () { return bAsk.ask(); })
-      .then(function () {
-        return Flow.anim(Beats.relabel(tL.vals.AB, function () { tL.vals.AB.textContent = T('valRoot3'); }));
+      .then(function (r) {
+        if (!(r && r.gaveUp)) {
+          return Flow.anim(Beats.relabel(tL.vals.AB, function () { tL.vals.AB.textContent = T('valRoot3'); }));
+        }
+        /* missed twice: worked through with the learner, and Next; then
+           the working goes and the triangle comes back to the middle */
+        return workB(bRow)
+          .then(function () { return Flow.wait(BEAT); })
+          .then(function () { return K.handOver(); })
+          .then(function () {
+            return Promise.all([
+              W.pane.out(),
+              Flow.anim(Beats.moveGroup(dom.gL, K.aside(dom.gL, 0.5), 0.9))
+            ]);
+          })
+          .then(function () { return Flow.wait(SHORT); });
       })
       /* all three lengths: the working on the right is done with, and the
          triangle comes back to the middle as it is said, its lengths lit */
@@ -393,7 +413,7 @@
           }
           return centred;
         }
-        quiet(K.onPhrase('s3Root3', 'now we have', centre));
+        quiet(K.onPhrase('s3Root3', 'now we know', centre));
         quiet(K.onPhrase('s3Root3', 'three', function () {
           return Flow.anim(Beats.textPulse(vals(tL), 2));
         }));
@@ -463,6 +483,72 @@
       .then(function () { return Flow.wait(SHORT); });
   }
 
+  /* b, missed twice: worked through with the learner, as the 45°
+     triangle's hypotenuse is (s2-ratios.js).
+       "Let's do it together." -- the dropdown's row goes, and b is lit
+     with its side.
+       "Use Pythagoras' theorem." -- the first line written as it is said:
+     b² + 1² as the two shorter sides are lit, then "= 2²" with the
+     hypotenuse.
+       Nothing more is said: each line after is made from the one above
+     it -- copied down and worked where it lands (W.working's MORPH): the
+     1² carried under the = to the far side, taking a −; 2² − 1² turning
+     into 4 − 1, which closes up into 3; then b² comes down, and its ²
+     lifts off and crosses the = to become the root: b = √3, in gold, and
+     √3 is carried onto b. */
+  function workB(row) {
+    var wk = null;
+    return Promise.resolve()
+      .then(function () {
+        var lit = K.cue('fbTogether', 'together', function () {
+          return Promise.all([
+            Flow.anim(Beats.linePulse(tL.sides.AB)),
+            Flow.anim(Beats.textPulse(tL.vals.AB, 2))
+          ]);
+        });
+        return Promise.all([W.pane.drop(row.el), K.say('fbTogether').then(lit)]);
+      })
+      .then(function () {
+        wk = W.working([
+          { l: T('wkBSqOne'), r: T('wkTwoSq') },
+          { l: T('wkBSq'),    r: T('wkTwoSqLess') },
+          { l: '',            r: T('wkFourLess') },
+          { l: '',            r: T('val3') },
+          { l: T('lblB'),     r: T('valRoot3') }
+        ]);
+        var lhs = K.cue('fbPythagoras', 'Pythagoras', function () {
+          quiet(Flow.anim(Beats.linePulse([tL.sides.AB, tL.sides.BC])));
+          quiet(Flow.anim(Beats.textPulse([tL.vals.AB, tL.vals.BC], 1)));
+          return wk.writeLeft(0);
+        });
+        var rhs = K.cue('fbPythagoras', 'theorem', function () {
+          return lhs().then(function () {
+            quiet(Flow.anim(Beats.linePulse(tL.sides.CA)));
+            quiet(Flow.anim(Beats.textPulse(tL.vals.CA, 1)));
+            return wk.writeRight(0);
+          });
+        });
+        return K.say('fbPythagoras').then(rhs);
+      })
+      /* each line copied down from the one above and worked there: the
+         1² carried under the = to the far side, taking a −; 2² − 1² turns
+         into 4 − 1; 4 − 1 closes up into 3; then b² comes down from the
+         second line and its ² lifts off, crossing the = to become the
+         root over the 3 */
+      .then(function () { return wk.step(1, { l0: '0:l0', eq: '0:eq', r0: '0:r0', r2: '0:l2', _: '0:l1' }); })
+      .then(function () { return wk.step(2, { eq: '1:eq', r0: '1:r0', r1: '1:r1', r2: '1:r2' }); })
+      .then(function () { return wk.step(3, { eq: '2:eq', r0: ['2:r0', '2:r1', '2:r2'] }); })
+      .then(function () { return wk.step(4, { l0: '1:l0', eq: '3:eq', r0: ['3:r0', '1:l0^'] }); })
+      .then(function () { return Flow.wait(SHORT); })
+      .then(function () { return wk.carry(4, tL.vals.AB, T('valRoot3')); })
+      .then(function () {
+        return Promise.all([
+          Flow.anim(Beats.linePulse(tL.sides.AB)),
+          Flow.anim(Beats.textPulse(tL.vals.AB, 2))
+        ]);
+      });
+  }
+
   /* The lower half goes first; then the upper one comes to the middle,
      redrawn corner by corner as it grows to HALF, so its lines and words
      keep their size. */
@@ -506,8 +592,8 @@
         return W.table.fillColumn(30, { sin: T('valHalf'), cos: T('valRoot3Over2'), tan: T('valOneOverRoot3') });
       })
       .then(function () { return Flow.wait(BEAT); })
-      /* "That leaves 60°." lights the 60° column; with "Can we use the
-         triangle we already have?" the table fades and the same half
+      /* "Can we use this triangle for 60° too?": "Can we" lights the 60°
+         column; with "this triangle" the table fades and the same half
          comes back, whole, in the middle */
       .then(function () {
         var back = null;
@@ -521,16 +607,21 @@
           }
           return back;
         }
-        quiet(K.onPhrase('s3Leaves60', '60°', function () { W.table.focusCols(60); }));
-        quiet(K.onPhrase('s3Leaves60', 'can we', backToHalf));
+        quiet(K.onPhrase('s3Leaves60', 'can we', function () { W.table.focusCols(60); }));
+        quiet(K.onPhrase('s3Leaves60', 'this triangle', backToHalf));
         return K.speakBySentence('s3Leaves60').then(backToHalf);
       })
       .then(function () { return Flow.wait(BEAT); })
       .then(function () { return K.autoTurn(); })
       .then(function () { return Flow.wait(SHORT); })
+      /* "Its other acute angle is 60°": the 60° lit -- its measure and its
+         arc -- not the 30° the half was found for */
       .then(function () {
         quiet(K.onPhrase('s3Yes60', 'other acute', function () {
-          return Flow.anim(Beats.textPulse([tL.angles.A], 2));
+          return Promise.all([
+            Flow.anim(Beats.linePulse(tL.arcs.C, ARC_W)),
+            Flow.anim(Beats.textPulse([tL.angles.C], 2))
+          ]);
         }));
         return K.speakBySentence('s3Yes60');
       })

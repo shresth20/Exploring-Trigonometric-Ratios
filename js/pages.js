@@ -142,7 +142,8 @@
       tray:     $('tray'),
       choices:  $('choices'),
       gate:     $('gate'),
-      nextBtn:  $('nextBtn')
+      nextBtn:  $('nextBtn'),
+      restartBtn: $('restartBtn')
     };
   }
 
@@ -510,6 +511,19 @@
         return Flow.wait(t0 + wordAt(c, p) - performance.now());
       });
     })).then(fn);
+  }
+  /* fn, run ONCE: as `phrase` of the line `key` is heard (onPhrase), or by
+     the function handed back -- called once the line is done, so what the
+     phrase was to bring on is there even if it was never heard (a skip).
+     Both hand back the same promise. */
+  function cue(key, phrase, fn) {
+    var done = null;
+    function run() {
+      if (!done) done = Promise.resolve().then(fn);
+      return done;
+    }
+    quiet(onPhrase(key, phrase, run));
+    return run;
   }
 
   /* A typer whose every line is laid out on its recording's clock. */
@@ -969,18 +983,26 @@
      which, has the voice say so (the promise it hands back), and nothing
      can be pressed meanwhile; then it is spent and the learner tries again
      among the rest. After TRIES wrong ones the right one is pressed for
-     the learner. Resolves with { misses } once the right one is pressed
-     (or a skip presses it). */
+     the learner -- or, with `o.giveUp`, the question is handed back
+     unanswered, for the caller to work it through with them. Resolves
+     with { misses, gaveUp } once the right one is pressed (or a skip
+     presses it), or the question is handed back. */
   function askUntilRight(buttons, answerIndex, opts) {
     var o = opts || {};
     var live = true;
     var misses = 0;
+    var gaveUp = false;
     var good = buttons[answerIndex];
     var group = good.parentNode;
 
     function right() {
       live = false;
       Beats.choiceRight(good);
+      dom.gate.dispatchEvent(new MouseEvent('click'));
+    }
+    function handBack() {
+      live = false;
+      gaveUp = true;
       dom.gate.dispatchEvent(new MouseEvent('click'));
     }
     function onPick(ev) {
@@ -1001,7 +1023,7 @@
            a tween, as the tray brought it in with one (its opacity is
            written inline, which a class could not override). */
         quiet(Flow.anim(Beats.choiceOut(btn)));
-        if (live && misses >= TRIES) right();
+        if (live && misses >= TRIES) { if (o.giveUp) handBack(); else right(); }
       }));
     }
     function off() {
@@ -1018,7 +1040,7 @@
     buttons.forEach(function (b) { b.addEventListener('click', onPick); });
 
     return Flow.once(dom.gate, { auto: true }).then(
-      function () { fillIn(); off(); return { misses: misses }; },
+      function () { if (!gaveUp) fillIn(); off(); return { misses: misses, gaveUp: gaveUp }; },
       function (err) { off(); throw err; });
   }
 
@@ -1367,7 +1389,7 @@
    * and Start is offered once everything has loaded. Then the welcome
    * stands aside, and the first line arrives in a speech bubble in the
    * middle of the screen, over two rows, with the bird hopping up beside
-   * it to say it -- the one screen the bird is on.
+   * it to say it -- the bird is on this screen and the end only.
    * ====================================================================== */
   function sceneWelcome() {
     return Flow.wait(SHORT)
@@ -1406,10 +1428,56 @@
       .then(function () { return handOver(dom.nextBtn); });
   }
 
-  /* The lesson in playing order. */
+  /* ======================================================================
+   * The end
+   * The last section has taken the board away and left the swamp
+   * (s8-more.js). The bird hops back up beside its bubble to close the
+   * lesson as it opened it, the confetti comes down over the frame, and
+   * Restart is offered under the line: it starts the lesson over from the
+   * welcome.
+   * ====================================================================== */
+  function sceneEnd() {
+    return Flow.wait(SHORT)
+      .then(function () {
+        Beats.bubbleArm(dom.bubble);
+        Beats.birdArm(dom.bird);
+        mascot.state('talking');
+        var bye = keyed('endWellDone');
+        var heard = quiet(voiceOf(bye));
+        var said = sayBubble(bye);
+        Beats.bubbleIn(dom.bubble);
+        Beats.sfx('cheer');
+        quiet(Flow.anim(Beats.confettiRain(dom.frame)));
+        var hop = Flow.wait(BIRD_LAG).then(function () {
+          return Flow.anim(Beats.birdIn(dom.bird));
+        });
+        return Promise.all([said, heard, hop]);
+      })
+      .then(function () {
+        mascot.settle();
+        return Flow.wait(SHORT);
+      })
+      .then(function () {
+        M.button3d(dom.restartBtn, { edge: 5 });
+        Beats.controlIn(dom.restartBtn);
+        return Flow.once(dom.restartBtn);
+      })
+      .then(function () {
+        Beats.sfx('click');
+        return Promise.all([
+          Flow.anim(Beats.controlOut(dom.restartBtn)),
+          Flow.anim(Beats.bubbleOut(dom.bubble))
+        ]);
+      })
+      .then(function () { quiet(run()); });
+  }
+
+  /* The lesson in playing order. The end is kept last: each section joins
+     the lesson in front of it. */
   var SCENES = [
     { name: 'Welcome', play: sceneWelcome }
   ];
+  var END = { name: 'The end', play: sceneEnd };
 
   /* The sections, each in a file of its own. A section brings its scenes
      and a handful of hooks the board's housekeeping calls into:
@@ -1419,15 +1487,16 @@
        reset()     back to rest, with no animation
        stage(i)    the board as its i-th scene expects to find it */
   var BASE_SCENES = SCENES.length;
+  SCENES.push(END);
   var sections = [];
   var skills = [{ first: 0, name: 'Trigonometric ratios' }];
 
   function addSection(spec) {
     if (!spec || !spec.scenes) return;
-    spec.first = SCENES.length;
+    spec.first = SCENES.indexOf(END);
     sections.push(spec);
     if (spec.skill) skills.push({ first: spec.first, name: spec.skill });
-    spec.scenes.forEach(function (sc) { SCENES.push(sc); });
+    SCENES.splice.apply(SCENES, [spec.first, 0].concat(spec.scenes));
     if (dom && spec.build) spec.build(kit);
   }
   function sectionOf(index) {
@@ -1497,6 +1566,7 @@
     dom.startBtn.setAttribute('hidden', '');
     dom.startBtn.classList.remove('in');
     dom.nextBtn.setAttribute('hidden', '');
+    dom.restartBtn.setAttribute('hidden', '');
     dom.bubble.setAttribute('hidden', '');
 
     dom.board.classList.remove('show', 'is-animating', 'is-headless', 'is-bare');
@@ -1507,7 +1577,7 @@
     resetFooter();
     wipers.forEach(function (w) { if (w.reset) w.reset(); });
 
-    M.set([dom.welcome, dom.title, dom.startBtn, dom.nextBtn, dom.bubble,
+    M.set([dom.welcome, dom.title, dom.startBtn, dom.nextBtn, dom.restartBtn, dom.bubble,
            dom.board, dom.promptLine, dom.promptWords],
           { clearProps: 'opacity,transform,filter' });
   }
@@ -1517,7 +1587,7 @@
   function stageFor(index) {
     if (index <= 0) return;
     dom.welcome.setAttribute('hidden', '');
-    if (index <= 1) return;
+    if (index <= 1 || SCENES[index] === END) return;
 
     dom.board.classList.add('show');
     dom.board.setAttribute('aria-hidden', 'false');
@@ -1584,7 +1654,7 @@
     resetFooter: resetFooter, addWipe: addWipe,
     askChoice: askChoice, askUntilRight: askUntilRight, heldWrong: heldWrong,
     armQuiz: armQuiz, dragGuide: dragGuide,
-    keyed: keyed, hear: hear, onWord: onWord, onPhrase: onPhrase, wordAt: wordAt,
+    keyed: keyed, hear: hear, onWord: onWord, onPhrase: onPhrase, cue: cue, wordAt: wordAt,
     typedFor: typedFor, sentencesOf: sentencesOf,
     celebrate: celebrate, praise: praise, praiseKey: praiseKey,
     autoTurn: autoTurn, lineAway: lineAway,

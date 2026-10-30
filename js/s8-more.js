@@ -19,7 +19,7 @@
  *   cosec θ = 1/sin θ (pages 80-82), sec θ = 1/cos θ (83-85), and
  *   cot θ = cos θ/sin θ (86-88). Then the whole table, with nothing lit:
  *   "There we go! Our table is complete." (89). Next takes the board away
- *   and leaves the swamp.
+ *   and leaves the swamp, for the end (pages.js, sceneEnd).
  * ========================================================================== */
 (function (global) {
   'use strict';

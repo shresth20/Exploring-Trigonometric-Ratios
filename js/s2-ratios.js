@@ -11,11 +11,15 @@
  *     triangle comes to the middle of the board, set low so it has room to
  *     grow; its top corner glows, and the learner drags it up until the
  *     angle is 45°. "We know two angles" lights the 45° and the right
- *     angle; "the missing one" draws the third angle's arc and its ?, and
- *     the answers wait under the triangle. Next. The triangle goes back to
- *     the left half, the two equal sides are given 1 unit each, the
- *     hypotenuse is lit and given its ?, and found by Pythagoras (√2) from
- *     a dropdown. With all three lengths it comes to the middle; sin 45°
+ *     angle; "the third" draws the third angle's arc and its ?, and the
+ *     answers wait under the triangle -- missed twice, the angle is worked
+ *     through with the learner (workAngle). Next. The triangle comes to
+ *     the middle of the board and stays there while nothing stands beside
+ *     it: the two equal sides are given 1 unit each, the hypotenuse is lit
+ *     and given its ?, and the Pythagoras question is said; then it stands
+ *     aside and √2 is chosen from a dropdown -- missed twice, worked
+ *     through (workHyp), and Next. With all three lengths it comes to the
+ *     middle; sin 45°
  *     is said, then worked aside, its lengths carried in from the
  *     triangle; cos 45° and tan 45° are the learner's, their lengths
  *     chosen from dropdowns. Next.
@@ -347,7 +351,7 @@
           return asked;
         }
         quiet(K.onPhrase('s2Missing', 'two angles', knownIn));
-        quiet(K.onPhrase('s2Missing', 'missing', missingIn));
+        quiet(K.onPhrase('s2Missing', 'third', missingIn));
         return K.speakBySentence('s2Missing').then(knownIn).then(missingIn);
       })
       .then(function () {
@@ -355,8 +359,10 @@
         K.choices(btns);
         return Flow.anim(Beats.trayIn(dom.choices, btns)).then(function () {
           var right = btns.map(function (b) { return b.dataset.name; }).indexOf(T('lblDeg45'));
-          return K.askUntilRight(btns, right, { onWrong: notQuite });
-        }).then(function () {
+          return K.askUntilRight(btns, right, { onWrong: notQuite, giveUp: true });
+        }).then(function (r) {
+          /* missed twice: worked through with the learner instead */
+          if (r.gaveUp) return workAngle();
           return Promise.all([
             Flow.anim(Beats.relabel(t.angles.C, function () { t.angles.C.textContent = T('lblDeg45'); })),
             K.speak(K.keyed('fbCorrect'))
@@ -365,21 +371,22 @@
       })
       .then(function () { return Flow.wait(BEAT); })
       .then(function () { return K.handOver(); })
-      /* the answers go, and the triangle back to the left half */
+      /* the answers go -- or the working, if the angle was worked through
+         -- and the triangle comes to the middle of the board, where it
+         stays until there is something to stand beside it */
       .then(function () {
         return Promise.all([
-          Flow.anim(Beats.trayOut(dom.choices, K.choices())).then(function () { K.resetFooter(); }),
-          Flow.anim(Beats.moveGroup(dom.g, K.aside(dom.g), 0.9))
+          dom.choices.hasAttribute('hidden') ? null :
+            Flow.anim(Beats.trayOut(dom.choices, K.choices())).then(function () { K.resetFooter(); }),
+          W.pane.out(),
+          Flow.anim(Beats.moveGroup(dom.g, K.aside(dom.g, 0.5), 0.9))
         ]);
       })
-      .then(function () {
-        W.pane.show();
-        return Flow.wait(SHORT);
-      })
+      .then(function () { return Flow.wait(SHORT); })
 
       /* ---- the two equal sides -------------------------------------------
-         "Both angles are 45°" lights the two angles; "so the sides
-         opposite them are equal" lights the two sides. */
+         "Both acute angles are 45°" lights the two angles; "so their
+         opposite sides are equal" lights the two sides. */
       .then(function () {
         quiet(K.onPhrase('s2Both45', 'angles', function () {
           return Promise.all([
@@ -387,7 +394,7 @@
             Flow.anim(Beats.textPulse([t.angles.A, t.angles.C], 2))
           ]);
         }));
-        quiet(K.onPhrase('s2Both45', 'sides opposite', function () {
+        quiet(K.onPhrase('s2Both45', 'opposite sides', function () {
           return Flow.anim(Beats.linePulse([t.sides.AB, t.sides.BC]));
         }));
         return K.say('s2Both45');
@@ -420,24 +427,42 @@
       })
       .then(function () { return Flow.wait(SHORT); })
 
-      /* ---- Pythagoras: the question said, and then asked on the right,
-         its answer chosen from a dropdown ---------------------------------- */
+      /* ---- Pythagoras: the question said with the triangle still in the
+         middle; then it stands aside, and the answer is chosen from a
+         dropdown on the right -------------------------------------------- */
       .then(function () {
         quiet(K.onPhrase('s2PythHyp', 'hypotenuse', function () {
           return Flow.anim(Beats.textPulse(t.vals.CA, 2));
         }));
         return K.say('s2PythHyp');
       })
+      .then(function () { return Flow.anim(Beats.moveGroup(dom.g, K.aside(dom.g), 0.9)); })
       .then(function () {
+        W.pane.show();
         hypRow = W.eqRow(T('eqHyp'), 'eq--ask');
         hypAsk = W.valueBlank(hypRow, {
-          answer: T('valRoot2'), options: [T('val2'), T('valRoot2'), T('val1')], onWrong: notQuite
+          answer: T('valRoot2'), options: [T('val2'), T('valRoot2'), T('val1')],
+          onWrong: notQuite, giveUp: true
         });
         return Flow.anim(Beats.rowIn(hypRow.el));
       })
       .then(function () { return hypAsk.ask(); })
-      .then(function () {
-        return Flow.anim(Beats.relabel(t.vals.CA, function () { t.vals.CA.textContent = T('valRoot2'); }));
+      .then(function (r) {
+        if (!(r && r.gaveUp)) {
+          return Flow.anim(Beats.relabel(t.vals.CA, function () { t.vals.CA.textContent = T('valRoot2'); }));
+        }
+        /* missed twice: worked through with the learner, and Next; then
+           the working goes and the triangle comes back to the middle */
+        return workHyp(hypRow)
+          .then(function () { return Flow.wait(BEAT); })
+          .then(function () { return K.handOver(); })
+          .then(function () {
+            return Promise.all([
+              W.pane.out(),
+              Flow.anim(Beats.moveGroup(dom.g, K.aside(dom.g, 0.5), 0.9))
+            ]);
+          })
+          .then(function () { return Flow.wait(SHORT); });
       })
       .then(function () {
         quiet(K.onPhrase('s2HypRoot2', 'hypotenuse', function () {
@@ -526,6 +551,173 @@
       })
       .then(function () { return K.speak(K.keyed('fbCorrect')); })
       .then(function () { return Flow.wait(SHORT); });
+  }
+
+  /* ======================================================================
+   * Worked through with the learner
+   * Missed twice, a question is not simply answered for the learner: it
+   * is worked through with them, as a teacher does it at the board -- a
+   * line of working written as each step is said, its terms lit as they
+   * are named, and the answer carried back onto the triangle. The scene
+   * hands over after.
+   * ====================================================================== */
+
+  /* The third angle.
+       "Let's do it together." -- the pills go, the ? is lit, and the
+     triangle stands aside for the working.
+       "The angles of a triangle add up to 180°." -- as "angles" is said
+     the three angles are lit and carried off the triangle, one after
+     another, into the first line; "= 180°" is written as it is heard.
+       Each line after is made from the one above it, the board way
+     (W.working's MORPH): copied down, and worked where it lands.
+       "The two known angles add up to 135°." -- the 45° and the 90° lit,
+     in the working and on the triangle; the first line copied down, and
+     its 45° + 90° closing up into 135°.
+       "Subtract 135° from 180°." -- the second line copied down, and its
+     135° carried under the = to the far side, where it takes a −.
+       "So, the missing angle is 45°." -- the ? lit; the third line copied
+     down, its 180° − 135° closing up into 45°, in gold, which is carried
+     onto the ?. */
+  function workAngle() {
+    var wk = null;
+    return Promise.resolve()
+      .then(function () {
+        quiet(Flow.anim(Beats.trayOut(dom.choices, K.choices())).then(function () { K.resetFooter(); }));
+        var aside = K.cue('fbTogether', 'together', function () {
+          quiet(Flow.anim(Beats.textPulse(t.angles.C, 2)));
+          return Flow.anim(Beats.moveGroup(dom.g, K.aside(dom.g), 0.9));
+        });
+        return K.say('fbTogether').then(aside);
+      })
+      .then(function () {
+        W.pane.show();
+        wk = W.working([
+          { l: T('wkAngSum'), r: T('lblDeg180') },
+          { l: T('wkAng135'), r: T('lblDeg180') },
+          { l: T('lblQ'),     r: T('wkAngLess') },
+          { l: T('lblQ'),     r: T('lblDeg45') }
+        ], { cls: 'work--ang' });
+        var sum = K.cue('s2FbSum180', 'angles', function () {
+          quiet(Flow.anim(Beats.linePulse([t.arcs.A, t.arcs.C], ARC_W)));
+          quiet(Flow.anim(Beats.linePulse(t.square, SQUARE_W)));
+          return wk.writeLeft(0, { 0: t.angles.A, 2: t.angles.B, 4: t.angles.C });
+        });
+        var total = K.cue('s2FbSum180', '180°', function () {
+          return sum().then(function () { return wk.writeRight(0); });
+        });
+        return K.say('s2FbSum180').then(total);
+      })
+      .then(function () { return Flow.wait(SHORT); })
+      .then(function () { return Flow.wait(SHORT); })
+      /* "The two known angles..." lights them; with "add up" the first
+         line is copied down, and its 45° + 90° close up into 135° as
+         "135°" is said */
+      .then(function () {
+        var known = K.cue('s2FbKnown135', 'two known', function () {
+          var a = wk.terms(0, 'l');
+          return Promise.all([
+            Flow.anim(Beats.textPulse([a[0], a[2]], 1)),
+            Flow.anim(Beats.textPulse([t.angles.A, t.angles.B], 1))
+          ]);
+        });
+        var line = K.cue('s2FbKnown135', 'add up', function () {
+          return wk.morph(1, { l0: ['0:l0', '0:l1', '0:l2'], l1: '0:l3', l2: '0:l4', eq: '0:eq', r0: '0:r0' });
+        });
+        return K.say('s2FbKnown135').then(known).then(line);
+      })
+      .then(function () { return Flow.wait(SHORT); })
+      /* "Subtract 135° from 180°." -- the second line copied down, and its
+         135° carried under the = to the far side, where it takes a − */
+      .then(function () {
+        var line = K.cue('s2FbSubtract', 'Subtract', function () {
+          return wk.morph(2, { l0: '1:l2', eq: '1:eq', r0: '1:r0', r2: '1:l0', _: '1:l1' });
+        });
+        return K.say('s2FbSubtract').then(line);
+      })
+      .then(function () { return Flow.wait(SHORT); })
+      /* "So, the missing angle is 45°." -- the ? lit; the third line
+         copied down, its 180° − 135° closing up into the gold 45°, which
+         is carried onto the ? */
+      .then(function () {
+        var answer = K.cue('s2FbMissing45', 'missing angle', function () {
+          quiet(Flow.anim(Beats.textPulse(t.angles.C, 1)));
+          quiet(Flow.anim(Beats.linePulse(t.arcs.C, ARC_W)));
+          return wk.morph(3, { l0: '2:l0', eq: '2:eq', r0: ['2:r0', '2:r1', '2:r2'] })
+            .then(function () { return Flow.wait(SHORT); })
+            .then(function () { return wk.carry(3, t.angles.C, T('lblDeg45')); })
+            .then(function () {
+              return Promise.all([
+                Flow.anim(Beats.textPulse(t.angles.C, 2)),
+                Flow.anim(Beats.linePulse(t.arcs.C, ARC_W))
+              ]);
+            });
+        });
+        return K.say('s2FbMissing45').then(answer);
+      });
+  }
+
+  /* The hypotenuse.
+       "Let's do it together." -- the dropdown's row goes, and the ? on the
+     hypotenuse becomes h, lit with its side.
+       "Use Pythagoras' theorem." -- the first line written as it is said:
+     h² as the hypotenuse is lit, then "= 1² + 1²" with the two equal
+     sides and their lengths.
+       Nothing more is said: the line stays on the header, and each line
+     after is made from the one above it -- copied down and worked where
+     it lands (W.working's MORPH): 1² + 1² turns into 1 + 1, which closes
+     up into 2; then h² comes down from the first line, and its ² lifts
+     off and crosses the = to become the root over the 2: h = √2, in gold,
+     and √2 is carried onto the hypotenuse. */
+  function workHyp(row) {
+    var wk = null;
+    return Promise.resolve()
+      .then(function () {
+        var named = K.cue('fbTogether', 'together', function () {
+          return Flow.anim(Beats.relabel(t.vals.CA, function () { t.vals.CA.textContent = T('lblH'); }))
+            .then(function () {
+              return Promise.all([
+                Flow.anim(Beats.linePulse(t.sides.CA)),
+                Flow.anim(Beats.textPulse(t.vals.CA, 2))
+              ]);
+            });
+        });
+        return Promise.all([W.pane.drop(row.el), K.say('fbTogether').then(named)]);
+      })
+      .then(function () {
+        wk = W.working([
+          { l: T('wkHypSq'), r: T('wkOnesSq') },
+          { l: '',           r: T('wkOnes') },
+          { l: '',           r: T('val2') },
+          { l: T('lblH'),    r: T('valRoot2') }
+        ]);
+        var lhs = K.cue('fbPythagoras', 'Pythagoras', function () {
+          quiet(Flow.anim(Beats.linePulse(t.sides.CA)));
+          return wk.writeLeft(0);
+        });
+        var rhs = K.cue('fbPythagoras', 'theorem', function () {
+          return lhs().then(function () {
+            quiet(Flow.anim(Beats.linePulse([t.sides.AB, t.sides.BC])));
+            quiet(Flow.anim(Beats.textPulse([t.vals.AB, t.vals.BC], 1)));
+            return wk.writeRight(0);
+          });
+        });
+        return K.say('fbPythagoras').then(rhs);
+      })
+      /* each line copied down from the one above and worked there:
+         1² + 1² turns into 1 + 1; 1 + 1 closes up into 2; then h² comes
+         down from the first line and its ² lifts off, crossing the = to
+         become the root over the 2 */
+      .then(function () { return wk.step(1, { eq: '0:eq', r0: '0:r0', r1: '0:r1', r2: '0:r2' }); })
+      .then(function () { return wk.step(2, { eq: '1:eq', r0: ['1:r0', '1:r1', '1:r2'] }); })
+      .then(function () { return wk.step(3, { l0: '0:l0', eq: '2:eq', r0: ['2:r0', '0:l0^'] }); })
+      .then(function () { return Flow.wait(SHORT); })
+      .then(function () { return wk.carry(3, t.vals.CA, T('valRoot2')); })
+      .then(function () {
+        return Promise.all([
+          Flow.anim(Beats.linePulse(t.sides.CA)),
+          Flow.anim(Beats.textPulse(t.vals.CA, 2))
+        ]);
+      });
   }
 
   /* The second scene opens on the first's last board: the triangle aside,
