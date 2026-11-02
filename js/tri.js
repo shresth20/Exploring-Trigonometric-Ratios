@@ -54,10 +54,15 @@
   var SIDES = { AB: ['A', 'B'], BC: ['B', 'C'], CA: ['C', 'A'] };
   var ARC_R = 40;          /* the angle arc's radius                      */
   var SQ = 20;             /* the right angle's square, along each side   */
-  var WORD_OFF = 34;       /* a word beside a side, out from it           */
-  var LEVEL_WORD_OFF = 12; /* a word under a level side: its letters hang
-                              clear of the line, so it can stand closer    */
-  var VAL_OFF = 30;       /* a length beside a side, the same            */
+  /* How far a side's name and its length stand out from it: close enough
+     to read as the side's own. Under a level side the letters hang clear
+     of the line, and beside an upright one they start clear of it, so
+     both can stand closer than a word turned along a slanted side, whose
+     line runs the whole length of its foot. */
+  var WORD_OFF = 24;       /* a word beside a slanted side, out from it   */
+  var VAL_OFF = 16;        /* a length beside a slanted side              */
+  var LEVEL_OFF = 12;      /* a word or a length under a level side       */
+  var UPRIGHT_OFF = 14;    /* a word or a length beside an upright side   */
   var ANG_OFF = 66;        /* the angle's word, in from its vertex        */
   var VTX_OFF = 26;        /* A, B, C: out from the vertex                */
   /* The angle's word is a box this size round its middle -- in picture
@@ -156,7 +161,7 @@
     var theta = spec.theta || 'A';
     var wordOff = spec.wordOff || WORD_OFF;
     /* a figure that sets its words under the lengths keeps the one offset */
-    var levelOff = spec.wordOff || LEVEL_WORD_OFF;
+    var levelOff = spec.wordOff || LEVEL_OFF;
     var valOff = spec.valOff || VAL_OFF;
 
     group.classList.add('figure__tri');
@@ -240,12 +245,13 @@
         sides[s].setAttribute('d', 'M' + pt(p) + ' L' + pt(q));
         var third = V[other(SIDES[s][0], SIDES[s][1])];
         var level = Math.abs(q.y - p.y) < Math.abs(q.x - p.x) && !slant(p, q);
-        var wv = outside(p, q, third, valOff);
-        var ww = outside(p, q, third, level ? levelOff : wordOff);
-        /* beside an upright side both words read rightward from the same
-           edge, so the name is set UNDER the length rather than past it */
         var upright = Math.abs(q.y - p.y) >= Math.abs(q.x - p.x) && !slant(p, q);
-        if (upright && wordOff > valOff) ww = { x: wv.x, y: wv.y + (wordOff - valOff) };
+        var wv = outside(p, q, third, upright ? UPRIGHT_OFF : level ? LEVEL_OFF : valOff);
+        var ww = upright ? wv : outside(p, q, third, level ? levelOff : wordOff);
+        /* beside an upright side both words read rightward from the same
+           edge, so a figure that shows both sets the name UNDER the length
+           rather than past it */
+        if (upright && wordOff > WORD_OFF) ww = { x: wv.x, y: wv.y + (wordOff - valOff) };
         placeText(words[s], p, q, ww);
         placeText(vals[s], p, q, wv);
       });

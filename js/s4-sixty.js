@@ -32,7 +32,7 @@
     dom = Object.create(K.dom());
     dom.g = document.getElementById('figS4');
     /* the names stand further out than the lengths, so both can show */
-    t = Tri.create(dom.g, { A: S3.HALF.A, B: S3.HALF.B, C: S3.HALF.C, right: 'B', theta: 'A', wordOff: 70 });
+    t = Tri.create(dom.g, { A: S3.HALF.A, B: S3.HALF.B, C: S3.HALF.C, right: 'B', theta: 'A', wordOff: 56 });
     reset();
   }
 

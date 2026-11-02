@@ -152,8 +152,10 @@
           </svg>
 
           <!-- The right half of the stage, for the working: the equations,
-               the dropdown blanks, the pills and the slider (js/widgets.js). -->
+               the dropdown blanks, the pills and the slider (js/widgets.js),
+               in the box laid under them. -->
           <div class="pane" id="pane" hidden data-i18n-attr="aria-label:a11yPane" aria-label="The working">
+            <div class="pane__box" id="paneBox" aria-hidden="true"></div>
             <div class="pane__body" id="paneBody"></div>
           </div>
 
@@ -178,31 +180,10 @@
       <!-- Where a burst of confetti is thrown, over everything in the frame. -->
       <svg class="burst-layer" id="burst" aria-hidden="true"></svg>
 
-      <!-- The Next key: a dark outline, an orange wall set a little low so
-           it reads as the key's thickness, a face lit from the top with a
-           gloss, and a rounded arrow outlined in the same dark. -->
+      <!-- The Next key painted for the swamp (next-btn.png): a slime-hung
+           teal tile round a gold arrow. Named by its aria-label alone. -->
       <button class="next-btn" id="nextBtn" type="button" hidden data-i18n-attr="aria-label:a11yNext" aria-label="Next">
-        <svg viewBox="0 0 100 100" aria-hidden="true" focusable="false">
-          <defs>
-            <linearGradient id="icoNextFace" x1="50" y1="8" x2="50" y2="92" gradientUnits="userSpaceOnUse">
-              <stop offset="0" stop-color="var(--next-face-1)" />
-              <stop offset=".55" stop-color="var(--next-face-2)" />
-              <stop offset="1" stop-color="var(--next-face-3)" />
-            </linearGradient>
-          </defs>
-          <rect x="3" y="3" width="94" height="95" rx="24" fill="var(--text-outline)" />
-          <rect x="7" y="7" width="86" height="87" rx="20" fill="var(--next-rim)" />
-          <rect x="7" y="7" width="86" height="80" rx="20" fill="url(#icoNextFace)" />
-          <rect x="14" y="12" width="72" height="26" rx="13" fill="var(--white)" opacity=".24" />
-          <g transform="translate(-3 -3)">
-            <path d="M31.25 43.125 H52.5 V31.25 L77.5 50 L52.5 68.75 V56.875 H31.25 Z"
-                  fill="var(--text-outline)" stroke="var(--text-outline)" stroke-width="16"
-                  stroke-linejoin="round" stroke-linecap="round" />
-            <path d="M31.25 43.125 H52.5 V31.25 L77.5 50 L52.5 68.75 V56.875 H31.25 Z"
-                  fill="var(--next-arrow)" stroke="var(--next-arrow)" stroke-width="8.75"
-                  stroke-linejoin="round" stroke-linecap="round" />
-          </g>
-        </svg>
+        <img class="next-btn__art" src="assets/images/next-btn.png" alt="" draggable="false">
       </button>
 
       <!-- Restart, at the end, under the closing line: an orange key, as the

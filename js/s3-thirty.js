@@ -485,8 +485,8 @@
 
   /* b, missed twice: worked through with the learner, as the 45°
      triangle's hypotenuse is (s2-ratios.js).
-       "Let's do it together." -- the dropdown's row goes, and b is lit
-     with its side.
+       "Let's do it together." -- the dropdown's row goes, its box
+     opening out to the working's size, and b is lit with its side.
        "Use Pythagoras' theorem." -- the first line written as it is said:
      b² + 1² as the two shorter sides are lit, then "= 2²" with the
      hypotenuse.
@@ -506,16 +506,23 @@
             Flow.anim(Beats.textPulse(tL.vals.AB, 2))
           ]);
         });
-        return Promise.all([W.pane.drop(row.el), K.say('fbTogether').then(lit)]);
+        /* the row goes and the working is laid out, unseen, in its place
+           while the line is said: the box goes straight from the one to
+           the other, ready for the first line */
+        return Promise.all([
+          W.pane.drop(row.el).then(function () {
+            wk = W.working([
+              { l: T('wkBSqOne'), r: T('wkTwoSq') },
+              { l: T('wkBSq'),    r: T('wkTwoSqLess') },
+              { l: '',            r: T('wkFourLess') },
+              { l: '',            r: T('val3') },
+              { l: T('lblB'),     r: T('valRoot3') }
+            ]);
+          }),
+          K.say('fbTogether').then(lit)
+        ]);
       })
       .then(function () {
-        wk = W.working([
-          { l: T('wkBSqOne'), r: T('wkTwoSq') },
-          { l: T('wkBSq'),    r: T('wkTwoSqLess') },
-          { l: '',            r: T('wkFourLess') },
-          { l: '',            r: T('val3') },
-          { l: T('lblB'),     r: T('valRoot3') }
-        ]);
         var lhs = K.cue('fbPythagoras', 'Pythagoras', function () {
           quiet(Flow.anim(Beats.linePulse([tL.sides.AB, tL.sides.BC])));
           quiet(Flow.anim(Beats.textPulse([tL.vals.AB, tL.vals.BC], 1)));

@@ -127,24 +127,30 @@
       var d = dom();
       d.paneBody.textContent = '';
       M.set(d.paneBody, { clearProps: 'transform' });
+      d.paneBody.style.right = '';
+      colShift = 0;
       d.pane.setAttribute('hidden', '');
       d.pane.classList.remove('pane--low', 'pane--top');
+      boxOff();
     },
     /* A row of the working, appended and hidden until it is brought in. */
     row: function (cls, html) {
       var d = dom();
+      watchColumn(d.paneBody);
       var row = h('div', 'pane__row' + (cls ? ' ' + cls : ''), d.paneBody);
       if (html != null) row.innerHTML = html;
       M.set(row, { opacity: 0 });
       return row;
     },
     rows: function () { return Array.prototype.slice.call(dom().paneBody.children); },
-    /* Everything in it taken away, smoothly, and the pane shut. */
+    /* Everything in it taken away, smoothly -- the box with its rows --
+       and the pane shut. */
     out: function () {
       var d = dom();
       var rows = pane.rows();
-      if (d.pane.hasAttribute('hidden') || !rows.length) { pane.clear(); return Promise.resolve(); }
-      return Flow.anim(Beats.rowOut(rows)).then(pane.clear);
+      if (d.pane.hasAttribute('hidden')) { pane.clear(); return Promise.resolve(); }
+      return Promise.all([rows.length ? Flow.anim(Beats.rowOut(rows)) : null, boxOut()])
+        .then(pane.clear);
     },
     /* Named rows taken away, the rest left standing. */
     drop: function (rows) {
@@ -158,18 +164,178 @@
      move is glided, not jumped: the column is held where it stood and let
      go. An empty column has nowhere it stood, so the first row just lands. */
   var colWatch = null, colAt = null;
+  /* the column's glide, the rows' and the box's: one clock, quick enough
+     that the box has mostly opened before a new row is seen in it */
+  var GLIDE = 0.36, GLIDE_EASE = 'power3.out';
   function watchColumn(body) {
     if (colWatch || !global.ResizeObserver) return;
-    colWatch = new ResizeObserver(function () {
-      var at = body.childElementCount ? body.offsetLeft : null;
-      if (colAt != null && at != null && at !== colAt && !M.reducedMotion()) {
-        var from = colAt - at + (global.gsap.getProperty(body, 'x') || 0);
-        var tl = M.timeline({ willChange: body, willChangeValue: 'transform' });
-        tl.fromTo(body, { x: from }, { x: 0, duration: M.dur(0.4), ease: 'power2.out' });
-      }
-      colAt = at;
-    });
+    colWatch = new ResizeObserver(followColumn);
     colWatch.observe(body);
+    Array.prototype.forEach.call(body.children, function (n) { colWatch.observe(n); });
+    /* every row watched too, for the box: one growing or shrinking -- a
+       fraction arriving, a blank answered -- and one coming or going */
+    new MutationObserver(function (list) {
+      list.forEach(function (m) {
+        m.addedNodes.forEach(function (n) { if (n.nodeType === 1) colWatch.observe(n); });
+      });
+      settleRows(true);
+      fitBox();
+    }).observe(body, { childList: true });
+  }
+  function followColumn() {
+    glideColumn();
+    settleRows(false);
+    fitBox();
+  }
+  function glideColumn() {
+    var body = dom().paneBody;
+    var at = body.childElementCount ? body.offsetLeft : null;
+    if (colAt != null && at != null && at !== colAt && !M.reducedMotion()) {
+      var from = colAt - at + (global.gsap.getProperty(body, 'x') || 0);
+      var tl = M.timeline({ willChange: body, willChangeValue: 'transform' });
+      tl.fromTo(body, { x: from }, { x: 0, duration: M.dur(GLIDE), ease: GLIDE_EASE });
+    }
+    colAt = at;
+  }
+  /* The column is centred down the half too, so a row coming or going
+     moves every row that stays, up or down. Each glides there from where
+     it stood, with the box, rather than jumping. Only a row's coming or
+     going: a row's own change of size is glided by what changed it
+     (plainFrac), so here its place is only noted. */
+  function settleRows(glide) {
+    var moved = [];
+    pane.rows().forEach(function (r) {
+      var top = r.offsetTop;
+      if (glide && r.__top != null && r.__top !== top && !M.reducedMotion()) moved.push({ el: r, dy: r.__top - top });
+      r.__top = top;
+    });
+    if (!moved.length) return;
+    var tl = M.timeline({ willChange: moved.map(function (m) { return m.el; }), willChangeValue: 'transform' });
+    moved.forEach(function (m) {
+      tl.fromTo(m.el, { y: '+=' + m.dy }, { y: 0, duration: M.dur(GLIDE), ease: GLIDE_EASE }, 0);
+    });
+  }
+
+  /* ---- the box round the rows --------------------------------------------
+     It closes round the rows standing in the column -- a row brought in
+     later counts from the moment it is laid out, so the box opens to make
+     room for it as it arrives -- and eases from one size to the next with
+     the column's glide, on the same clock. Sized, not scaled: a scaled box
+     would stretch its edge and its corners, as the header plate's would
+     (js/typer.js, morphBox). It comes in with the first row and goes with
+     pane.out(); a row dropped for the working that takes its place
+     (pane.drop) leaves it standing, so it changes size rather than
+     blinking out and back. */
+  var boxOn = false, boxGoing = false, boxAt = null;
+  var BOX_EDGE = 6;            /* px it keeps off the half's own edges */
+  /* `room`, the width it may take at the most -- the half's, unless said
+     -- and `floor`, how low it may come, if anything bars it */
+  function boxRect(room, floor) {
+    var d = dom(), body = d.paneBody;
+    var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, fs = 0, above = -Infinity;
+    pane.rows().forEach(function (r) {
+      if (r.hasAttribute('hidden') || !r.offsetWidth) return;
+      var x = body.offsetLeft + r.offsetLeft, y = body.offsetTop + r.offsetTop;
+      /* a row set on a plate of its own -- the distances a ratio is
+         worked from -- stands outside it, rather than boxed twice */
+      if (r.classList.contains('facts')) { above = Math.max(above, y + r.offsetHeight); return; }
+      x0 = Math.min(x0, x); y0 = Math.min(y0, y);
+      x1 = Math.max(x1, x + r.offsetWidth); y1 = Math.max(y1, y + r.offsetHeight);
+      fs = Math.max(fs, parseFloat(getComputedStyle(r).fontSize) || 0);
+    });
+    if (x0 > x1) return null;
+    /* the margin inside it, from the size the rows are set at: as wide
+       as there is room for beside a wide column, and over the top row no
+       more than leaves the plate above it clear */
+    room = Math.min(d.pane.clientWidth - 2 * BOX_EDGE, room == null ? Infinity : room);
+    var px = Math.max(fs * 0.4, Math.min(fs * 1.25, (room - (x1 - x0)) / 2)), py = fs * 0.95;
+    var pt = above > -Infinity && above <= y0 ? Math.max(fs * 0.3, Math.min(py, y0 - above - 8)) : py;
+    var pb = floor == null ? py : Math.max(fs * 0.3, Math.min(py, floor - y1));
+    var l = Math.max(0, x0 - px), t = Math.max(0, y0 - pt);
+    return {
+      x: round2(l), y: round2(t),
+      width: round2(Math.min(d.pane.clientWidth, x1 + px) - l),
+      height: round2(Math.min(d.pane.clientHeight, y1 + pb) - t)
+    };
+  }
+  function fitBox() {
+    var d = dom(), box = d.paneBox;
+    if (!box || boxGoing || d.pane.hasAttribute('hidden')) return;
+    var key = nextAt(), room = null;
+    var to = boxRect();
+    if (!to) return;
+    /* level with the Next key, no wider than leaves room to move clear
+       of it -- or, a column too wide for that, ended above it; moved
+       clear of it, glided there and measured again */
+    var floor = null;
+    if (key && to.y + to.height + NEXT_CLEAR > key.y) {
+      room = key.x - NEXT_CLEAR - BOX_EDGE;
+      to = boxRect(room);
+      if (to.width > room) { floor = key.y - NEXT_CLEAR; to = boxRect(room, floor); }
+    }
+    if (clearNext(to, key)) { glideColumn(); to = boxRect(room, floor); }
+    if (!boxOn) {
+      boxOn = true;
+      boxAt = to;
+      global.gsap.killTweensOf(box);
+      M.set(box, Object.assign({ transformOrigin: '50% 50%' }, to));
+      var tl = M.timeline({ willChange: box, willChangeValue: 'transform, opacity' });
+      tl.fromTo(box, { opacity: 0, scale: 0.97 }, { opacity: 1, scale: 1, duration: M.dur(0.4), ease: 'power2.out' });
+      return;
+    }
+    if (boxAt && ['x', 'y', 'width', 'height'].every(function (k) { return Math.abs(boxAt[k] - to[k]) < 0.5; })) return;
+    boxAt = to;
+    var move = M.timeline({ willChange: box, willChangeValue: 'transform' });
+    move.to(box, Object.assign({ duration: M.dur(GLIDE), ease: GLIDE_EASE, overwrite: 'auto' }, to));
+  }
+  /* The Next key stands in the board's bottom-right corner, which is the
+     pane's too. A column tall and wide enough for its box to run under
+     the key is moved left until the box clears it -- as far as the half
+     has room -- by narrowing the band it is centred in, and glided
+     there. The key's place is read where it rests, even while
+     it is hidden: put in the layout unseen and untransformed for the one
+     reading, and handed straight back. */
+  var NEXT_CLEAR = 10;
+  var colShift = 0;
+  function nextAt() {
+    var d = dom(), key = d.nextBtn;
+    if (!key) return null;
+    var st = key.style, keep = [st.visibility, st.display, st.transform];
+    if (key.hasAttribute('hidden')) { st.visibility = 'hidden'; st.display = 'grid'; }
+    st.transform = 'none';
+    var k = key.getBoundingClientRect();
+    st.visibility = keep[0]; st.display = keep[1]; st.transform = keep[2];
+    var p = d.pane.getBoundingClientRect();
+    var s = p.width / (d.pane.offsetWidth || 1);
+    if (!k.width || !s) return null;
+    return { x: (k.left - p.left) / s, y: (k.top - p.top) / s };
+  }
+  function clearNext(to, key) {
+    var want = 0;
+    if (key) {
+      var x = to.x + colShift;          /* where it stands, centred */
+      if (to.y + to.height + NEXT_CLEAR > key.y && x + to.width + NEXT_CLEAR > key.x) {
+        want = round2(Math.min(x, x + to.width + NEXT_CLEAR - key.x));
+      }
+    }
+    if (Math.abs(want - colShift) < 0.5) return false;
+    colShift = want;
+    dom().paneBody.style.right = want ? round2(2 * want) + 'px' : '';
+    return true;
+  }
+  function boxOut() {
+    var box = dom().paneBox;
+    if (!box || !boxOn) return Promise.resolve();
+    boxGoing = true;
+    return Flow.anim(M.to(box, { opacity: 0, scale: 0.98, duration: M.dur(0.3), ease: 'power2.in', overwrite: 'auto' }));
+  }
+  function boxOff() {
+    var box = dom().paneBox;
+    boxOn = boxGoing = false;
+    boxAt = null;
+    if (!box) return;
+    global.gsap.killTweensOf(box);
+    M.set(box, { clearProps: 'all' });
   }
 
   function wipePane() {
@@ -1204,7 +1370,12 @@
     }, function (err) { opened = true; if (stop) stop(); throw err; });
   }
 
-  function askRatio(row, spec) {
+  /* A ratio's two sides, a dropdown blank in each half of the row's first
+     fraction. Set in as the row is built, so the row arrives whole --
+     "sin θ = [ ]/[ ]" -- and the question can be said over it before
+     ask() hands the blanks to the learner, the numerator first; once both
+     are right they give way to the plain words (plainA). */
+  function ratioBlanks(row, spec) {
     var options = spec.options || ['wOpposite', 'wAdjacent', 'wHypotenuse'];
     var labels = options.map(function (k) { return T(k); });
     var dn = dropdown(row.hostA('n'), labels, options.indexOf(spec.num));
@@ -1212,18 +1383,21 @@
     [[dn, spec.num], [dd, spec.den]].forEach(function (pair) {
       pair[0].el.dataset.role = ROLE_OF[pair[1]];
     });
+    row.A.el.removeAttribute('hidden');
     function one(d) {
       return askBlank(d, spec.onWrong).then(function () {
         d.el.classList.add('c-' + d.el.dataset.role);
       });
     }
-    return row.openA()
-      .then(function () { return Flow.wait(K.SHORT); })
-      .then(function () { return one(dn); })
-      .then(function () { return Flow.wait(K.SHORT); })
-      .then(function () { return one(dd); })
-      .then(function () { return plainA(row, spec.num, spec.den); })
-      .then(function () { return { num: dn, den: dd }; });
+    return {
+      ask: function () {
+        return one(dn)
+          .then(function () { return Flow.wait(K.SHORT); })
+          .then(function () { return one(dd); })
+          .then(function () { return plainA(row, spec.num, spec.den); })
+          .then(function () { return { num: dn, den: dd }; });
+      }
+    };
   }
 
   /* ======================================================================
@@ -1741,7 +1915,7 @@
   global.W = {
     pane: pane,
     eqRow: eqRow,
-    askRatio: askRatio,
+    ratioBlanks: ratioBlanks,
     askLengths: askLengths,
     valueBlank: valueBlank,
     working: working,

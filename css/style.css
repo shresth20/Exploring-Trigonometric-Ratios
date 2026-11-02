@@ -60,6 +60,8 @@
   /* Surfaces: the plates' slate interior, and a lifted step of it */
   --surface: #0D1A24;
   --surface-hi: #18303F;
+  /* ...and the glass the working is boxed in: the swamp's own deep teal */
+  --glass: #0B616C;
   --white: #FFFFFF;
 
   /* The plates' frame: worn stone, and the moss growing over it */
@@ -152,19 +154,15 @@
   --pill-face-low: var(--surface);
   --pill-wall: color-mix(in srgb, var(--blue-border) 55%, var(--text-outline));
 
-  /* ---- derived: the Next button --------------------------------------------
-     A rim, a face lit from the top, and a rounded arrow -- in the buttons'
-     orange, so it is the one warm thing on the cool board. */
-  --next-rim:    var(--orange-deep);
-  --next-face-1: color-mix(in srgb, var(--orange-fill) 45%, var(--amber-fill));
-  --next-face-2: var(--orange-fill);
-  --next-face-3: var(--orange-border);
-  --next-arrow:  var(--white);
+  /* ---- derived: the Restart key ---------------------------------------------
+     The top of its orange face, lit toward amber. */
+  --key-face-top: color-mix(in srgb, var(--orange-fill) 45%, var(--amber-fill));
 
   /* ---- derived: glow and shadow ----------------------------------------- */
   --glow-start: color-mix(in srgb, var(--amber-fill) 55%, transparent);
   --shadow-soft: color-mix(in srgb, var(--text-outline) 45%, transparent);
   --shadow-deep: color-mix(in srgb, var(--text-outline) 70%, transparent);
+
 
   /* ---- derived: the ink names the rest of the game uses ------------------ */
   --ink: var(--text-primary);
@@ -884,8 +882,12 @@ body {
 
 /* ---- Next ---------------------------------------------------------------
    Anchored to the frame's bottom-right corner, which IS the board's
-   bottom-right corner, whether or not the board is there yet. A rounded
-   orange key with a dark outline, as the game's buttons are drawn. */
+   bottom-right corner, whether or not the board is there yet. The painted
+   key (next-btn.png) is the whole button: no face or wall of its own, so a
+   press only sinks it (--sink, M.button3d). The button is the teal tile
+   alone -- 760px square at (234, 218) in the 1254px painting -- and the art
+   is hung over it at that offset, the slime and the painting's empty
+   margin spilling past the button's box without widening what it takes. */
 .next-btn {
   --edge: 5px;
   --sink: 0px;
@@ -901,7 +903,7 @@ body {
   aspect-ratio: 1;
   padding: 0;
   border: 0;
-  border-radius: 24%;
+  border-radius: 27%;
   background: none;
   filter: drop-shadow(0 5px 9px var(--shadow-soft));
   cursor: pointer;
@@ -911,17 +913,27 @@ body {
   opacity: 0;
   transition: filter .18s ease;
 }
+.next-btn__art {
+  position: absolute;
+  left: -30.8%;     /* 234 / 760 */
+  top: -28.7%;      /* 218 / 760 */
+  width: 165%;      /* 1254 / 760 */
+  height: 165%;
+  max-width: none;
+  display: block;
+  pointer-events: none;
+  user-select: none;
+}
 .next-btn[hidden] { display: none; }
 .next-btn:hover,
 .next-btn:focus-visible {
   filter: drop-shadow(0 8px 13px var(--shadow-soft))
-          drop-shadow(0 0 10px color-mix(in srgb, var(--orange-fill) 45%, transparent))
-          brightness(1.06);
+          drop-shadow(0 0 10px var(--glow-start))
+          brightness(1.08);
   outline: none;
 }
 .next-btn:focus-visible { outline: 3px solid var(--amber-fill); outline-offset: 3px; }
 .next-btn.is-3d { transition: filter .18s ease; }
-.next-btn svg { width: 100%; height: 100%; display: block; }
 
 /* ---- Restart ------------------------------------------------------------
    The end's one control, centred low in the frame under the closing line:
@@ -953,7 +965,7 @@ body {
   padding: .32em 1.1em .32em .8em;
   border: 4px solid var(--text-outline);
   border-radius: clamp(16px, 2.6vh, 24px);
-  background: linear-gradient(180deg, var(--next-face-1) 0%, var(--button-bg) 50%, var(--orange-border) 100%);
+  background: linear-gradient(180deg, var(--key-face-top) 0%, var(--button-bg) 50%, var(--orange-border) 100%);
   box-shadow:
     inset 0 3px 0 color-mix(in srgb, var(--white) 35%, transparent),
     0 var(--edge) 0 var(--horizon),

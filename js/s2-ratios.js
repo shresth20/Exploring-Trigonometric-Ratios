@@ -3,10 +3,13 @@
  * --------------------------------------------------------------------------
  * Storyboard pages 14-34. Three scenes:
  *
- *   Recall the ratios.  The first triangle again, named; it slides to the
- *     left half and the header asks, row by row, which two sides make sin θ,
- *     cos θ and tan θ -- each a fraction of two dropdown blanks. "Now let's
- *     use these ratios to find the values for a few familiar angles." Next.
+ *   Recall the ratios.  The first triangle again, named, in the middle
+ *     while "Let's return to our first angle" is said; then it slides to
+ *     the left half, sin θ's row coming in as it goes, and the header asks,
+ *     row by row, which two sides make sin θ, cos θ and tan θ -- each a
+ *     fraction of two dropdown blanks, cos θ's and tan θ's rows coming in
+ *     once their questions have been said. "Let's find these ratios for
+ *     some familiar angles." Next.
  *   The 45° triangle.  "We'll start with 45°." The rows give way and the
  *     triangle comes to the middle of the board, set low so it has room to
  *     grow; its top corner glows, and the learner drags it up until the
@@ -46,6 +49,9 @@
   /* The resting widths of an angle's arc and the right angle's square,
      as css/trig.css draws them, for a pulse to settle back to. */
   var ARC_W = 3.6, SQUARE_W = 2.6;
+  /* ms into the triangle's move aside before the first ratio's row comes
+     in: by then the triangle has cleared the right half for it */
+  var ROW_LAG = 600;
 
   var dom = null;
   var t = null;
@@ -244,16 +250,23 @@
       .then(function () { return Tri.angleIn(t, 'A', T('lblTheta')); })
       .then(function () { return Tri.nameSides(t, ['opp', 'adj', 'hyp'], 120); })
       .then(function () { return Flow.wait(SHORT); })
+      /* said with the triangle in the middle; once it has been said, the
+         triangle stands aside and sin θ's row comes in as it goes, its
+         two blanks standing in it, and is asked */
+      .then(function () { return K.say('s2Back'); })
       .then(function () {
-        return K.say('s2Back', function () {
-          return Flow.anim(Beats.moveGroup(dom.g, K.aside(dom.g), 0.9));
-        });
-      })
-      .then(function () {
+        var sin = null;
         W.pane.show();
-        return Flow.wait(SHORT);
+        return Promise.all([
+          Flow.anim(Beats.moveGroup(dom.g, K.aside(dom.g), 0.9)),
+          Flow.wait(ROW_LAG).then(function () {
+            sin = ratioRow('sin', 'eqSinTheta', 'wOpposite', 'wHypotenuse');
+            return Flow.anim(Beats.rowIn(sin.row.el));
+          })
+        ])
+          .then(function () { return K.say('s2SinAsk'); })
+          .then(function () { return answerRow(sin, false); });
       })
-      .then(function () { return askRow('sin', 'eqSinTheta', 's2SinAsk', 'wOpposite', 'wHypotenuse', false); })
       .then(function () { return askRow('cos', 'eqCosTheta', 's2CosAsk', 'wAdjacent', 'wHypotenuse', false); })
       .then(function () { return askRow('tan', 'eqTanTheta', 's2TanAsk', 'wOpposite', 'wAdjacent', true); })
       .then(function () { return Flow.wait(BEAT); })
@@ -262,23 +275,31 @@
       .then(function () { return K.handOver(); });
   }
 
-  /* One ratio asked: the row arrives, the header asks, the two blanks are
-     filled, and the row is told right. The sides named light as their
-     words are chosen. */
+  /* One ratio asked after the first: the rows before it step back and the
+     header asks; once the question has been said, its row comes in whole
+     -- "cos θ = [ ]/[ ]" -- and its blanks are handed over. */
   function askRow(which, lhsKey, askKey, num, den, last) {
+    Object.keys(rows).forEach(function (k) { rows[k].el.classList.add('is-done'); });
+    return K.say(askKey)
+      .then(function () {
+        var r = ratioRow(which, lhsKey, num, den);
+        return Flow.anim(Beats.rowIn(r.row.el)).then(function () { return answerRow(r, last); });
+      });
+  }
+  /* A ratio's row, built with its two blanks in it and left unseen, for
+     the caller to bring in. */
+  function ratioRow(which, lhsKey, num, den) {
     var row = W.eqRow(T(lhsKey));
     rows[which] = row;
-    Object.keys(rows).forEach(function (k) { if (k !== which) rows[k].el.classList.add('is-done'); });
-    return Flow.anim(Beats.rowIn(row.el))
-      .then(function () { return K.say(askKey); })
+    return { row: row, num: num, den: den,
+             blanks: W.ratioBlanks(row, { num: num, den: den, onWrong: notQuite }) };
+  }
+  /* Its two blanks filled, and the row told right; the sides named light
+     as their words are chosen. */
+  function answerRow(r, last) {
+    return r.blanks.ask()
       .then(function () {
-        return W.askRatio(row, {
-          num: num, den: den,
-          onWrong: notQuite
-        });
-      })
-      .then(function () {
-        quiet(Flow.anim(Beats.linePulse([t.side(roleOf(num)), t.side(roleOf(den))])));
+        quiet(Flow.anim(Beats.linePulse([t.side(roleOf(r.num)), t.side(roleOf(r.den))])));
         return last ? K.praise() : K.speak(K.keyed('fbCorrect'));
       })
       .then(function () { return Flow.wait(SHORT); });
@@ -657,8 +678,9 @@
   }
 
   /* The hypotenuse.
-       "Let's do it together." -- the dropdown's row goes, and the ? on the
-     hypotenuse becomes h, lit with its side.
+       "Let's do it together." -- the dropdown's row goes, its box opening
+     out to the working's size, and the ? on the hypotenuse becomes h, lit
+     with its side.
        "Use Pythagoras' theorem." -- the first line written as it is said:
      h² as the hypotenuse is lit, then "= 1² + 1²" with the two equal
      sides and their lengths.
@@ -681,15 +703,22 @@
               ]);
             });
         });
-        return Promise.all([W.pane.drop(row.el), K.say('fbTogether').then(named)]);
+        /* the row goes and the working is laid out, unseen, in its place
+           while the line is said: the box goes straight from the one to
+           the other, ready for the first line */
+        return Promise.all([
+          W.pane.drop(row.el).then(function () {
+            wk = W.working([
+              { l: T('wkHypSq'), r: T('wkOnesSq') },
+              { l: '',           r: T('wkOnes') },
+              { l: '',           r: T('val2') },
+              { l: T('lblH'),    r: T('valRoot2') }
+            ]);
+          }),
+          K.say('fbTogether').then(named)
+        ]);
       })
       .then(function () {
-        wk = W.working([
-          { l: T('wkHypSq'), r: T('wkOnesSq') },
-          { l: '',           r: T('wkOnes') },
-          { l: '',           r: T('val2') },
-          { l: T('lblH'),    r: T('valRoot2') }
-        ]);
         var lhs = K.cue('fbPythagoras', 'Pythagoras', function () {
           quiet(Flow.anim(Beats.linePulse(t.sides.CA)));
           return wk.writeLeft(0);

@@ -345,6 +345,13 @@
      attribute; it is handed back as it was when the light goes off. */
   var TEXT_SWELL = 1.32;
   var TEXT_BEAT = 0.7;
+  /* A word set from one end -- beside an upright side, its first letter
+     just clear of the line -- swells from that end, away from the line;
+     any other from its middle. */
+  function swellFrom(i, m) {
+    var a = m && m.getAttribute ? m.getAttribute('text-anchor') : null;
+    return a === 'start' ? 'left center' : a === 'end' ? 'right center' : 'center center';
+  }
   function textPulse(els, times) {
     var list = [].concat(els).filter(Boolean);
     var n = times || 2;
@@ -363,7 +370,7 @@
       list.forEach(function (m) { m.classList.add('is-glowing-text'); });
     }, null, 0);
     for (var i = 0; i < n; i++) {
-      tl.to(list, { scale: TEXT_SWELL, transformOrigin: 'center center',
+      tl.to(list, { scale: TEXT_SWELL, transformOrigin: swellFrom,
                     duration: M.dur(0.26), ease: 'power2.out' }, M.gap(i * TEXT_BEAT))
         .to(list, { scale: 1, duration: M.dur(0.44), ease: 'power2.inOut' }, M.gap(i * TEXT_BEAT + 0.26));
     }

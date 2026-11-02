@@ -6,11 +6,11 @@
  *   Your turn.  Three values to find, each from a triangle of its own
  *     (storyboard pages 58-60): the table stands aside, a triangle with
  *     new side lengths is drawn -- 6, 3 and 3√3 for sin 30°; 4, 4 and
- *     4√2 for cos 45°; 4, 2 and 2√3 for tan 60° -- the first in the middle
- *     of the board, stepping aside to the left once drawn, the others on
- *     the left -- and the ratio is asked on the right, its two lengths
- *     chosen from dropdowns of the triangle's lengths; then its value.
- *     Next after each.
+ *     4√2 for cos 45°; 4, 2 and 2√3 for tan 60° -- each in the middle of
+ *     the board, stepping aside to the left as its ratio is asked for --
+ *     and the ratio is asked on the right, its two lengths chosen from
+ *     dropdowns of the triangle's lengths; then its value. Next after
+ *     each.
  *   Towards 0°.  A triangle with its hypotenuse fixed at 4, in the middle
  *     of the board; the learner drags its far corner down, θ goes to 0°,
  *     and the opposite side shrinks to nothing while the other two sides
@@ -71,7 +71,7 @@
     dom.gF = document.getElementById('figS5F');
     /* the names stand further out than the lengths, so both can show */
     t = Tri.create(dom.g, { A: A0, B: { x: A0.x + HYP, y: A0.y }, C: { x: A0.x + HYP, y: A0.y },
-                            right: 'B', theta: 'A', wordOff: 70 });
+                            right: 'B', theta: 'A', wordOff: 56 });
     tF = Tri.create(dom.gF, { A: FINDS[0].A, B: FINDS[0].B, C: FINDS[0].C, right: 'B', theta: 'A' });
     buildGrab();
     reset();
@@ -154,8 +154,15 @@
     var f = FINDS[n], last = n === FINDS.length - 1;
     var lengths = Object.keys(f.vals).map(function (s) { return T(f.vals[s]); })
       .filter(function (v, i, all) { return all.indexOf(v) === i; });
-    return findIn(f, n === 0)
-      .then(function () { return K.say(f.ask); })
+    return findIn(f)
+      .then(function () { return Flow.wait(SHORT); })
+      /* as the ratio is asked for, the triangle steps aside for it */
+      .then(function () {
+        var aside = K.cue(f.ask, 'find', function () {
+          return Flow.anim(Beats.moveGroup(dom.gF, K.aside(dom.gF), 0.9));
+        });
+        return K.say(f.ask).then(aside);
+      })
       .then(function () {
         W.pane.show();
         var row = W.eqRow(T(f.lhs, { a: f.deg }));
@@ -171,12 +178,12 @@
       })
       .then(function () { return Flow.wait(BEAT); });
   }
-  /* The triangle drawn: laid out and measured whole first, so where it
-     stands -- the left half, or the middle of the board when `centre` --
-     is known, then put out of sight and drawn there: the pen round it,
-     θ's arc and measure, and the lengths landing one by one. Drawn in the
-     middle, it then steps aside to the left half for the pane. */
-  function findIn(f, centre) {
+  /* The triangle drawn: laid out and measured whole first, so the middle
+     of the board is known for what it will show, then put out of sight
+     and drawn there: the pen round it, θ's arc and measure, and the
+     lengths landing one by one. find() then steps it aside to the left
+     half for the pane as its question is asked. */
+  function findIn(f) {
     tF.reset();
     tF.set(f.A, f.B, f.C);
     tF.setTheta(f.at);
@@ -186,8 +193,7 @@
     var marks = vals(tF).concat([tF.arcs[f.at], tF.angles[f.at]]);
     M.set(marks, { opacity: 1 });
     M.set(dom.gF, { x: 0, y: 0, opacity: 1 });
-    var left = K.aside(dom.gF);
-    M.set(dom.gF, centre ? K.aside(dom.gF, .5) : left);
+    M.set(dom.gF, K.aside(dom.gF, .5));
     M.set(tF.parts(), { opacity: 0 });
     return Tri.draw(tF, { time: 1.2, hold: 100 })
       .then(function () { return Tri.angleIn(tF, f.at, T(f.angle)); })
@@ -197,11 +203,6 @@
             return Flow.anim(Beats.labelIn(tF.vals[s])).then(function () { return Flow.wait(100); });
           });
         }, Promise.resolve());
-      })
-      .then(function () {
-        if (!centre) return;
-        return Flow.wait(SHORT)
-          .then(function () { return Flow.anim(Beats.moveGroup(dom.gF, left, 0.9)); });
       });
   }
   /* ...and taken away with its working, for the next -- its question off

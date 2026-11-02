@@ -37,9 +37,11 @@
       tasks.push({ name: name, weight: weight, run: run, queued: !!queued });
     }
     /* The artwork, decoded as well as fetched: the welcome's painting and
-       its play key, the swamp, its clouds, trees and mist (index.html), and
-       the plates the words are set on (the same files css/style.css names). */
+       its play key, the Next key, the swamp, its clouds, trees and mist
+       (index.html), and the plates the words are set on (the same files
+       css/style.css names). */
     ['assets/images/welcome.png', 'assets/images/play-btn.png',
+     'assets/images/next-btn.png',
      'assets/new/scenery/sky.png', 'assets/new/scenery/cloud-1.png',
      'assets/new/scenery/cloud-2.png', 'assets/new/scenery/cloud-3.png',
      'assets/new/scenery/cloud-4.png', 'assets/new/scenery/tree-big-a.png',

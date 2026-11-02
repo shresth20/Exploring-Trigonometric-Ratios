@@ -137,6 +137,7 @@
 
       pane:      $('pane'),
       paneBody:  $('paneBody'),
+      paneBox:   $('paneBox'),
       tableWrap: $('tableWrap'),
 
       tray:     $('tray'),
