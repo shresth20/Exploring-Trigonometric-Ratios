@@ -24,7 +24,7 @@
 
   function boot() {
     if (!global.Motion || !global.Flow || !global.Typer ||
-        !global.Mascot || !global.Beats || !global.Pages) {
+        !global.Tank || !global.Beats || !global.Pages) {
       console.error('script.js: a module did not load. Check the <script> ' +
                     'order in index.html.');
       return;
@@ -37,26 +37,25 @@
       tasks.push({ name: name, weight: weight, run: run, queued: !!queued });
     }
     /* The artwork, decoded as well as fetched: the welcome's painting and
-       its play key, the Next key, the swamp, its clouds, trees and mist
-       (index.html), and the plates the words are set on (the same files
-       css/style.css names). */
-    ['assets/images/welcome.png', 'assets/images/play-btn.png',
-     'assets/images/next-btn.png',
-     'assets/new/scenery/sky.png', 'assets/new/scenery/cloud-1.png',
-     'assets/new/scenery/cloud-2.png', 'assets/new/scenery/cloud-3.png',
-     'assets/new/scenery/cloud-4.png', 'assets/new/scenery/tree-big-a.png',
-     'assets/new/scenery/tree-big-b.png', 'assets/new/scenery/fog-a.png',
-     'assets/new/scenery/fog-b.png', 'assets/new/scenery/water-far.png',
-     'assets/new/scenery/water-near.png', 'assets/new/header2.png',
-     'assets/new/box1.png', 'assets/new/box2.png'].forEach(function (src) {
+       its play key, the Next key, the swamp, its clouds, trees and mist,
+       the commander, her tank and its causeway (index.html), and the plates
+       the words are set on (the same files css/style.css names). */
+    ['assets/images/welcome.webp', 'assets/images/play-btn.webp',
+     'assets/images/next-btn.webp',
+     'assets/new/scenery/sky.webp', 'assets/new/scenery/cloud-1.webp',
+     'assets/new/scenery/cloud-2.webp', 'assets/new/scenery/cloud-3.webp',
+     'assets/new/scenery/cloud-4.webp', 'assets/new/scenery/tree-big-a.webp',
+     'assets/new/scenery/tree-big-b.webp', 'assets/new/scenery/fog-a.webp',
+     'assets/new/scenery/fog-b.webp', 'assets/new/scenery/water-far.webp',
+     'assets/new/scenery/water-near.webp', 'assets/new/header2.webp',
+     'assets/new/box1.webp', 'assets/new/box2.webp',
+     'assets/new/tank/parts/road.webp', 'assets/new/tank/parts/road-fill.webp',
+     'assets/new/tank/parts/hull.webp',
+     'assets/new/tank/parts/barrel.webp', 'assets/new/tank/parts/dome.webp',
+     'assets/new/tank/parts/wheel.webp', 'assets/new/tank/commander.webp',
+     'assets/new/tank/commander_face.webp', 'assets/new/tank/parts/lips.webp',
+     'assets/new/tank/parts/mouth-patch.webp'].forEach(function (src) {
       add(src, 3, function () { return imageReady(src); });
-    });
-    /* The bird's sheets: only the two states it plays under the bubble. */
-    ['idle', 'talking'].forEach(function (name) {
-      var st = global.Mascot.STATES[name];
-      [st.start, st.loop, st.stop].filter(Boolean).forEach(function (clip) {
-        add('sheet ' + clip, 8, function () { return global.Mascot.preload([clip]); });
-      });
     });
     if (document.fonts && document.fonts.forEach) {
       document.fonts.forEach(function (face) {

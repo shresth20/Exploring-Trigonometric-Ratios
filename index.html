@@ -25,22 +25,22 @@
 
   <!-- The swamp the whole lesson is set on, covering the window, back to
        front: its sky with the clouds taken out and the water smoothed to
-       its glow (sky.png); the clouds drifting over it, the water's ripples
+       its glow (sky.webp); the clouds drifting over it, the water's ripples
        flowing across it and the far mist lying on it (js/scenery.js); a
        big tree at each bottom corner; and the near mist over their roots. -->
   <div class="scenery" aria-hidden="true">
     <div class="scenery__art">
-      <img class="cloud cloud--1" src="assets/new/scenery/cloud-1.png" alt="">
-      <img class="cloud cloud--2" src="assets/new/scenery/cloud-2.png" alt="">
-      <img class="cloud cloud--3" src="assets/new/scenery/cloud-3.png" alt="">
-      <img class="cloud cloud--4" src="assets/new/scenery/cloud-4.png" alt="">
+      <img class="cloud cloud--1" src="assets/new/scenery/cloud-1.webp" alt="">
+      <img class="cloud cloud--2" src="assets/new/scenery/cloud-2.webp" alt="">
+      <img class="cloud cloud--3" src="assets/new/scenery/cloud-3.webp" alt="">
+      <img class="cloud cloud--4" src="assets/new/scenery/cloud-4.webp" alt="">
       <div class="water water--far"></div>
       <div class="water water--near"></div>
-      <img class="mist mist--far" src="assets/new/scenery/fog-a.png" alt="">
+      <img class="mist mist--far" src="assets/new/scenery/fog-a.webp" alt="">
     </div>
-    <img class="tree tree--left" src="assets/new/scenery/tree-big-a.png" alt="">
-    <img class="tree tree--right" src="assets/new/scenery/tree-big-b.png" alt="">
-    <img class="mist mist--near" src="assets/new/scenery/fog-b.png" alt="">
+    <img class="tree tree--left" src="assets/new/scenery/tree-big-a.webp" alt="">
+    <img class="tree tree--right" src="assets/new/scenery/tree-big-b.webp" alt="">
+    <img class="mist mist--near" src="assets/new/scenery/fog-b.webp" alt="">
   </div>
 
   <main id="app">
@@ -48,12 +48,110 @@
          control are both positioned against THIS. -->
     <div class="frame" id="frame">
 
-      <!-- The welcome's first line, in a speech bubble in the middle of the
-           frame, before the board exists, its tail pointing at the bird
-           beside it. The bird appears here and at the end only, and it
-           comes and goes with the bubble. The tail is drawn over the
-           bubble's edge: its fill covers the border where the two meet,
-           and its outline is only the two slanted strokes. -->
+      <!-- The welcome's and the end's stage (js/tank.js): a stone causeway
+           across the swamp, and the commander's tank driving onto it. She
+           climbs out of its hatch to say the line in the bubble beside her.
+           The tank is laid out in the hull's own pixels -- hull.webp is
+           1000 x 322 at (0, 0) -- with its other parts placed against it,
+           and nothing in it that moves carries a transform of its own. -->
+      <div class="host" id="host" hidden aria-hidden="true">
+        <div class="road" id="road"></div>
+        <svg class="tank" id="tank" viewBox="0 -165 1060 490" focusable="false">
+          <defs>
+            <radialGradient id="tankShadow">
+              <stop offset="0" stop-color="#021618" stop-opacity=".4" />
+              <stop offset="1" stop-color="#021618" stop-opacity="0" />
+            </radialGradient>
+            <linearGradient id="lidShutFace" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#a5b36f" />
+              <stop offset="1" stop-color="#6f7d52" />
+            </linearGradient>
+            <linearGradient id="lidOpenFace" x1="0" y1="0" x2="0" y2="1">
+              <stop offset="0" stop-color="#6f7d52" />
+              <stop offset="1" stop-color="#4a5638" />
+            </linearGradient>
+            <!-- What of her shows: everything above the middle of the hole,
+                 and the inside of the hole itself, so the ring's front lip
+                 painted on the hull is what hides the rest of her. -->
+            <clipPath id="hatchClip">
+              <rect x="-400" y="-600" width="1860" height="633" />
+              <ellipse cx="410" cy="33" rx="84" ry="7" />
+            </clipPath>
+            <!-- One mouth's cell of lips.webp, round the point of it that is
+                 the middle of the mouth's two corners. -->
+            <clipPath id="mouthCell">
+              <rect x="-11.085" y="-5.81" width="22.253" height="18.68" />
+            </clipPath>
+          </defs>
+
+          <ellipse class="tank__shadow" cx="430" cy="318" rx="440" ry="18" fill="url(#tankShadow)" />
+
+          <!-- The hull and everything riding on it: it rumbles, dips and
+               squats on its wheels, which stay on the road. -->
+          <g id="tankBody">
+            <image href="assets/new/tank/parts/barrel.webp" x="372.32" y="-46.46" width="681.4" height="146.34" />
+            <image href="assets/new/tank/parts/dome.webp" x="341.2" y="-32.44" width="190" height="153.9" />
+            <image href="assets/new/tank/parts/hull.webp" x="0" y="0" width="1000" height="322" />
+
+            <!-- The lid thrown open: stood up on its hinge behind her,
+                 its inside to us -- the seal round it and the latch. -->
+            <rect class="lid__hinge" id="lidHinge" x="372.2" y="19" width="75.6" height="12" rx="5" />
+            <g class="lid lid--open" id="lidOpen">
+              <circle class="lid__face" cx="410" cy="-65" r="90" fill="url(#lidOpenFace)" />
+              <circle class="lid__seal" cx="410" cy="-65" r="72" />
+              <rect class="lid__latch" x="381.2" y="-48.8" width="57.6" height="12.6" rx="3" />
+            </g>
+            <!-- The lid shut, lying in the ring: its edge, its face, the
+                 grab handle on top and three rivets along the front. -->
+            <g class="lid lid--shut" id="lidShut">
+              <ellipse class="lid__edge" cx="410" cy="38" rx="90" ry="8" />
+              <ellipse class="lid__face" cx="410" cy="33" rx="90" ry="8" fill="url(#lidShutFace)" />
+              <path class="lid__grip" d="M393.8 29.8 L399.2 16 L420.8 16 L426.2 29.8" />
+              <path class="lid__grip-hi" d="M393.8 29.8 L399.2 16 L420.8 16 L426.2 29.8" />
+              <circle class="lid__rivet" cx="356" cy="35.8" r="3.5" />
+              <circle class="lid__rivet" cx="410" cy="37.4" r="3.5" />
+              <circle class="lid__rivet" cx="464" cy="35.8" r="3.5" />
+            </g>
+
+            <g class="tank__steam" id="tankSteam"></g>
+            <g class="tank__pop" id="tankPop"></g>
+
+            <!-- The commander (commander.webp), and her eyes shut
+                 (commander_face.webp) laid over it to blink. While she
+                 talks, her painted smile is covered with her own skin
+                 (mouth-patch.webp) and the mouth she is making is shown
+                 over it: the strip of mouths A..P (lips.webp) slid under
+                 a window one mouth wide, set at her mouth and tilted to
+                 her three-quarter face. -->
+            <g clip-path="url(#hatchClip)">
+              <g id="tankCmdr">
+                <image href="assets/new/tank/commander.webp" x="320.18" y="-105.17" width="176.39" height="197.69" />
+                <image class="tank__blink" id="tankBlink" href="assets/new/tank/commander_face.webp" x="394.25" y="-32.48" width="65.74" height="35.65" />
+                <g class="tank__mouth" id="tankMouth">
+                  <image href="assets/new/tank/parts/mouth-patch.webp" x="408.14" y="-0.54" width="32.41" height="20.37" />
+                  <g transform="translate(424.35 8.72) rotate(10)">
+                    <g clip-path="url(#mouthCell)">
+                      <image id="tankLips" href="assets/new/tank/parts/lips.webp" x="-11.085" y="-5.81" width="356.05" height="18.68" />
+                    </g>
+                  </g>
+                </g>
+              </g>
+            </g>
+          </g>
+
+          <!-- The road wheels over the track, each turning about its hub. -->
+          <image class="tank__wheel" href="assets/new/tank/parts/wheel.webp" x="147.46" y="206.66" width="109.88" height="109.88" />
+          <image class="tank__wheel" href="assets/new/tank/parts/wheel.webp" x="292.26" y="206.66" width="109.88" height="109.88" />
+          <image class="tank__wheel" href="assets/new/tank/parts/wheel.webp" x="439.66" y="206.66" width="109.88" height="109.88" />
+          <image class="tank__wheel" href="assets/new/tank/parts/wheel.webp" x="587.26" y="206.66" width="109.88" height="109.88" />
+        </svg>
+      </div>
+
+      <!-- The welcome's first line and the end's last, in a speech bubble
+           beside the commander, its tail pointing at her. It comes and goes
+           with her. The tail is drawn over the bubble's edge: its fill
+           covers the border where the two meet, and its outline is only
+           the two slanted strokes. -->
       <div class="bubble" id="bubble" hidden>
         <span class="type-wrap" id="bubbleType">
           <span class="type-ghost"></span>
@@ -63,7 +161,6 @@
           <path class="bubble__tail-fill" d="M41 3 L2 29 L41 19 Z" />
           <path class="bubble__tail-line" d="M40 3 L2 29 L40 19" />
         </svg>
-        <div class="bubble__bird" id="bubbleBird" aria-hidden="true"></div>
       </div>
 
       <section class="board" id="board" aria-hidden="true">
@@ -180,13 +277,13 @@
       <!-- Where a burst of confetti is thrown, over everything in the frame. -->
       <svg class="burst-layer" id="burst" aria-hidden="true"></svg>
 
-      <!-- The Next key painted for the swamp (next-btn.png): a slime-hung
+      <!-- The Next key painted for the swamp (next-btn.webp): a slime-hung
            teal tile round a gold arrow. Named by its aria-label alone. -->
       <button class="next-btn" id="nextBtn" type="button" hidden data-i18n-attr="aria-label:a11yNext" aria-label="Next">
-        <img class="next-btn__art" src="assets/images/next-btn.png" alt="" draggable="false">
+        <img class="next-btn__art" src="assets/images/next-btn.webp" alt="" draggable="false">
       </button>
 
-      <!-- Restart, at the end, under the closing line: an orange key, as the
+      <!-- Restart, at the end, in Next's corner: an orange key, as the
            game's keys are drawn, with an arrow coming round on itself,
            outlined in the same dark as Next's. -->
       <button class="restart-btn" id="restartBtn" type="button" hidden>
@@ -205,10 +302,10 @@
     </div>
 
     <!-- Welcome, over everything until Start is pressed: its own painting
-         (welcome.png, the title lettered into it) and Start over its water.
+         (welcome.webp, the title lettered into it) and Start over its water.
          The title is kept as a heading too, for screen readers. -->
     <section class="welcome" id="welcome">
-      <img class="welcome__art" src="assets/images/welcome.png" alt="" aria-hidden="true">
+      <img class="welcome__art" src="assets/images/welcome.webp" alt="" aria-hidden="true">
       <h1 class="welcome__title" data-i18n="uiTitle">Exploring Trigonometric Ratios</h1>
       <div class="loader" id="loader" role="progressbar" aria-valuemin="0" aria-valuemax="100"
            aria-valuenow="0" data-i18n-attr="aria-label:loadingAria">
@@ -217,11 +314,11 @@
           <span class="loader__line"><span class="loader__fill" id="loaderFill"></span></span>
         </span>
       </div>
-      <!-- Start: the play key painted for the swamp (play-btn.png), a
+      <!-- Start: the play key painted for the swamp (play-btn.webp), a
            slime-hung stone ring round a gold play mark. Named by its
            aria-label alone. -->
       <button class="start-btn" id="startBtn" type="button" hidden data-i18n-attr="aria-label:btnStart" aria-label="Start">
-        <img class="start-btn__art" src="assets/images/play-btn.png" alt="" draggable="false">
+        <img class="start-btn__art" src="assets/images/play-btn.webp" alt="" draggable="false">
       </button>
     </section>
   </main>
@@ -238,7 +335,7 @@
   <script src="js/flow.js"></script>
   <script src="js/mathtext.js"></script>
   <script src="js/typer.js"></script>
-  <script src="js/mascot.js"></script>
+  <script src="js/tank.js"></script>
   <script src="js/animations.js"></script>
   <script src="js/pages.js"></script>
   <script src="js/tri.js"></script>

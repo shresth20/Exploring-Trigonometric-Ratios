@@ -13,7 +13,6 @@
  *   W.dropdown(host, options, right, o).ask()  the blank
  *     ... .choose(fn) / settle() / refuse()      the blank, judged by the caller
  *   W.working(lines).write(i) / carry(...)     a question worked through
- *   W.pills(labels)                            answer pills in the pane
  *   W.slider(opts).ask()                       the angle slider
  *   W.handNudge(el) / W.handSlide(track, ...)  the pointing hand
  *   W.handDrag(from, to, size)                 ... carrying a point
@@ -127,8 +126,10 @@
       var d = dom();
       d.paneBody.textContent = '';
       M.set(d.paneBody, { clearProps: 'transform' });
-      d.paneBody.style.right = '';
-      colShift = 0;
+      d.paneBody.style.right = d.paneBody.style.bottom = '';
+      d.paneBody.style.removeProperty('--pane-fit');
+      colShift = colLift = 0;
+      colFit = 1;
       d.pane.setAttribute('hidden', '');
       d.pane.classList.remove('pane--low', 'pane--top');
       boxOff();
@@ -228,22 +229,39 @@
      blinking out and back. */
   var boxOn = false, boxGoing = false, boxAt = null;
   var BOX_EDGE = 6;            /* px it keeps off the half's own edges */
-  /* `room`, the width it may take at the most -- the half's, unless said
-     -- and `floor`, how low it may come, if anything bars it */
-  function boxRect(room, floor) {
-    var d = dom(), body = d.paneBody;
-    var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity, fs = 0, above = -Infinity;
+  /* Where the rows stand in the half, untransformed: those the box closes
+     round (x0..x1, y0..y1, and the largest size they are set at), and the
+     column as a whole, a plate of its own included (left, right, top). */
+  function rowsAt() {
+    var body = dom().paneBody;
+    var o = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity, fs: 0, above: -Infinity,
+              left: Infinity, right: -Infinity, top: Infinity };
     pane.rows().forEach(function (r) {
       if (r.hasAttribute('hidden') || !r.offsetWidth) return;
       var x = body.offsetLeft + r.offsetLeft, y = body.offsetTop + r.offsetTop;
+      /* a row is held to the half's width, but an equation is never
+         broken: one too long for it runs on past the row's own edge */
+      var a = x, b = x + r.offsetWidth;
+      Array.prototype.forEach.call(r.children, function (n) {
+        if (!n.offsetWidth) return;
+        a = Math.min(a, x + n.offsetLeft); b = Math.max(b, x + n.offsetLeft + n.offsetWidth);
+      });
+      o.left = Math.min(o.left, a); o.right = Math.max(o.right, b); o.top = Math.min(o.top, y);
       /* a row set on a plate of its own -- the distances a ratio is
          worked from -- stands outside it, rather than boxed twice */
-      if (r.classList.contains('facts')) { above = Math.max(above, y + r.offsetHeight); return; }
-      x0 = Math.min(x0, x); y0 = Math.min(y0, y);
-      x1 = Math.max(x1, x + r.offsetWidth); y1 = Math.max(y1, y + r.offsetHeight);
-      fs = Math.max(fs, parseFloat(getComputedStyle(r).fontSize) || 0);
+      if (r.classList.contains('facts')) { o.above = Math.max(o.above, y + r.offsetHeight); return; }
+      o.x0 = Math.min(o.x0, a); o.y0 = Math.min(o.y0, y);
+      o.x1 = Math.max(o.x1, b); o.y1 = Math.max(o.y1, y + r.offsetHeight);
+      o.fs = Math.max(o.fs, parseFloat(getComputedStyle(r).fontSize) || 0);
     });
-    if (x0 > x1) return null;
+    return o.x0 > o.x1 ? null : o;
+  }
+  /* `room`, the width it may take at the most -- the half's, unless said
+     -- and `floor`, how low it may come, if anything bars it */
+  function boxRect(room, floor) {
+    var d = dom(), c = rowsAt();
+    if (!c) return null;
+    var x0 = c.x0, y0 = c.y0, x1 = c.x1, y1 = c.y1, fs = c.fs, above = c.above;
     /* the margin inside it, from the size the rows are set at: as wide
        as there is room for beside a wide column, and over the top row no
        more than leaves the plate above it clear */
@@ -262,6 +280,8 @@
     var d = dom(), box = d.paneBox;
     if (!box || boxGoing || d.pane.hasAttribute('hidden')) return;
     var key = nextAt(), room = null;
+    fitColumn(key);
+    if (liftColumn(key)) settleRows(true);
     var to = boxRect();
     if (!to) return;
     /* level with the Next key, no wider than leaves room to move clear
@@ -322,6 +342,65 @@
     colShift = want;
     dom().paneBody.style.right = want ? round2(2 * want) + 'px' : '';
     return true;
+  }
+  /* A column too wide to move clear of the key beside it stands above it
+     instead: lifted as far as its box needs to end clear of the key -- no
+     further than there is room over it -- by ending the band it is
+     centred down short of the half's foot, and glided there (settleRows). */
+  var colLift = 0;
+  function liftColumn(key) {
+    var c = rowsAt(), want = 0;
+    if (c && key && c.right - c.left + c.fs * 0.8 > key.x - NEXT_CLEAR - BOX_EDGE) {
+      /* a pixel spare: the rows' places are read in whole pixels */
+      want = c.y1 + colLift + c.fs * 0.95 + NEXT_CLEAR + 1 - key.y;
+      want = round2(Math.max(0, Math.min(want, c.top + colLift - c.fs * 0.3)));
+    }
+    if (Math.abs(want - colLift) < 0.5) return false;
+    colLift = want;
+    dom().paneBody.style.bottom = want ? round2(2 * want) + 'px' : '';
+    return true;
+  }
+
+  /* ---- the column fitted to its room -------------------------------------
+     Every row is set at the half's own scale, but never under a size a
+     phone can still read, and the Next key is sized by the screen, not the
+     board -- so on a small board the column can come out wider or taller
+     than the half, or with no way past the key. Then it is set smaller,
+     every row by one factor (--pane-fit, css/trig.css), until it fits the
+     half in its box at the least margin the box keeps, and clears the key
+     beside it or above it (liftColumn) -- the key only so far as the rows
+     can still be read: a phone held upright has a key too big for its
+     board, and there the column keeps that size, partly under it. Room
+     coming free -- a row dropped -- gives the size back, never past its
+     own. The change is glided: the column scaled about its centre, which
+     the change keeps, from the size it stood at to its own. */
+  var colFit = 1, FIT_LEAST = 0.5, FIT_KEY = 0.75;
+  function fitColumn(key) {
+    var d = dom(), w = d.pane.clientWidth, h = d.pane.clientHeight;
+    for (var i = 0; i < 3; i++) {
+      var c = rowsAt();
+      if (!c) return;
+      var cw = c.right - c.left + c.fs * 0.8, ch = c.y1 - c.top + c.fs * 0.6;
+      var k = Math.min(1 / colFit, (w - 2 * BOX_EDGE) / cw, h / ch);
+      if (key) k = Math.min(k, Math.max(FIT_KEY / colFit, (key.x - NEXT_CLEAR - BOX_EDGE) / cw, (key.y - NEXT_CLEAR) / ch));
+      var to = Math.max(FIT_LEAST, Math.floor(colFit * k * 1000) / 1000);
+      if (to > colFit - 0.002 && to < colFit + 0.02) return;
+      setFit(to);
+    }
+  }
+  function setFit(to) {
+    var body = dom().paneBody, from = colFit;
+    colFit = to;
+    if (to < 1) body.style.setProperty('--pane-fit', to);
+    else body.style.removeProperty('--pane-fit');
+    /* where the column and its rows now stand is noted, not glided to:
+       the scale carries them there */
+    colAt = body.childElementCount ? body.offsetLeft : null;
+    settleRows(false);
+    if (M.reducedMotion()) return;
+    var s = (global.gsap.getProperty(body, 'scale') || 1) * from / to;
+    var tl = M.timeline({ willChange: body, willChangeValue: 'transform' });
+    tl.fromTo(body, { scale: s }, { scale: 1, duration: M.dur(GLIDE), ease: GLIDE_EASE, overwrite: 'auto' });
   }
   function boxOut() {
     var box = dom().paneBox;
@@ -681,15 +760,6 @@
   /* ======================================================================
    * Answer pills in the pane
    * ====================================================================== */
-  function pills(labels, cls) {
-    var row = pane.row('pane__pills' + (cls ? ' ' + cls : ''));
-    row.setAttribute('role', 'group');
-    row.setAttribute('aria-label', T('a11yAnswers'));
-    var btns = K.buildChoices(row, labels);
-    btns.forEach(function (b) { M.button3d(b, { edge: 4 }); });
-    return { el: row, btns: btns };
-  }
-
   /* A single big button in the pane (the "split" control). */
   function button(text, cls) {
     var row = pane.row('pane__pills' + (cls ? ' ' + cls : ''));
@@ -1920,7 +1990,6 @@
     valueBlank: valueBlank,
     working: working,
     dropdown: dropdown,
-    pills: pills,
     button: button,
     fact: fact,
     slider: slider,

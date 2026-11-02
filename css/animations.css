@@ -59,8 +59,7 @@
    press it home; a POINT pings instead: a ring in its own ink opens out of
    it and fades. Both wear the bloom (#partGlow in index.html), a blurred
    copy of the mark itself, so the glow is always in the mark's own colour.
-   Beats.partPulse turns the class on and off; Beats.pulseHold leaves it on
-   (--pulse-times infinite) until Beats.pulseRelease. */
+   Beats.partPulse turns the class on and off. */
 .is-pulsing {
   filter: url(#partGlow);
   animation: part-pulse-line 1.05s ease-in-out var(--pulse-times, 3);

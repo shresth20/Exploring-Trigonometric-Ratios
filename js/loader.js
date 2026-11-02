@@ -2,7 +2,7 @@
  * loader.js -- the loading line on the welcome screen, where Start will be
  * --------------------------------------------------------------------------
  * Everything the lesson will show or play is fetched before Start is
- * offered: the artwork, the bird's sprite sheets, the fonts, the chimes and
+ * offered: the artwork, the commander and her tank, the fonts, the chimes and
  * every voice clip. A line that has to wait for its clip is heard late
  * against its words, so nothing is left to be fetched mid-lesson.
  *

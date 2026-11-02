@@ -197,7 +197,7 @@
    * ====================================================================== */
   function scene() {
     var sides = t.allSides();
-    return Flow.anim(Beats.bubbleOut(dom.bubble))
+    return K.commanderOut()
       .then(function () {
         K.restoreBubble();
         return Flow.anim(Beats.boardIn(dom.board));
@@ -331,8 +331,8 @@
     caption.textContent = T('lblRightTriangle');
     clearBoxes();
   }
-  /* The scene opens on a board the welcome left: the bubble still up on
-     the field, the board not yet shown. Nothing to stage. */
+  /* The scene opens on a board the welcome left: the commander still up
+     in her tank, the board not yet shown. Nothing to stage. */
   function stage() {}
 
   Pages.addSection({

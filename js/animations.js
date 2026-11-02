@@ -21,7 +21,17 @@
     click:   'assets/audio/button-click.webm',
     correct: 'assets/audio/correct-answer.webm',
     wrong:   'assets/audio/incorrect-answer.webm',
-    cheer:   'assets/audio/confetti-sound.webm'
+    cheer:   'assets/audio/confetti-sound.webm',
+    /* the commander's tank (js/tank.js): its engine driving on and off,
+       and its hatch -- knocked, cracked, thrown open, her popping out of
+       it, and slammed shut behind her. Synthesised. */
+    tankDrive:  'assets/audio/tank-drive.webm',
+    tankLeave:  'assets/audio/tank-leave.webm',
+    hatchKnock: 'assets/audio/hatch-knock.webm',
+    hatchHiss:  'assets/audio/hatch-hiss.webm',
+    hatchOpen:  'assets/audio/hatch-open.webm',
+    hatchPop:   'assets/audio/hatch-pop.webm',
+    hatchShut:  'assets/audio/hatch-shut.webm'
   };
   var A = global.GameAudio;
   var live = Object.create(null);     /* key -> the cue's sound still playing */
@@ -31,13 +41,15 @@
   var RING_MS = { correct: 600, wrong: 600 };
   var rang = Object.create(null);
 
+  /* Hands back the sound, for a cue that may have to be cut short. */
   function sfx(key) {
     var src = CLIPS[key];
-    if (!src || !A || !M || !M.mayPlay(key)) return;
+    if (!src || !A || !M || !M.mayPlay(key)) return null;
     if (live[key]) live[key].stop();
     var h = live[key] = A.play(src, { keep: true });
     h.done.then(function () { if (live[key] === h) live[key] = null; });
     rang[key] = performance.now();
+    return h;
   }
 
   /* ms until every chime still ringing has quietened: 0 when none is. */
@@ -307,37 +319,6 @@
     return tl;
   }
 
-  /* The same pulse, held for as long as a beat leaves it on. */
-  function pulseHold(marks) {
-    [].concat(marks).filter(Boolean).forEach(function (mark) {
-      mark.classList.remove('is-pulsing');
-      void mark.getBoundingClientRect().width;
-      mark.style.setProperty('--pulse-times', 'infinite');
-      mark.classList.add('is-pulsing');
-    });
-  }
-
-  function pulseRelease(marks) {
-    var list = [].concat(marks).filter(Boolean);
-    var tl = M.timeline({
-      revert: function () {
-        list.forEach(function (mark) { mark.style.filter = ''; });
-        M.set(list, { clearProps: 'strokeWidth' });
-      }
-    });
-    list.forEach(function (mark) {
-      var now = parseFloat(getComputedStyle(mark).strokeWidth);
-      mark.classList.remove('is-pulsing');
-      mark.style.removeProperty('--pulse-times');
-      var rest = parseFloat(getComputedStyle(mark).strokeWidth);
-      mark.style.filter = 'url(#partGlow)';
-      tl.fromTo(mark, { strokeWidth: now },
-                { strokeWidth: rest, autoRound: false,
-                  duration: M.dur(0.4), ease: 'power2.out' }, 0);
-    });
-    return tl;
-  }
-
   /* A word lit while it is spoken of -- a length, an angle's measure: a
      gold halo round it (.is-glowing-text, the #hiGlow filter) and a swell
      and settle of its size, `times` over, so the eye is taken straight to
@@ -520,11 +501,6 @@
     tl.call(pop, null, 0);
     return tl;
   }
-
-  /* The light held on a part: a blurred copy of itself under it (the
-     #partGlow filter), breathing as a CSS class. */
-  function glowOn(el) { el.classList.add('is-lit'); }
-  function glowOff(el) { el.classList.remove('is-lit'); }
 
   /* A dashed line drawn out: the mask trick -- a solid path inside a mask
      uncovers the dashed one as it is stroked. */
@@ -749,9 +725,9 @@
    * Text boxes and controls
    * ====================================================================== */
 
-  /* The speech bubble grows out of its tail -- out of the bird's beak --
-     and shrinks back into it. */
-  var BUBBLE_ORIGIN = '0% 72%';
+  /* The speech bubble grows out of its tail -- out of the commander, who
+     is saying it -- and shrinks back into it. */
+  var BUBBLE_ORIGIN = '0% 80%';
   function bubbleArm(bubble) {
     bubble.removeAttribute('hidden');
     M.set(bubble, { opacity: 0, scale: 0.15, transformOrigin: BUBBLE_ORIGIN });
@@ -776,26 +752,6 @@
     tl.to(bubble, {
       opacity: 0, scale: 0.9, transformOrigin: BUBBLE_ORIGIN,
       duration: M.dur(0.24), ease: 'power2.in'
-    });
-    return tl;
-  }
-
-  /* The bird beside the bubble: out of sight while the bubble arms, then
-     up onto its mark, squashing on its feet as it lands. It leaves with
-     the bubble, so it has no way out of its own. */
-  function birdArm(bird) {
-    M.set(bird, { opacity: 0, yPercent: 30, transformOrigin: '50% 88%' });
-  }
-  function birdIn(bird) {
-    var tl = M.timeline({ willChange: bird, willChangeValue: 'transform, opacity' });
-    tl.to(bird, { opacity: 1, duration: M.dur(0.2), ease: 'power2.out' }, 0);
-    tl.to(bird, {
-      yPercent: 0, scaleX: 0.94, scaleY: 1.06,
-      duration: M.dur(0.32), ease: 'power2.out'
-    }, 0).to(bird, {
-      scaleX: 1.06, scaleY: 0.94, duration: M.dur(0.12), ease: 'power2.in'
-    }).to(bird, {
-      scaleX: 1, scaleY: 1, duration: M.dur(0.24), ease: 'back.out(2)'
     });
     return tl;
   }
@@ -1128,8 +1084,6 @@
     relabel: relabel,
     travel: travel,
     partPulse: partPulse,
-    pulseHold: pulseHold,
-    pulseRelease: pulseRelease,
     textPulse: textPulse,
     linePulse: linePulse,
     boxPulse: boxPulse,
@@ -1137,8 +1091,6 @@
     slideGroup: slideGroup,
     moveGroup: moveGroup,
     splitApart: splitApart,
-    glowOn: glowOn,
-    glowOff: glowOff,
     dashedIn: dashedIn,
     /* the activity */
     boxIn: boxIn,
@@ -1161,8 +1113,6 @@
     bubbleArm: bubbleArm,
     bubbleIn: bubbleIn,
     bubbleOut: bubbleOut,
-    birdArm: birdArm,
-    birdIn: birdIn,
     lineOut: lineOut,
     controlIn: controlIn,
     controlOut: controlOut,

@@ -13,7 +13,7 @@
  * js/s1-sides.js ... js/s8-more.js, and the right pane's widgets -- the
  * dropdown, the slider, the equations, the table -- in js/widgets.js.
  *
- * Load order: motion.js -> flow.js -> mathtext.js -> typer.js -> mascot.js
+ * Load order: motion.js -> flow.js -> mathtext.js -> typer.js -> tank.js
  *             -> animations.js -> pages.js -> tri.js -> widgets.js -> s*.js
  * ========================================================================== */
 (function (global) {
@@ -34,7 +34,6 @@
   var HOLD_ASK = 2000;      /* an instruction left standing before the hand-over */
   var AUTO_TURN = 2500;     /* ms: a self-turning page, left to be looked at */
   var LOOK = 1400;          /* ms: a finished mark looked at before the next */
-  var BIRD_LAG = 160;       /* ms: the bird hops up once the plate is mostly in */
   var TRIES = 2;            /* wrong answers to one question before it is answered for the learner */
   var WRONG_HOLD = 350;     /* ms: a wrong answer left red after its shake, at the least */
 
@@ -112,7 +111,7 @@
   var chips = [];
   var choiceBtns = [];
   var sayBubble, sayPrompt;
-  var mascot = null;
+  var tank = null;
 
   function $(id) { return document.getElementById(id); }
 
@@ -124,7 +123,6 @@
 
       frame:    $('frame'),
       bubble:   $('bubble'),
-      bird:     $('bubbleBird'),
 
       board:    $('board'),
       promptLine: document.querySelector('.prompt__line'),
@@ -485,13 +483,6 @@
       awaiting.push({ text: text, resolve: resolve });
     });
   }
-  /* fn, run as `phrase` is heard in the line `text`. */
-  function onWord(text, phrase, fn) {
-    return lineBegins(text)
-      .then(function (t0) { return Flow.wait(t0 + wordAt(text, phrase) - performance.now()); })
-      .then(fn);
-  }
-
   /* fn, run as `phrase` is heard in the line keyed `key` -- whether the
      line is said whole or a sentence at a time (speakBySentence): both
      the whole text and the sentence the phrase is in are listened for,
@@ -798,13 +789,6 @@
     });
   }
 
-  /* How long a line takes to type, in seconds. */
-  function typedFor(text) {
-    var cues = cuesFor(text);
-    if (cues) return (cues[cues.length - 1] + global.Typer.WORD_IN * 2) / 1000;
-    return text.length * global.Typer.TYPE_MS / 1000;
-  }
-
   /* A page that turns itself: handOver without the button. */
   function autoTurn(ms) {
     note(at, page);
@@ -843,13 +827,12 @@
       .then(function () { return say(key || praiseKey()); });
   }
 
-  /* The bubble put away, and the bird with it: its player stopped, so no
-     frame is painted for a bird nobody can see. */
+  /* The bubble put away, and the commander's tank with it. */
   function restoreBubble() {
     sayBubble.clear();
-    mascot.stop();
+    tank.reset();
     dom.bubble.setAttribute('hidden', '');
-    M.set([dom.bubble, dom.bird], { clearProps: 'opacity,transform' });
+    M.set(dom.bubble, { clearProps: 'opacity,transform' });
   }
 
   /* ---- the board's top band, taken away and given back ------------------- */
@@ -935,40 +918,7 @@
     });
   }
 
-  /* ---- waiting on an answer ----------------------------------------------
-     Several buttons, one answer: whichever is pressed fires a click at the
-     hidden gate and the scene waits on THAT. Hands back the index pressed,
-     or `opts.answer` if a skip answered it. */
-  function askChoice(buttons, opts) {
-    var o = opts || {};
-    var picked = -1;
-    var live = true;
-
-    function onPick(ev) {
-      if (!live) return;
-      live = false;
-      var btn = ev.currentTarget;
-      picked = buttons.indexOf(btn);
-      ripple(ev, btn);
-      dom.gate.dispatchEvent(new MouseEvent('click'));
-    }
-    function off() {
-      live = false;
-      buttons.forEach(function (b) {
-        b.removeEventListener('click', onPick);
-        b.classList.add('is-done');
-      });
-    }
-    buttons.forEach(function (b) { b.addEventListener('click', onPick); });
-
-    return Flow.once(dom.gate, { auto: true }).then(
-      function () {
-        off();
-        if (picked < 0) picked = (o.answer == null ? 0 : o.answer);
-        return picked;
-      },
-      function (err) { off(); throw err; });
-  }
+  /* ---- waiting on an answer ---------------------------------------------- */
 
   /* A wrong answer held up: its shake, the red left a beat after it, and
      `said` -- the voice saying it is wrong -- heard to the end. */
@@ -1378,9 +1328,35 @@
       function (err) { off(); throw err; });
   }
 
-  /* The box the activity is asking for now, lifted out of the quiet level. */
-  function targetBox(box, on) {
-    [box.g, box.leader].forEach(function (e) { e.classList.toggle('is-target', on); });
+  /* ======================================================================
+   * The commander, from her tank -- the welcome and the end
+   * The causeway rises out of the swamp, the tank rolls onto it from the
+   * left, its hatch is thrown open and she pops up out of it (js/tank.js).
+   * Then she says her line, in the bubble beside her, swaying as she
+   * talks, her lips moving with her voice; `along` is anything that
+   * arrives with the line.
+   * ====================================================================== */
+  function commanderSays(key, along) {
+    tank.arm();
+    return Flow.anim(tank.arrive())
+      .then(function () {
+        Beats.bubbleArm(dom.bubble);
+        tank.talk(key);
+        var line = keyed(key);
+        var heard = quiet(voiceOf(line));
+        var said = sayBubble(line);
+        Beats.bubbleIn(dom.bubble);
+        if (along) along();
+        return Promise.all([said, heard]);
+      })
+      .then(function () { tank.talk(null); });
+  }
+
+  /* ...and away: the bubble shrinks back to her, she ducks inside, the
+     lid slams and the tank drives off to the right. */
+  function commanderOut() {
+    return Flow.anim(Beats.bubbleOut(dom.bubble))
+      .then(function () { return Flow.anim(tank.leave()); });
   }
 
   /* ======================================================================
@@ -1388,9 +1364,9 @@
    * The welcome is the swamp itself: the title drops in on its hanging
    * plate (a CSS entrance, from the first frame -- see .welcome__title),
    * and Start is offered once everything has loaded. Then the welcome
-   * stands aside, and the first line arrives in a speech bubble in the
-   * middle of the screen, over two rows, with the bird hopping up beside
-   * it to say it -- the bird is on this screen and the end only.
+   * stands aside, and the commander drives in to say the first line --
+   * she is on this screen and the end only. Next is offered once she has
+   * said it; the first section sends her off (commanderOut).
    * ====================================================================== */
   function sceneWelcome() {
     return Flow.wait(SHORT)
@@ -1409,55 +1385,28 @@
         return Flow.anim(Beats.welcomeOut(dom.welcome, dom.title, dom.startBtn));
       })
       .then(function () { return Flow.wait(SHORT); })
-      .then(function () {
-        Beats.bubbleArm(dom.bubble);
-        Beats.birdArm(dom.bird);
-        mascot.state('talking');
-        var hello = keyed('s1Hello');
-        var heard = quiet(voiceOf(hello));
-        var said = sayBubble(hello);
-        Beats.bubbleIn(dom.bubble);
-        var hop = Flow.wait(BIRD_LAG).then(function () {
-          return Flow.anim(Beats.birdIn(dom.bird));
-        });
-        return Promise.all([said, heard, hop]);
-      })
-      .then(function () {
-        mascot.settle();
-        return Flow.wait(SHORT);
-      })
+      .then(function () { return commanderSays('s1Hello'); })
+      .then(function () { return Flow.wait(SHORT); })
       .then(function () { return handOver(dom.nextBtn); });
   }
 
   /* ======================================================================
    * The end
    * The last section has taken the board away and left the swamp
-   * (s8-more.js). The bird hops back up beside its bubble to close the
-   * lesson as it opened it, the confetti comes down over the frame, and
-   * Restart is offered under the line: it starts the lesson over from the
-   * welcome.
+   * (s8-more.js). The commander drives back in to close the lesson as she
+   * opened it, the confetti coming down over the frame with her line, and
+   * Restart is offered in Next's corner once she has said it: she drives
+   * off, and the lesson starts over from the welcome.
    * ====================================================================== */
   function sceneEnd() {
     return Flow.wait(SHORT)
       .then(function () {
-        Beats.bubbleArm(dom.bubble);
-        Beats.birdArm(dom.bird);
-        mascot.state('talking');
-        var bye = keyed('endWellDone');
-        var heard = quiet(voiceOf(bye));
-        var said = sayBubble(bye);
-        Beats.bubbleIn(dom.bubble);
-        Beats.sfx('cheer');
-        quiet(Flow.anim(Beats.confettiRain(dom.frame)));
-        var hop = Flow.wait(BIRD_LAG).then(function () {
-          return Flow.anim(Beats.birdIn(dom.bird));
+        return commanderSays('endWellDone', function () {
+          Beats.sfx('cheer');
+          quiet(Flow.anim(Beats.confettiRain(dom.frame)));
         });
-        return Promise.all([said, heard, hop]);
       })
-      .then(function () {
-        mascot.settle();
-        return Flow.wait(SHORT);
-      })
+      .then(function () { return Flow.wait(SHORT); })
       .then(function () {
         M.button3d(dom.restartBtn, { edge: 5 });
         Beats.controlIn(dom.restartBtn);
@@ -1467,7 +1416,7 @@
         Beats.sfx('click');
         return Promise.all([
           Flow.anim(Beats.controlOut(dom.restartBtn)),
-          Flow.anim(Beats.bubbleOut(dom.bubble))
+          commanderOut()
         ]);
       })
       .then(function () { quiet(run()); });
@@ -1603,7 +1552,7 @@
     if (dom) return { dom: dom };
     dom = collect();
     sayBubble = onVoice(global.Typer.create($('bubbleType'), { box: dom.bubble, fit: true }));
-    mascot = global.Mascot.create({ slot: dom.bird, idle: false });
+    tank = global.Tank.create();
     sayPrompt = onVoice(global.Typer.create($('promptType'), { box: dom.promptLine, fit: true }));
     sections.forEach(function (s) { if (s.build) s.build(kit); });
     return { dom: dom };
@@ -1640,7 +1589,7 @@
     BOX_W: BOX_W, BOX_H: BOX_H, LEAD_STUB: LEAD_STUB, HAND_D: HAND_D,
     dom: function () { return dom; },
     el: el, seg: seg, round2: round2,
-    buildBox: buildBox, emptyBox: emptyBox, targetBox: targetBox,
+    buildBox: buildBox, emptyBox: emptyBox,
     buildChips: buildChips, buildChoices: buildChoices, shuffle: shuffle,
     chips: function (list) { if (list) chips = list; return chips; },
     choices: function (list) { if (list) choiceBtns = list; return choiceBtns; },
@@ -1649,14 +1598,14 @@
     clearPrompt: clearPrompt, headerIn: headerIn, headerOut: headerOut,
     sayBubble: function (text) { return sayBubble(text); },
     clearBubble: function () { sayBubble.clear(); },
-    restoreBubble: restoreBubble,
+    restoreBubble: restoreBubble, commanderOut: commanderOut,
     onVoice: onVoice,
     wipeBoard: wipeBoard, collapseHeader: collapseHeader, openHeader: openHeader,
     resetFooter: resetFooter, addWipe: addWipe,
-    askChoice: askChoice, askUntilRight: askUntilRight, heldWrong: heldWrong,
+    askUntilRight: askUntilRight, heldWrong: heldWrong,
     armQuiz: armQuiz, dragGuide: dragGuide,
-    keyed: keyed, hear: hear, onWord: onWord, onPhrase: onPhrase, cue: cue, wordAt: wordAt,
-    typedFor: typedFor, sentencesOf: sentencesOf,
+    keyed: keyed, hear: hear, onPhrase: onPhrase, cue: cue, wordAt: wordAt,
+    sentencesOf: sentencesOf,
     celebrate: celebrate, praise: praise, praiseKey: praiseKey,
     autoTurn: autoTurn, lineAway: lineAway,
     ripple: ripple, quiet: quiet, clearInline: clearInline

@@ -8,7 +8,7 @@
 
 /* ---- Fonts (bundled, offline only -- no CDN) ---------------------------- */
 /* Trig Text is the game's one typeface, for every word in it: Lilita One
-   (lilita_one/, kept as its source) made lighter. Every outline is
+   made lighter. Every outline is
    drawn in by 18 units a side, its corners kept sharp, so a stem loses
    36 of its 182 (an em is 1000) and only the thinnest rings, the degree
    sign's among them, lose less, in step with their own weight. The
@@ -43,8 +43,8 @@
 /* ==========================================================================
    Tokens
    The palette block is the game's shared colour set, mixed from the
-   artwork it sits on: a moonlit swamp at night (background.png), and the mossy
-   stone plates the words are set on (header2.png, box1.png, box2.png).
+   artwork it sits on: a moonlit swamp at night (sky.webp), and the mossy
+   stone plates the words are set on (header2.webp, box1.webp, box2.webp).
    Everything below the palette is DERIVED from it: no scene, and no rule
    in any other file, writes a raw hex value.
    ========================================================================== */
@@ -60,8 +60,6 @@
   /* Surfaces: the plates' slate interior, and a lifted step of it */
   --surface: #0D1A24;
   --surface-hi: #18303F;
-  /* ...and the glass the working is boxed in: the swamp's own deep teal */
-  --glass: #0B616C;
   --white: #FFFFFF;
 
   /* The plates' frame: worn stone, and the moss growing over it */
@@ -177,19 +175,22 @@
      The plates are 9-sliced (border-image), so they take any size and keep
      their bolts and moss at the corners. --plate-s is how many CSS pixels
      one pixel of plate artwork becomes, keyed to the board like the type. */
-  --art-page: url("../assets/new/scenery/sky.png");
+  --art-page: url("../assets/new/scenery/sky.webp");
   --art-page-ar: 1671 / 941;
-  --art-water-far: url("../assets/new/scenery/water-far.png");
-  --art-water-near: url("../assets/new/scenery/water-near.png");
-  --art-plate: url("../assets/new/header2.png");
-  --art-box: url("../assets/new/box1.png");
-  --art-box-alt: url("../assets/new/box2.png");
+  --art-water-far: url("../assets/new/scenery/water-far.webp");
+  --art-water-near: url("../assets/new/scenery/water-near.webp");
+  --art-plate: url("../assets/new/header2.webp");
+  --art-box: url("../assets/new/box1.webp");
+  --art-box-alt: url("../assets/new/box2.webp");
+  --art-road: url("../assets/new/tank/parts/road.webp");
+  --art-road-fill: url("../assets/new/tank/parts/road-fill.webp");
   --plate-s: calc(var(--board-w) / 4600);
 
   /* ---- stacking ---------------------------------------------------------
      One ladder for the whole frame, so "behind the board" and "on the header"
      are the same idea expressed twice rather than two piles of magic numbers. */
-  --z-bubble: 1;      /* the welcome's first line, before the board exists  */
+  --z-bubble: 1;      /* the commander, her tank and her line: the welcome  */
+                      /* and the end, while the board is away               */
   --z-board: 2;
   --z-stage: 1;       /* inside the board: the figure                        */
   --z-footer: 2;      /* inside the board: the names to drag                 */
@@ -288,7 +289,7 @@ body {
   background: var(--art-page) center / 100% 100% no-repeat;
 }
 
-/* Each cloud where it was painted (its box in background.png); scenery.js
+/* Each cloud where it was painted (its box in the original painting); scenery.js
    drifts it from there with a transform. */
 .cloud {
   position: absolute;
@@ -303,7 +304,7 @@ body {
 /* The water, flowing. Its ripples are lifted off the painted water into
    two seamless strips -- the far water's and the near water's -- lying
    exactly where they were painted, over the water smoothed to its glow in
-   sky.png; still, the two add back up to the painting. Each is two strips
+   sky.webp; still, the two add back up to the painting. Each is two strips
    long and starts one strip to the left, so as scenery.js slides it a
    strip's width to the right it can start over unseen. */
 .water {
@@ -366,6 +367,19 @@ body {
   position: relative;
   width: var(--board-w);
   aspect-ratio: 16 / 9;
+
+  /* Where the welcome's and the end's stage stands (.host): the causeway
+     along the bottom of the frame, a little under it, and the tank parked
+     on it at the left. --tank-u is one of the tank's own pixels (the
+     hull's: its viewBox is 1060 of them across), so the bubble can be
+     hung off a point on the tank. --tank-floor is the height above the
+     frame's bottom at which the tracks meet the stone. */
+  --road-h: calc(var(--board-w) * .085);
+  --road-y: calc(var(--board-w) * 9 / 16 * -.02);
+  --tank-w: calc(var(--board-w) * .62);
+  --tank-u: calc(var(--tank-w) / 1060);
+  --tank-x: calc(var(--board-w) * .035);
+  --tank-floor: calc(var(--road-y) + var(--road-h) * .88);
 }
 
 /* ---- Board -------------------------------------------------------------- */
@@ -421,7 +435,7 @@ body {
 }
 
 /* ---- The prompt row (header) -------------------------------------------
-   The line being said, on its plate (header2.png), centred in the row.
+   The line being said, on its plate (header2.webp), centred in the row.
    The row is laid out from the first frame and holds its height whether or
    not there is text in it. The plate is as wide as its line, and eases
    from one line's size to the next's (see typer.js, morphBox). */
@@ -434,7 +448,7 @@ body {
   padding-bottom: var(--prompt-lift);
 }
 
-/* The plate (header2.png) is 9-sliced: its bolts, corner moss and drips
+/* The plate (header2.webp) is 9-sliced: its bolts, corner moss and drips
    stay at the corners and only the stone and slate between them stretch.
    The bottom slice is deep enough to take the lower bolts whole, so a
    second row of words stretches only the plain stone sides. The plate
@@ -883,7 +897,7 @@ body {
 /* ---- Next ---------------------------------------------------------------
    Anchored to the frame's bottom-right corner, which IS the board's
    bottom-right corner, whether or not the board is there yet. The painted
-   key (next-btn.png) is the whole button: no face or wall of its own, so a
+   key (next-btn.webp) is the whole button: no face or wall of its own, so a
    press only sinks it (--sink, M.button3d). The button is the teal tile
    alone -- 760px square at (234, 218) in the 1254px painting -- and the art
    is hung over it at that offset, the slime and the painting's empty
@@ -936,10 +950,9 @@ body {
 .next-btn.is-3d { transition: filter .18s ease; }
 
 /* ---- Restart ------------------------------------------------------------
-   The end's one control, centred low in the frame under the closing line:
-   an orange key standing on its wall (--edge, M.button3d) with its icon
-   and its word. Centred by margin, so the transform controlIn brings it in
-   with is its own; it breathes (`scale`) once it is there. */
+   The end's one control, in Next's corner, clear of the tank: an orange
+   key standing on its wall (--edge, M.button3d) with its icon and its
+   word. It breathes (`scale`) once it is there. */
 .restart-btn {
   --edge: 5px;
   --sink: 0px;
@@ -947,11 +960,8 @@ body {
 
   position: absolute;
   z-index: var(--z-next);
-  left: 0;
-  right: 0;
-  bottom: 12%;
-  width: fit-content;
-  margin: 0 auto;
+  right: clamp(14px, 2.6%, 40px);
+  bottom: clamp(12px, 2.4%, 34px);
 
   display: flex;
   align-items: center;
@@ -992,28 +1002,117 @@ body {
   .restart-btn.is-3d:not([hidden]) { animation: none; }
 }
 
+/* ---- The commander's tank -----------------------------------------------
+   The welcome's and the end's stage, under the bubble: the causeway and
+   the tank on it (js/tank.js moves them). The causeway runs the whole
+   width of the window, not just the frame, so the tank drives onto it
+   from off the screen; its slabs are laid end to end from the middle. */
+.host {
+  position: absolute;
+  inset: 0;
+  z-index: var(--z-bubble);
+  pointer-events: none;
+}
+.host[hidden] { display: none; }
+
+/* The causeway's top stands where the frame says (--road-y, --road-h);
+   from there it runs down to the window's bottom edge, however far below
+   the frame that is -- the frame is centred in the window, so that is half
+   the window's height left over. The painted course with its grass is laid
+   along the top, and the wall under it is its two lower courses stacked
+   on down (::after), deepening into shadow. Centred on the window by
+   `left`, not `translate`: GSAP folds a CSS translate into the transform
+   it rises in with. */
+.road {
+  --below: calc((100dvh - var(--board-w) * 9 / 16) / 2 + 2px);
+
+  position: absolute;
+  left: calc(50% - 50vw);
+  bottom: calc(-1 * var(--below));
+  width: 100vw;
+  height: calc(var(--road-h) + var(--road-y) + var(--below));
+  background: var(--art-road) center top / auto var(--road-h) repeat-x;
+}
+/* road-fill.webp is rows 54-132 of the road's 136: it starts on the
+   mortar under the top course, so it is laid from the road's last row. */
+.road::after {
+  content: "";
+  position: absolute;
+  left: 0;
+  right: 0;
+  top: calc(var(--road-h) * 131 / 136);
+  bottom: 0;
+  background:
+    linear-gradient(180deg, transparent, color-mix(in srgb, var(--text-outline) 55%, transparent)),
+    var(--art-road-fill) center top / auto calc(var(--road-h) * 78 / 136) repeat;
+}
+
+/* The svg's box runs 7 hull pixels below the tracks (its viewBox ends at
+   325, the tracks at 318); its parts swing out past it as they move. */
+.tank {
+  position: absolute;
+  left: var(--tank-x);
+  bottom: calc(var(--tank-floor) - 7 * var(--tank-u));
+  width: var(--tank-w);
+  height: auto;
+  aspect-ratio: 1060 / 490;
+  overflow: visible;
+}
+
+/* The lid, in the sheet's own ink and olives. */
+.lid__edge,
+.lid__hinge { fill: #434c47; stroke: #19212a; stroke-width: 5; }
+.lid__face  { stroke: #19212a; stroke-width: 5; }
+.lid__seal  { fill: none; stroke: rgba(25, 33, 42, .85); stroke-width: 4; }
+.lid__latch { fill: #2e373c; stroke: #19212a; stroke-width: 4; }
+.lid__rivet { fill: #2e373c; }
+.lid__grip,
+.lid__grip-hi {
+  fill: none;
+  stroke-linecap: round;
+  stroke-linejoin: round;
+}
+.lid__grip    { stroke: #19212a; stroke-width: 9; }
+.lid__grip-hi { stroke: #6f7d52; stroke-width: 3.5; }
+
+/* Her eyes shut, and the mouth she talks with: put up by js/tank.js only
+   when she blinks or speaks. */
+.tank__blink,
+.tank__mouth { opacity: 0; }
+
+/* The steam off the hatch, and the ring of air and the lines she pops
+   out with -- behind her, so they only show round her. */
+.tank__steam { fill: #e4efe9; }
+.tank__pop {
+  fill: none;
+  stroke: #fff4c8;
+  stroke-width: 3.5;
+  stroke-linecap: round;
+}
+
 /* ---- The speech bubble --------------------------------------------------
-   The welcome's first line, said before the board exists: a parchment
-   speech bubble with a dark outline, its tail pointing down and left at
-   the bird standing beside it, and the line wrapped over two rows (its
-   width is capped in em, so it wraps the same at every board size). It is
-   centred by margin, then moved right by half the room the bird and the
-   tail take, so the bird and the bubble stand centred TOGETHER; `translate`
-   rather than a transform, so the scale it pops in with (bubbleIn) has
-   the transform to itself. */
+   The welcome's first line and the end's last, said by the commander: a
+   parchment speech bubble with a dark outline, its tail pointing down and
+   left at her, and the line wrapped over two rows (its width is capped in
+   em, so it wraps the same at every board size). The tip of its tail is
+   hung on a point on the tank -- (490, -38) in its own pixels, just right
+   of her headset -- so it stays beside her at any size: the bubble stands
+   out from that point by the tail's width, and its bottom edge sits the
+   tail's drop (.76em) below it, so a longer line grows UP, clear of the
+   barrel. Placed by left and bottom alone: GSAP folds a CSS `translate`
+   into the transform it animates, and the scale bubbleIn pops it in with
+   would wipe it out. */
 .bubble {
-  --bird-h: calc(var(--board-w) * 9 / 16 * .4);
   --tail-w: 1.5em;
   --bub-line: .12em;
 
   position: absolute;
   z-index: var(--z-bubble);
-  inset: 0;
-  margin: auto;
+  left: calc(var(--tank-x) + 490 * var(--tank-u) + var(--tail-w) * .87);
+  bottom: calc(var(--tank-floor) + (318 + 38) * var(--tank-u) - .76em);
   width: fit-content;
   height: fit-content;
-  max-width: 20em;
-  translate: calc((var(--tail-w) * .95 + var(--bird-h) * .62) / 2) 0;
+  max-width: min(20em, calc(var(--board-w) * .58));
 
   padding: .55em .95em .62em;
   border: var(--bub-line) solid var(--text-outline);
@@ -1036,14 +1135,15 @@ body {
 
 .bubble .type-wrap { display: inline-block; vertical-align: top; }
 
-/* The tail, drawn over the bubble's left edge a little below its middle:
-   40 units wide to --tail-w, so a 3.2-unit stroke is the border's .12em,
-   and its fill reaches a hair into the bubble to cover the border where
-   the two join. */
+/* The tail, drawn over the bubble's left edge low down, clear of the
+   rounded corner: 40 units wide to --tail-w, so a 3.2-unit stroke is the
+   border's .12em, and its fill reaches a hair into the bubble to cover
+   the border where the two join. Its tip ends up .76em above the
+   bubble's bottom edge (see .bubble). */
 .bubble__tail {
   position: absolute;
   left: calc(1px - var(--tail-w));
-  top: 46%;
+  bottom: .45em;
   width: var(--tail-w);
   height: calc(var(--tail-w) * 34 / 40);
   overflow: visible;
@@ -1057,29 +1157,8 @@ body {
   stroke-linejoin: round;
 }
 
-/* ---- The bird beside the bubble -----------------------------------------
-   Swiftee appears on the welcome and the end only, standing left of the bubble
-   and speaking the line, the tail's tip at its head. A child of the
-   bubble, so it is placed against the bubble at any width and leaves with
-   it (bubbleOut). Its cell is square, the ink filling about 18%-82% of it
-   across and 11%-88% down; the head's right edge is set at the tail's tip. */
-.bubble__bird {
-  position: absolute;
-  left: calc(var(--tail-w) * -.95 - var(--bird-h) * .8);
-  top: calc(46% + var(--tail-w) * .72 - var(--bird-h) * .42);
-  width: var(--bird-h);
-  height: var(--bird-h);
-}
-
-.mascot {
-  width: 100%;
-  height: 100%;
-  background-repeat: no-repeat;
-  background-position: 0 0;
-}
-
 /* ---- Welcome ------------------------------------------------------------
-   A painting of its own (welcome.png): the swamp by moonlight with the
+   A painting of its own (welcome.webp): the swamp by moonlight with the
    title lettered on its plate in the sky, covering the whole window. Start
    stands low and centred over its water. */
 .welcome {
@@ -1204,7 +1283,7 @@ body {
 }
 
 /* ---- Start ----------------------------------------------------------------
-   The painted play key (play-btn.png), the art itself the whole button: no
+   The painted play key (play-btn.webp), the art itself the whole button: no
    face or wall of its own, so a press only sinks it (--sink, M.button3d).
    It breathes until pressed -- a gentle swell (`scale`, its own property,
    so the entrance's transform and the press's translate are left alone)

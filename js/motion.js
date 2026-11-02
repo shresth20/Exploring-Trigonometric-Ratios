@@ -38,7 +38,7 @@
  *           so Motion.retire() can kill the lot and hand back whatever they
  *           had written inline.
  *
- * script.js hands those two flags over once, at startup, with Motion.bind().
+ * Flow hands the Skip flag over once, at startup, with Motion.bind().
  * ========================================================================== */
 
 (function (global) {
@@ -92,10 +92,8 @@
   function reducedMotion() { return reduced; }
 
   /* ---------- the bridge to the game's pacing ---------- */
-  var readToken = function () { return 0; };
   var readFast  = function () { return false; };
   function bind(hooks) {
-    if (hooks && typeof hooks.token === 'function') readToken = hooks.token;
     if (hooks && typeof hooks.fast  === 'function') readFast  = hooks.fast;
   }
 

@@ -1,11 +1,11 @@
 /* ==========================================================================
  * scenery.js -- the sky over the swamp, and the mist on it, kept alive
  * --------------------------------------------------------------------------
- * The clouds painted into background.png are cut out into images of their
- * own (assets/new/scenery/cloud-*.png) over a sky with them taken out
- * (sky.png), and drift from where they were painted, left to right, very
- * slowly. A cloud that leaves the artwork's right edge comes back in at its
- * left, so the sky never empties.
+ * The clouds painted into the original swamp painting are cut out into
+ * images of their own (assets/new/scenery/cloud-*.webp) over a sky with
+ * them taken out (sky.webp), and drift from where they were painted, left
+ * to right, very slowly. A cloud that leaves the artwork's right edge comes
+ * back in at its left, so the sky never empties.
  *
  * The two banks of mist sway to and fro about where they lie instead, the
  * near one against the far, each thinning and thickening a little as it
@@ -15,7 +15,7 @@
  * water's faster than the far's, as near water passes the eye faster, so
  * the two drift through each other and the light on the water shifts.
  *
- * Read off a clock, as the text reveal and the bird are: how far anything
+ * Read off a clock, as the text reveal is: how far anything
  * has moved is what the time elapsed says, so a slow frame never slows the
  * sky. Moved by transform only, in percentages of each piece's own width:
  * a piece is sized and placed in percentages too, so the motion holds its

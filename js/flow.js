@@ -184,13 +184,6 @@
   }
   function resume() { fast = false; }
 
-  /* A guard a long-running effect can poll instead of awaiting: true for as
-     long as the scene that asked for it is still the current one. */
-  function alive() {
-    var mine = token;
-    return function () { return mine === token; };
-  }
-
   global.Flow = {
     CANCELLED: CANCELLED,
     wait: wait,
@@ -201,15 +194,12 @@
     run: run,
     skip: skip,
     resume: resume,
-    alive: alive,
-    isFast: function () { return fast; },
-    token: function () { return token; }
+    isFast: function () { return fast; }
   };
 
-  /* motion.js scales every duration it is asked for through these two. */
+  /* motion.js scales every duration it is asked for through this. */
   if (global.Motion) {
     global.Motion.bind({
-      token: function () { return token; },
       fast: function () { return fast; }
     });
   }

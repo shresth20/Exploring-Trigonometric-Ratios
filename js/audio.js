@@ -32,6 +32,12 @@
  *                                      `to` are seconds into the clip: one
  *                                      stretch of it, played on its own
  *   GameAudio.warm(url)            -> decode ahead of time
+ *   GameAudio.onStart(fn)          -> fn(url, { at, buffer, from }) as each
+ *                                      clip starts sounding: `at` is the
+ *                                      performance.now() it is heard at,
+ *                                      `buffer` its AudioBuffer (null when
+ *                                      played by <audio>), `from` the second
+ *                                      of the clip it starts on
  *
  * Load order: before js/i18n.js and js/animations.js
  * ========================================================================== */
@@ -279,6 +285,22 @@ var GameAudio = (function (global) {
   }
 
   /* ---- playing ---------------------------------------------------------- */
+  /* Whoever wants to move in time with a clip -- the commander's mouth with
+     her voice (js/tank.js) -- is told the moment it starts to be heard. */
+  var listeners = [];
+  function onStart(fn) {
+    if (typeof fn === 'function') listeners.push(fn);
+  }
+  function started(url, info) {
+    listeners.forEach(function (fn) {
+      try { fn(url, info); } catch (e) {}
+    });
+  }
+  /* ms between a sound starting and its reaching the speaker */
+  function latency(c) {
+    return ((c && (c.outputLatency || c.baseLatency)) || 0) * 1000;
+  }
+
   function silent() {
     return { done: Promise.resolve(false), stop: function () {} };
   }
@@ -317,6 +339,7 @@ var GameAudio = (function (global) {
       var from = Math.max(0, Math.min(o.from || 0, buf.duration));
       if (o.to != null && o.to > from) source.start(0, from, o.to - from);
       else source.start(0, from);
+      started(url, { at: performance.now() + latency(c), buffer: buf, from: from });
     });
     var handle = {
       done: done,
@@ -356,13 +379,17 @@ var GameAudio = (function (global) {
         settle(true);
       }, Math.max(0, left));
     }
+    function playing() {
+      started(url, { at: performance.now(), buffer: null, from: o.from || 0 });
+      endAt();
+    }
     try {
       a.volume = o.volume != null ? o.volume : 1;
       a.playbackRate = o.rate || 1;
       a.currentTime = o.from || 0;
       var p = a.play();
-      if (p && p.then) p.then(endAt, function () { settle(false); });
-      else endAt();
+      if (p && p.then) p.then(playing, function () { settle(false); });
+      else playing();
     } catch (e) { settle(false); }
     return {
       done: done,
@@ -395,6 +422,7 @@ var GameAudio = (function (global) {
     play: play,
     warm: warm,
     has: has,
+    onStart: onStart,
     /* how the clips are being played: 'buffer' or 'element' */
     mode: function () { return byBuffer ? 'buffer' : 'element'; },
     context: context
