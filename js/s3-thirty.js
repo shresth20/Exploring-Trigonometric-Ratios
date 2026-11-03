@@ -4,7 +4,8 @@
  * Storyboard pages 35-51. Three scenes:
  *
  *   Equilateral triangle.  Drawn pointing left, its far side upright,
- *     every angle 60°, every side 2 units. A faint line shows where the
+ *     every angle 60°, every side 2 units (the number alone on the figure;
+ *     the voice still says "2 units"). A faint line shows where the
  *     cut goes -- from the left corner to the middle of the upright side --
  *     and the learner draws it. The two halves part, up and down; the
  *     upright side and the 60° angle are halved (1 and 1, 30° and 30°),
@@ -19,7 +20,7 @@
  *     then worked aside, its lengths carried in from the triangle; cos 30°
  *     and tan 30° are the learner's, their lengths chosen from dropdowns.
  *     Next.
- *   The table.  The 30° values go in, their column lit. "Can we use this
+ *   The table.  The 30° values go in, their column lit. Next. "Can we use this
  *     triangle for 60° too?" -- "Can we" lights the 60° column; with "this
  *     triangle" the table fades and the half comes back. "Yes! Its other
  *     acute angle is 60°." Next.
@@ -259,7 +260,7 @@
         quiet(K.onPhrase('s3Len2', '2 units', function () {
           return ['AB', 'BC', 'CA'].reduce(function (chain, s) {
             return chain.then(function () {
-              return Flow.anim(Beats.labelIn(tE.writeVal(s, T('lblUnits2')))).then(function () { return Flow.wait(140); });
+              return Flow.anim(Beats.labelIn(tE.writeVal(s, T('val2')))).then(function () { return Flow.wait(140); });
             });
           }, Promise.resolve());
         }));
@@ -446,9 +447,12 @@
         return yourTurn('tan', 30, 'wOpposite', 'wAdjacent', [T('val1'), T('valRoot3')], null);
       })
       .then(function () { return Flow.wait(SHORT); })
+      /* "Correct!" has just been said for tan 30°: the confetti, and no
+         second word of praise after it */
       .then(function () {
         Object.keys(rows).forEach(function (k) { rows[k].el.classList.remove('is-done'); });
-        return K.praise();
+        K.celebrate();
+        return Flow.wait(Beats.ringing());
       })
       .then(function () { return Flow.wait(BEAT); })
       .then(function () { return K.handOver(); });
@@ -599,6 +603,8 @@
         return W.table.fillColumn(30, { sin: T('valHalf'), cos: T('valRoot3Over2'), tan: T('valOneOverRoot3') });
       })
       .then(function () { return Flow.wait(BEAT); })
+      /* the table, with the 30° values in it, left to be looked at: Next */
+      .then(function () { return K.handOver(); })
       /* "Can we use this triangle for 60° too?": "Can we" lights the 60°
          column; with "this triangle" the table fades and the same half
          comes back, whole, in the middle */
@@ -640,7 +646,7 @@
      both acute angles written -- the board section 4 opens on. */
   function halfCentred() {
     halfWritten();
-    M.set(dom.gL, { x: 0, y: 0, opacity: 1 });
+    M.set(dom.gL, { x: 0, y: 0, scale: 1, opacity: 1 });
   }
   /* The kept half, grown, with its three lengths and both acute angles. */
   function halfWritten() {
@@ -665,7 +671,13 @@
     [dom.g, dom.gL, dom.gR].forEach(function (g) { g.setAttribute('hidden', ''); });
     rows = {};
   }
+  /* What the table holds by now -- the 45° column -- for a page reached
+     from the level bar, which starts the table over. */
+  function remember45() {
+    W.table.remember('sin', 45, T('valOneOverRoot2')); W.table.remember('cos', 45, T('valOneOverRoot2')); W.table.remember('tan', 45, T('val1'));
+  }
   function stage(local) {
+    remember45();
     if (local <= 0) return;
     if (local === 1) { halvesInstant(); return; }
     /* scene 3 opens on the kept half aside, with the rows found */

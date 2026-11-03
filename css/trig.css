@@ -215,10 +215,13 @@
 .pane__body:has(> .facts) { --eq-room: clamp(2px, 1.5cqh, 9px); }
 /* The box round the working: whatever is worked on the pane -- a ratio
    found, a line of working -- is set apart on it, as a sum is boxed on a
-   board. A soft patch of the lines' cyan laid over the swamp, with no
-   edge of its own: a touch brighter toward its top-left corner. Laid
-   under the column, and sized and moved round its rows by W.pane
-   (js/widgets.js); unseen until there is a row to box. */
+   board. A dark slate pane laid over the swamp -- the header plate's
+   slate, let a little of the swamp through -- ringed in the lines' cyan,
+   so it stands clear of the teal behind it on every screen (a cyan wash
+   melted into the teal) and the white and coloured words on it read
+   strongly. A touch lighter toward its top-left corner. Laid under the
+   column, and sized and moved round its rows by W.pane (js/widgets.js);
+   unseen until there is a row to box. */
 .pane__box {
   position: absolute;
   left: 0;
@@ -227,8 +230,12 @@
   height: 0;
   border-radius: clamp(16px, 4.2cqw, 30px);
   background:
-    linear-gradient(155deg, color-mix(in srgb, var(--blue-fill) 10%, transparent) 0%, transparent 60%),
-    color-mix(in srgb, var(--blue-fill) 22%, transparent);
+    linear-gradient(155deg, color-mix(in srgb, var(--surface-hi) 75%, transparent) 0%, transparent 62%),
+    color-mix(in srgb, var(--surface) 78%, transparent);
+  box-shadow:
+    inset 0 0 0 2px color-mix(in srgb, var(--blue-fill) 55%, transparent),
+    inset 0 0 18px color-mix(in srgb, var(--blue-fill) 14%, transparent),
+    0 8px 22px var(--shadow-soft);
   opacity: 0;
   pointer-events: none;
   contain: size layout;
@@ -511,22 +518,20 @@
   font-size: calc(clamp(14px, 5.4cqw, 32px) * var(--pane-fit, 1));
   color: var(--text-primary);
 }
-/* The three distances of a collapsed triangle: one under another, on a
-   small mossy plate (box2.webp, 9-sliced in em so it scales with them). */
+/* The three distances of a collapsed triangle: the givens the ratios are
+   worked from, so they head the same box as the ratios -- one line of
+   them, each in its side's ink, wrapping only where the half is too
+   narrow -- ruled off from the working under them, as givens are on a
+   board. One box, one column, one left edge. */
 .facts {
-  --s: .0135em;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: .05em;
-  /* clear of the frame on every side, so no word runs onto the moss */
-  padding: calc(var(--s) * 74) calc(var(--s) * 124) calc(var(--s) * 100);
-  border: 0 solid transparent;
-  border-image: var(--art-box-alt) 72 150 92 150 fill /
-    calc(var(--s) * 72) calc(var(--s) * 150)
-    calc(var(--s) * 92) calc(var(--s) * 150);
-  filter: drop-shadow(0 .2em .35em var(--shadow-deep));
+  align-self: stretch;
+  justify-content: flex-start;
+  align-items: baseline;
+  gap: .1em .95em;
+  padding-bottom: .4em;
+  border-bottom: .07em solid color-mix(in srgb, var(--text-secondary) 50%, transparent);
 }
-.facts .fact { font-size: calc(clamp(13px, 4.6cqw, 28px) * var(--pane-fit, 1)); line-height: 1.25; }
+.facts .fact { font-size: calc(clamp(12px, 4.4cqw, 26px) * var(--pane-fit, 1)); line-height: 1.25; white-space: nowrap; }
 .fact--opp { color: var(--side-opp); }
 .fact--adj { color: var(--side-adj); }
 .fact--hyp { color: var(--side-hyp); }

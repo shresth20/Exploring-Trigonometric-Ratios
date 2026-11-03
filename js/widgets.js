@@ -231,10 +231,10 @@
   var BOX_EDGE = 6;            /* px it keeps off the half's own edges */
   /* Where the rows stand in the half, untransformed: those the box closes
      round (x0..x1, y0..y1, and the largest size they are set at), and the
-     column as a whole, a plate of its own included (left, right, top). */
+     column as a whole (left, right, top). */
   function rowsAt() {
     var body = dom().paneBody;
-    var o = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity, fs: 0, above: -Infinity,
+    var o = { x0: Infinity, y0: Infinity, x1: -Infinity, y1: -Infinity, fs: 0,
               left: Infinity, right: -Infinity, top: Infinity };
     pane.rows().forEach(function (r) {
       if (r.hasAttribute('hidden') || !r.offsetWidth) return;
@@ -247,9 +247,6 @@
         a = Math.min(a, x + n.offsetLeft); b = Math.max(b, x + n.offsetLeft + n.offsetWidth);
       });
       o.left = Math.min(o.left, a); o.right = Math.max(o.right, b); o.top = Math.min(o.top, y);
-      /* a row set on a plate of its own -- the distances a ratio is
-         worked from -- stands outside it, rather than boxed twice */
-      if (r.classList.contains('facts')) { o.above = Math.max(o.above, y + r.offsetHeight); return; }
       o.x0 = Math.min(o.x0, a); o.y0 = Math.min(o.y0, y);
       o.x1 = Math.max(o.x1, b); o.y1 = Math.max(o.y1, y + r.offsetHeight);
       o.fs = Math.max(o.fs, parseFloat(getComputedStyle(r).fontSize) || 0);
@@ -261,15 +258,13 @@
   function boxRect(room, floor) {
     var d = dom(), c = rowsAt();
     if (!c) return null;
-    var x0 = c.x0, y0 = c.y0, x1 = c.x1, y1 = c.y1, fs = c.fs, above = c.above;
+    var x0 = c.x0, y0 = c.y0, x1 = c.x1, y1 = c.y1, fs = c.fs;
     /* the margin inside it, from the size the rows are set at: as wide
-       as there is room for beside a wide column, and over the top row no
-       more than leaves the plate above it clear */
+       as there is room for beside a wide column */
     room = Math.min(d.pane.clientWidth - 2 * BOX_EDGE, room == null ? Infinity : room);
     var px = Math.max(fs * 0.4, Math.min(fs * 1.25, (room - (x1 - x0)) / 2)), py = fs * 0.95;
-    var pt = above > -Infinity && above <= y0 ? Math.max(fs * 0.3, Math.min(py, y0 - above - 8)) : py;
     var pb = floor == null ? py : Math.max(fs * 0.3, Math.min(py, floor - y1));
-    var l = Math.max(0, x0 - px), t = Math.max(0, y0 - pt);
+    var l = Math.max(0, x0 - px), t = Math.max(0, y0 - py);
     return {
       x: round2(l), y: round2(t),
       width: round2(Math.min(d.pane.clientWidth, x1 + px) - l),
@@ -1214,16 +1209,15 @@
         var opts = spec.options[a];
         c.v.textContent = '';
         c.el.classList.add('is-pick');
-        /* each list opens upward, its choices stacked in its own column
-           over the two cells above it, so it never covers the row it is
-           worked from or the formula under the table */
+        /* each list opens downward, under the new row -- the room below
+           the table is free -- so it never covers the row it is worked
+           from; one too low for the window opens upward instead */
         var dd = dropdown(c.v, opts, opts.indexOf(spec.answers[a]), {
-          keepOrder: true, placeholder: '', up: true,
+          keepOrder: true, placeholder: '', up: false,
           label: T('a11yCellPick', { ratio: T(RATIO_LBL[r]), angle: T('lblDegVal', { n: a }) })
         });
         return { a: a, c: c, dd: dd, ok: false };
       });
-      footEl.hidden = false;
 
       var touched = false, stopHand = null;
       function hush() {

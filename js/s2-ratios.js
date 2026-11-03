@@ -15,11 +15,13 @@
  *     grow; its top corner glows, and the learner drags it up until the
  *     angle is 45°. "We know two angles" lights the 45° and the right
  *     angle; "the third" draws the third angle's arc and its ?, and the
- *     answers wait under the triangle -- missed twice, the angle is worked
- *     through with the learner (workAngle). Next. The triangle comes to
- *     the middle of the board and stays there while nothing stands beside
- *     it: the two equal sides are given 1 unit each, the hypotenuse is lit
- *     and given its ?, and the Pythagoras question is said; then it stands
+ *     answers wait under the triangle -- right, the lesson goes straight
+ *     on; missed twice, the angle is worked through with the learner
+ *     (workAngle), and Next. The triangle comes to the middle of the board
+ *     and stays there while nothing stands beside it: the two equal sides
+ *     are given 1 each (the number alone on the figure; the voice still
+ *     says "1 unit"), and the Pythagoras question is said, the hypotenuse
+ *     lit and given its ? only as the question names it; then it stands
  *     aside and √2 is chosen from a dropdown -- missed twice, worked
  *     through (workHyp), and Next. With all three lengths it comes to the
  *     middle; sin 45°
@@ -382,16 +384,20 @@
           var right = btns.map(function (b) { return b.dataset.name; }).indexOf(T('lblDeg45'));
           return K.askUntilRight(btns, right, { onWrong: notQuite, giveUp: true });
         }).then(function (r) {
-          /* missed twice: worked through with the learner instead */
-          if (r.gaveUp) return workAngle();
+          /* missed twice: worked through with the learner instead, and
+             Next, so the working can be read before it goes */
+          if (r.gaveUp) {
+            return workAngle()
+              .then(function () { return Flow.wait(BEAT); })
+              .then(function () { return K.handOver(); });
+          }
+          /* right: no Next -- the lesson goes straight on to the sides */
           return Promise.all([
             Flow.anim(Beats.relabel(t.angles.C, function () { t.angles.C.textContent = T('lblDeg45'); })),
             K.speak(K.keyed('fbCorrect'))
-          ]);
+          ]).then(function () { return Flow.wait(BEAT); });
         });
       })
-      .then(function () { return Flow.wait(BEAT); })
-      .then(function () { return K.handOver(); })
       /* the answers go -- or the working, if the angle was worked through
          -- and the triangle comes to the middle of the board, where it
          stays until there is something to stand beside it */
@@ -424,10 +430,10 @@
       .then(function () { return Tri.unname(t); })
       .then(function () {
         quiet(K.onPhrase('s2Base1', 'base', function () {
-          return Flow.anim(Beats.labelIn(t.writeVal('AB', T('lblUnit1'))));
+          return Flow.anim(Beats.labelIn(t.writeVal('AB', T('val1'))));
         }));
         quiet(K.onPhrase('s2Base1', 'also', function () {
-          return Flow.anim(Beats.labelIn(t.writeVal('BC', T('lblUnit1'))));
+          return Flow.anim(Beats.labelIn(t.writeVal('BC', T('val1'))));
         }));
         return K.speakBySentence('s2Base1');
       })
@@ -438,24 +444,22 @@
         }));
         return K.say('s2TwoSides');
       })
-      /* the side still to find lit first, and then its ? */
-      .then(function () {
-        quiet(Flow.anim(Beats.linePulse(t.sides.CA)));
-        return Flow.wait(SHORT * 2);
-      })
-      .then(function () {
-        return Flow.anim(Beats.labelIn(t.writeVal('CA', T('lblQ'))));
-      })
       .then(function () { return Flow.wait(SHORT); })
 
       /* ---- Pythagoras: the question said with the triangle still in the
-         middle; then it stands aside, and the answer is chosen from a
-         dropdown on the right -------------------------------------------- */
+         middle -- the side to find is lit, and given its ?, only as this
+         line names it, never before; then the triangle stands aside, and
+         the answer is chosen from a dropdown on the right ---------------- */
       .then(function () {
-        quiet(K.onPhrase('s2PythHyp', 'hypotenuse', function () {
-          return Flow.anim(Beats.textPulse(t.vals.CA, 2));
-        }));
-        return K.say('s2PythHyp');
+        var lit = K.cue('s2PythHyp', 'hypotenuse', function () {
+          return Promise.all([
+            Flow.anim(Beats.linePulse(t.sides.CA)),
+            Flow.anim(Beats.labelIn(t.writeVal('CA', T('lblQ')))).then(function () {
+              return Flow.anim(Beats.textPulse(t.vals.CA, 2));
+            })
+          ]);
+        });
+        return K.say('s2PythHyp').then(lit);
       })
       .then(function () { return Flow.anim(Beats.moveGroup(dom.g, K.aside(dom.g), 0.9)); })
       .then(function () {
@@ -535,9 +539,12 @@
         return yourTurn('tan', 45, 'wOpposite', 'wAdjacent', [T('val1'), T('val1')], T('val1'));
       })
       .then(function () { return Flow.wait(SHORT); })
+      /* "Correct!" has just been said for tan 45°: the confetti, and no
+         second word of praise after it */
       .then(function () {
         Object.keys(rows).forEach(function (k) { rows[k].el.classList.remove('is-done'); });
-        return K.praise();
+        K.celebrate();
+        return Flow.wait(Beats.ringing());
       })
       .then(function () { return K.say('s2Found45'); })
       .then(function () { return Flow.wait(BEAT); })

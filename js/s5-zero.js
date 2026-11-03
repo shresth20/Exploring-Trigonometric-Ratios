@@ -135,7 +135,9 @@
    * ====================================================================== */
   /* Each value found is a page of its own: Next, and the next one. */
   function sceneYourTurn() {
-    return W.table.hide()
+    /* the table goes, and the line that added to it goes with it: the
+       first triangle is never drawn under the last screen's instruction */
+    return Promise.all([W.table.hide(), K.lineAway()])
       .then(function () { return Flow.wait(SHORT); })
       .then(function () { return find(0); })
       .then(nextFind)
@@ -273,9 +275,10 @@
         return K.say('s5Line');
       })
       .then(function () { return Flow.wait(SHORT); })
-      /* the line steps aside for the pane */
+      /* the line steps aside for the pane, level with the middle of the
+         box it is worked in */
       .then(function () {
-        return Flow.anim(Beats.slideGroup(dom.g, K.aside(dom.g).x, 0.9));
+        return Flow.anim(Beats.moveGroup(dom.g, K.aside(dom.g), 0.9));
       })
       .then(function () {
         W.pane.show();
@@ -358,7 +361,7 @@
     shapeAt(0);
     Tri.instant(t);
     t.colourRoles(true);
-    M.set(dom.g, { x: K.aside(dom.g).x });
+    M.set(dom.g, K.aside(dom.g));
   }
 
   Pages.addSection({

@@ -136,9 +136,10 @@
         return K.speakBySentence('s6At90');
       })
       .then(function () { return Flow.wait(SHORT); })
-      /* the line steps aside for the pane */
+      /* the line steps aside for the pane, level with the middle of the
+         box it is worked in */
       .then(function () {
-        return Flow.anim(Beats.slideGroup(dom.g, K.aside(dom.g).x, 0.9));
+        return Flow.anim(Beats.moveGroup(dom.g, K.aside(dom.g), 0.9));
       })
       .then(function () {
         W.pane.show();

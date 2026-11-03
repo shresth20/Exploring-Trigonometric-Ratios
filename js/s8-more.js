@@ -2,17 +2,17 @@
  * s8-more.js -- Section 8: cosec, sec and cot
  * --------------------------------------------------------------------------
  * Storyboard pages 80-89. The table of sin, cos and tan is complete; three
- * more rows are added to it, one scene each, and each the same three pages:
+ * more rows are added to it, one scene each, and each the same one page:
  *
  *   Remember.  The new row joins the table, empty, lit with the row it is
- *     worked from, and its formula stands under the table: "Remember, cosec
- *     is the reciprocal of sine." Next.
- *   Your turn.  "Can you use the sine values to complete this new row?" A
+ *     worked from: "Remember, cosec is the reciprocal of sine." -- said,
+ *     with no formula box under the table and no Next after it.
+ *   Your turn.  "Use the sine values to complete the cosec row." A
  *     blank in each of its five cells, asked one at a time from 0° to
- *     90°, three values to choose from in each -- a list opening upward
- *     -- judged as it is picked: a right one kept and the next blank
- *     called, a wrong one struck off and emptied for another go, until
- *     the whole row is right.
+ *     90°, three values to choose from in each -- a list opening downward,
+ *     into the room the formula box used to take -- judged as it is
+ *     picked: a right one kept and the next blank called, a wrong one
+ *     struck off and emptied for another go, until the whole row is right.
  *   Right.  "That's right! Each cosec value is the reciprocal of the sine
  *     value." Next.
  *
@@ -127,17 +127,14 @@
           W.table.focus(s.from);
           return Flow.wait(SHORT);
         })
-        /* ---- remember: the row joins the table, and its formula ---- */
+        /* ---- remember: the row joins the table, and the line says what
+           it is worked from; the learner goes straight on to fill it ---- */
         .then(function () { return W.table.addRow(r); })
         .then(function () {
           W.table.focus(s.from.concat(r));
-          return Promise.all([
-            K.say(s.recall),
-            Flow.wait(SHORT).then(function () { return W.table.note(T(s.lhs), T(s.n), T(s.d)); })
-          ]);
+          return K.say(s.recall);
         })
         .then(function () { return Flow.wait(BEAT); })
-        .then(function () { return K.handOver(); })
         /* ---- your turn: the five blanks, each judged as it is picked ---- */
         .then(function () { return K.say(s.ask); })
         .then(function () {

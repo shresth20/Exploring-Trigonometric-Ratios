@@ -499,6 +499,16 @@ body {
    halves of the line are centred alike, so the live words land exactly on
    the ghost's rows. */
 .prompt__line .type { white-space: pre-wrap; text-align: center; }
+/* A line that has to wrap is broken into rows of about the same length,
+   so no row is left holding one word ("values." alone under a full row),
+   and the plate -- or the bubble, below -- closes round the shorter rows
+   (typer.js, fitWidth). Set on the wrapper as well as on the live line:
+   the wrapper lays out the hidden ghost the box is measured from, and
+   the two must break alike. A line of one row is not touched. */
+.prompt__line .type-wrap,
+.prompt__line .type,
+.bubble .type-wrap,
+.bubble .type { text-wrap: balance; }
 .prompt__line .type-wrap {
   flex: none;
   max-width: calc(var(--plate-max) - var(--plate-s) * 420);
@@ -896,12 +906,12 @@ body {
 
 /* ---- Next ---------------------------------------------------------------
    Anchored to the frame's bottom-right corner, which IS the board's
-   bottom-right corner, whether or not the board is there yet. The painted
-   key (next-btn.webp) is the whole button: no face or wall of its own, so a
-   press only sinks it (--sink, M.button3d). The button is the teal tile
-   alone -- 760px square at (234, 218) in the 1254px painting -- and the art
-   is hung over it at that offset, the slime and the painting's empty
-   margin spilling past the button's box without widening what it takes. */
+   bottom-right corner, whether or not the board is there yet. An orange
+   key standing on its wall (--edge, M.button3d), drawn as Restart is, with
+   a white arrow: warm on the teal swamp and on the grey causeway, where
+   the painted stone key had faded into both. A soft gold glow comes and
+   goes behind it (opacity only) while it waits to be pressed. Its size is
+   the one the pane is fitted round (W.pane, nextAt), unchanged. */
 .next-btn {
   --edge: 5px;
   --sink: 0px;
@@ -916,38 +926,57 @@ body {
   width: clamp(56px, 9.2vh, 94px);
   aspect-ratio: 1;
   padding: 0;
-  border: 0;
+  border: clamp(3px, .5vh, 4px) solid var(--text-outline);
   border-radius: 27%;
-  background: none;
-  filter: drop-shadow(0 5px 9px var(--shadow-soft));
+  background: linear-gradient(180deg, var(--key-face-top) 0%, var(--button-bg) 50%, var(--orange-border) 100%);
+  box-shadow:
+    inset 0 3px 0 color-mix(in srgb, var(--white) 35%, transparent),
+    0 var(--edge) 0 var(--horizon),
+    0 calc(var(--edge) + 1px) 2px var(--shadow-soft),
+    0 calc(var(--edge) + 5px) calc(var(--edge) * 2 + 16px) var(--shadow-deep);
   cursor: pointer;
   -webkit-tap-highlight-color: transparent;
   translate: 0 var(--sink);
+  isolation: isolate;
 
   opacity: 0;
   transition: filter .18s ease;
 }
-.next-btn__art {
+/* the glow behind it, breathing */
+.next-btn::before {
+  content: "";
   position: absolute;
-  left: -30.8%;     /* 234 / 760 */
-  top: -28.7%;      /* 218 / 760 */
-  width: 165%;      /* 1254 / 760 */
-  height: 165%;
-  max-width: none;
+  inset: -28%;
+  z-index: -1;
+  border-radius: 50%;
+  background: radial-gradient(closest-side, var(--glow-start) 0%, transparent 100%);
+  opacity: .55;
+  pointer-events: none;
+}
+.next-btn.is-3d:not([hidden])::before { animation: next-glow 1.8s ease-in-out .4s infinite; }
+@keyframes next-glow {
+  0%, 100% { opacity: .45; }
+  50%      { opacity: 1; }
+}
+.next-btn__icon {
+  width: 62%;
+  height: 62%;
   display: block;
   pointer-events: none;
-  user-select: none;
 }
 .next-btn[hidden] { display: none; }
 .next-btn:hover,
 .next-btn:focus-visible {
-  filter: drop-shadow(0 8px 13px var(--shadow-soft))
-          drop-shadow(0 0 10px var(--glow-start))
-          brightness(1.08);
+  filter: brightness(1.08);
   outline: none;
 }
+.next-btn:hover::before,
+.next-btn:focus-visible::before { animation-play-state: paused; opacity: 1; }
 .next-btn:focus-visible { outline: 3px solid var(--amber-fill); outline-offset: 3px; }
 .next-btn.is-3d { transition: filter .18s ease; }
+@media (prefers-reduced-motion: reduce) {
+  .next-btn.is-3d:not([hidden])::before { animation: none; }
+}
 
 /* ---- Restart ------------------------------------------------------------
    The end's one control, in Next's corner, clear of the tank: an orange

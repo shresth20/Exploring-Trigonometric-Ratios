@@ -44,6 +44,8 @@
   var VB_W = 1000, VB_H = 420;
   var CX = 500, CY = 255;
   var SHIFT = -250;
+  var MID_GAP = 12;         /* px a figure in the left half keeps off the middle */
+  var SHRINK_LEAST = 0.7;   /* ...and the smallest it is set to, to do so       */
   var SVG_NS = 'http://www.w3.org/2000/svg';
 
   function round2(n) { return Math.round(n * 100) / 100; }
@@ -71,14 +73,42 @@
     var cx = (stage.clientWidth * at - left) / s;
     var cy = (stage.clientHeight / 2 - top) / s + (CY - VB_H / 2);
     var bx = box.x + box.width / 2, by = box.y + box.height / 2;
-    if (k == null) k = 1;
+    /* A figure standing in the left half keeps clear of the middle of the
+       stage, where the pane's box begins, so the box is never laid over
+       its words. One too wide to be centred in its half -- a long side
+       name out to the right -- is slid left until its words end MID_GAP
+       short of the middle, never past the stage's own left edge; one too
+       wide for the half at all (a phone held sideways) is also set a
+       little smaller, about its own middle. A scale is handed back only
+       when the caller has not named one: smaller than 1 when it must be,
+       or 1 to give back the size a smaller board took. */
+    var auto = k == null, shrink = false;
+    if (auto) {
+      k = 1;
+      if (at < .5) {
+        var room = (stage.clientWidth * .5 - 2 * MID_GAP) / (box.width * s);
+        if (room < 1) { k = Math.max(SHRINK_LEAST, Math.floor(room * 100) / 100); shrink = true; }
+      }
+    }
     var o = origin || { x: bx, y: by };
-    return {
+    if (at < .5) {
+      var half = box.width * k / 2, gap = MID_GAP / s;
+      var most = (stage.clientWidth * .5 - left) / s - gap - half;
+      var least = -left / s + gap + half;
+      cx = Math.max(least, Math.min(cx, most));
+    }
+    var out = {
       x: round2(cx - o.x - (bx - o.x) * k),
       y: round2(cy - o.y - (by - o.y) * k),
       /* the largest scale at which it still fits its half, a margin spare */
       fit: round2(stage.clientWidth * .47 / (box.width * s))
     };
+    if (auto && (shrink || (global.gsap && global.gsap.getProperty(g, 'scale') !== 1))) {
+      out.scale = k;
+      out.svgOrigin = round2(o.x) + ' ' + round2(o.y);
+      out.smoothOrigin = false;
+    }
+    return out;
   }
   /* The box round every mark of a group that can be seen, in the group's
      own units: nothing faded out, empty, or a drag handle's halo. */
@@ -89,7 +119,11 @@
     var x0 = Infinity, y0 = Infinity, x1 = -Infinity, y1 = -Infinity;
     g.querySelectorAll('path, line, circle, ellipse, rect, polygon, polyline, text').forEach(function (e) {
       if (e.closest('[hidden], .grab, defs, mask, clipPath, marker')) return;
-      if (parseFloat(getComputedStyle(e).opacity) === 0) return;
+      /* the opacity it is set to, not the one a CSS transition is still
+         passing through: a word just brought in under a skip reads 0 for
+         a frame, and would be left out of the box it stands in */
+      var op = e.style.opacity !== '' ? e.style.opacity : getComputedStyle(e).opacity;
+      if (parseFloat(op) === 0) return;
       var b = e.getBBox();
       if (!b.width && !b.height) return;
       var m = own.multiply(e.getCTM());
@@ -381,12 +415,13 @@
   }
 
   /* ---- words for the ear only -------------------------------------------
-     A verdict or a word of praise -- "Correct!", "Not quite!", "Excellent!"
-     -- is heard, never shown: its recording plays and the header keeps the
-     line it holds. A line that opens with one ("That's correct! These are
-     ...") is played whole and shows only the pieces after it. Known by its
-     words, read from the locale, so it holds in any language. */
-  var HEARD_ONLY = ['fbNotQuite', 'fbCorrect', 'fbThatsCorrect', 'fbThatsRight', 'fbThereWeGo'];
+     A verdict or a word of praise -- "Correct!", "Not quite!", "Excellent!",
+     "Yes!" -- is heard, never shown: its recording plays and the header
+     keeps the line it holds. A line that opens with one ("That's correct!
+     These are ...", "Yes! Its other acute angle is 60°.") is played whole
+     and shows only the pieces after it. Known by its words, read from the
+     locale, so it holds in any language. */
+  var HEARD_ONLY = ['fbNotQuite', 'fbCorrect', 'fbThatsCorrect', 'fbThatsRight', 'fbThereWeGo', 'fbYes'];
   function heardOnly(text) {
     var s = plain(text).trim().toLowerCase();
     return HEARD_ONLY.concat(PRAISE).some(function (k) {

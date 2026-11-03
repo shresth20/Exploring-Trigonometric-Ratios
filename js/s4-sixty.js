@@ -123,9 +123,12 @@
         return yourTurn('tan', 60, 'wOpposite', 'wAdjacent', [T('valRoot3'), T('val1')], T('valRoot3'));
       })
       .then(function () { return Flow.wait(SHORT); })
+      /* "Correct!" has just been said for tan 60°: the confetti, and no
+         second word of praise after it */
       .then(function () {
         Object.keys(rows).forEach(function (k) { rows[k].el.classList.remove('is-done'); });
-        return K.praise();
+        K.celebrate();
+        return Flow.wait(Beats.ringing());
       })
       .then(function () { return Flow.wait(BEAT); })
       .then(function () { return K.handOver(); });
@@ -139,7 +142,8 @@
   function shrinkAside() {
     var big = S3.HALF, small = S3.HALF_SMALL;
     shape(small);
-    var to = K.aside(dom.g);
+    /* at its own size (k = 1): the shape itself is what is made smaller */
+    var to = K.aside(dom.g, .25, 1);
     shape(big);
     var p = { k: 0 };
     function at(v) { return { x: big[v].x + (small[v].x - big[v].x) * p.k, y: big[v].y + (small[v].y - big[v].y) * p.k }; }
@@ -210,10 +214,12 @@
     rows = {};
   }
   function stage(local) {
+    /* the table as the scenes before have filled it -- the 45° and 30°
+       columns -- whichever of this section's pages is played */
+    W.table.remember('sin', 45, T('valOneOverRoot2')); W.table.remember('cos', 45, T('valOneOverRoot2')); W.table.remember('tan', 45, T('val1'));
+    W.table.remember('sin', 30, T('valHalf')); W.table.remember('cos', 30, T('valRoot3Over2')); W.table.remember('tan', 30, T('valOneOverRoot3'));
     if (local <= 0) {
-      /* the table of the scene before, and the half under it */
-      W.table.remember('sin', 45, T('valOneOverRoot2')); W.table.remember('cos', 45, T('valOneOverRoot2')); W.table.remember('tan', 45, T('val1'));
-      W.table.remember('sin', 30, T('valHalf')); W.table.remember('cos', 30, T('valRoot3Over2')); W.table.remember('tan', 30, T('valOneOverRoot3'));
+      /* the half under the table of the scene before */
       triInstant();
       return;
     }
