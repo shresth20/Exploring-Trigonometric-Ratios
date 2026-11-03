@@ -453,9 +453,14 @@
   }
 
   /* When a phrase of a line is heard, in ms from the line's start. */
-  function wordAt(text, phrase) {
+  function wordAt(text, phrase, share) {
     var i = plain(text).indexOf(plain(phrase));
-    if (i < 0) return 0;
+    /* a phrase the line does not carry (onPhrase, in another language):
+       its moment is the same share of the way along this line */
+    if (i < 0) {
+      if (!(share >= 0)) return 0;
+      i = Math.floor(share * plain(text).length);
+    }
     var cues = cuesFor(text);
     if (!cues) return i * global.Typer.TYPE_MS;
     var cuts = global.Typer.wordCuts(plain(text));
@@ -494,13 +499,35 @@
     /* the phrase may open a piece, where it has been given a capital */
     var low = phrase.toLowerCase();
     var own = parts.filter(function (p) { return p.toLowerCase().indexOf(low) >= 0; })[0];
+    /* The phrase is in the default language's words. A line in another
+       language does not carry it: its moment is taken from where the
+       phrase falls in the default language's line, as a share of that
+       line's length -- and the piece it falls in, by the same share. */
+    var share = {};
+    if (!own && text.toLowerCase().indexOf(low) < 0 && global.I18n && global.I18n.tDefault) {
+      var base = global.I18n.tDefault(key);
+      var j = base.toLowerCase().indexOf(low);
+      if (j >= 0 && base.length) {
+        share[text] = j / base.length;
+        var pos = share[text] * text.length, from = 0;
+        for (var i = 0; i < parts.length; i++) {
+          var end = from + parts[i].length + 1;
+          if (pos < end || i === parts.length - 1) {
+            own = parts[i];
+            share[own] = Math.max(0, Math.min(1, (pos - from) / Math.max(1, own.length)));
+            break;
+          }
+          from = end;
+        }
+      }
+    }
     var cands = [text];
     if (own && own !== text) cands.push(own);
     if (own && own.indexOf(phrase) < 0) phrase = own.charAt(0) + phrase.slice(1);
     return Promise.race(cands.map(function (c) {
       return lineBegins(c).then(function (t0) {
         var p = c.indexOf(phrase) >= 0 ? phrase : phrase.toLowerCase();
-        return Flow.wait(t0 + wordAt(c, p) - performance.now());
+        return Flow.wait(t0 + wordAt(c, p, share[c]) - performance.now());
       });
     })).then(fn);
   }
@@ -619,8 +646,9 @@
   var PIECE_HOLD = 800;     /* ms a sentence is left up after it is said  */
   var CUT_LEAD = 60;        /* ms a stretch starts before its first word  */
 
-  /* A line cut into the pieces it is said in: at every full stop,
-     exclamation and question mark, and at a comma that joins two clauses
+  /* A line cut into the pieces it is said in: at every full stop (the
+     danda, ।, in Hindi and Odia), exclamation and question mark, and at a
+     comma that joins two clauses
      -- three words or more before it, and a clause starter after it (so,
      and, but, let's, the, a capital, ...) -- so a list ("the sine, cosine
      and tangent values") stays whole. Each piece is trimmed, loses a
@@ -629,6 +657,9 @@
   var CLAUSE = /^(?:(?:so|and|but|then|because|while|which|where|or|let’s|let's|we|we’ll|we'll|the|it|it’s|it's|you|you’ll|you'll|now|watch|this|that|these|those|our|a|an)\b|[A-Z])/;
   function tidy(s) {
     s = s.trim().replace(/,$/, '').trim();
+    /* a piece that opens with a ratio's symbol keeps it as written: "cos
+       30° ..." is a symbol, not a word to be given a capital */
+    if (/^(?:sin|cos|tan|cosec|sec|cot)\b/.test(s)) return s;
     return s.charAt(0).toUpperCase() + s.slice(1);
   }
   function wordsIn(s) { return (s.match(/\S+/g) || []).length; }
@@ -645,7 +676,7 @@
     return pieces;
   }
   function sentencesOf(text) {
-    var parts = text.match(/[^.!?]+[.!?]+\s*/g);
+    var parts = text.match(/[^.!?।]+[.!?।]+\s*/g);
     if (!parts || parts.join('') !== text) parts = [text];
     var out = [];
     parts.forEach(function (p) {

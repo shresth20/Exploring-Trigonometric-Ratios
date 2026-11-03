@@ -10,8 +10,9 @@
  *                                     is heard, from the clip's start
  *   I18n.applyStatic()             -> fills data-i18n / data-i18n-html /
  *                                     data-i18n-attr="title:key" in HTML
- * Language: ?lan=xx on the URL, else defaultLanguage. A language without
- * recordings speaks the default language's clips. English only for now.
+ * Language: ?lan=xx on the URL, else defaultLanguage (en, hi, mr, te, gu,
+ * od). A language without recordings speaks the default language's clips,
+ * untimed: its words are its own, so those clips' cues are not borrowed.
  * Served over http the JSON is fetched; from file:// it reads
  * locales/locales.js instead. Regenerate it after editing the JSON:
  *   (printf 'window.GAME_LOCALES='; cat locales/locales.json; echo ';') > locales/locales.js
@@ -30,7 +31,7 @@ var I18n = (function () {
   /* the file's own codes, and what <html lang> should say where they differ */
   var BCP47 = { od: 'or' };
   /* keys of the file that are not languages */
-  var META = { defaultLanguage: 1, languageLabels: 1, voiceOver: 1 };
+  var META = { defaultLanguage: 1, languageLabels: 1, supportedLanguages: 1, voiceOver: 1 };
 
   var _data = null;
   var _lang = 'en';
@@ -99,6 +100,7 @@ var I18n = (function () {
       Object.keys(data).forEach(function (code) {
         var val = data[code];
         if (code === 'defaultLanguage') { if (!out.defaultLanguage) out.defaultLanguage = val; return; }
+        if (code === 'supportedLanguages') { if (!out.supportedLanguages) out.supportedLanguages = val; return; }
         if (code === 'languageLabels') {
           out.languageLabels = out.languageLabels || {};
           Object.keys(val || {}).forEach(function (l) {
@@ -184,6 +186,12 @@ var I18n = (function () {
     return _sub(val, repl);
   }
   function has(key) { return _raw(key) !== undefined; }
+  /* tDefault(key): the line in the default language -- the one the game
+     was written in, whose words its timing is keyed to (pages.js onPhrase) */
+  function tDefault(key) {
+    var def = (_data && _data[_default()]) || {};
+    return typeof def[key] === 'string' ? def[key] : String(key);
+  }
   /* "16 {unitCm}" -> "16 cm": every {key} in the template is a lookup */
   function fmt(template) {
     return String(template).replace(/\{(\w+)\}/g, function (m, k) { return has(k) ? t(k) : m; });
@@ -257,7 +265,10 @@ var I18n = (function () {
      was recorded, and a word-for-word match can no longer be trusted.
      cues(key, text) counts the words of `text` instead of the key's. */
   function cues(key, text) {
-    var p = _pack();
+    /* the language's OWN recordings only: a language speaking the default
+       language's clips has words of its own, which those cues do not time */
+    var vo = (_data && _data.voiceOver) || {};
+    var p = vo[_lang];
     var list = p && p.cues && p.cues[key];
     if (!Array.isArray(list)) return null;
     var words = String(text != null ? text : t(key)).match(/\S+\s*/g) || [];
@@ -312,7 +323,7 @@ var I18n = (function () {
 
   return {
     load: load,
-    t: t, has: has, fmt: fmt, html: html, applyStatic: applyStatic,
+    t: t, tDefault: tDefault, has: has, fmt: fmt, html: html, applyStatic: applyStatic,
     hasVoice: hasVoice, voice: voice, say: say, stop: stop, preload: preload,
     voiced: voiced, cues: cues, clips: clips,
     getLang: getLang, getLanguages: getLanguages, setLang: setLang
