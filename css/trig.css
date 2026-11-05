@@ -213,6 +213,20 @@
      W.pane (js/widgets.js), 1 when unset */
 }
 .pane__body:has(> .facts) { --eq-room: clamp(2px, 1.5cqh, 9px); }
+/* Under the givens' line the equations stand as one block centred in the
+   box, still on one left edge of their own: a grid of three columns, the
+   givens across all three, the equations in the middle one -- as wide as
+   the widest of them -- with the space either side shared evenly. A row
+   or a value arriving that widens the block moves the rows across;
+   W.pane glides them there (slideRows, js/widgets.js). */
+.pane__body:has(> .facts) {
+  display: grid;
+  grid-template-columns: 1fr max-content 1fr;
+  align-content: center;
+  column-gap: 0;
+}
+.pane__body:has(> .facts) > .pane__row { grid-column: 1 / -1; }
+.pane__body:has(> .facts) > .pane__row.eq { grid-column: 2; justify-self: start; }
 /* The box round the working: whatever is worked on the pane -- a ratio
    found, a line of working -- is set apart on it, as a sum is boxed on a
    board. A dark slate pane laid over the swamp -- the header plate's

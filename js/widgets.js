@@ -180,12 +180,14 @@
         m.addedNodes.forEach(function (n) { if (n.nodeType === 1) colWatch.observe(n); });
       });
       settleRows(true);
+      slideRows(true);
       fitBox();
     }).observe(body, { childList: true });
   }
   function followColumn() {
     glideColumn();
     settleRows(false);
+    slideRows(true);
     fitBox();
   }
   function glideColumn() {
@@ -214,6 +216,30 @@
     var tl = M.timeline({ willChange: moved.map(function (m) { return m.el; }), willChangeValue: 'transform' });
     moved.forEach(function (m) {
       tl.fromTo(m.el, { y: '+=' + m.dy }, { y: 0, duration: M.dur(GLIDE), ease: GLIDE_EASE }, 0);
+    });
+  }
+  /* Under the givens' line the equations stand as one block centred in
+     the box (css/trig.css), so a row or a value arriving that widens the
+     block moves every equation across. Each glides there from where it
+     stood rather than jumping -- `x` only, which a row's own entrance
+     (rowIn: y, scale, opacity) never touches. A row not yet brought in
+     has nowhere it stood, so it just lands. */
+  function slideRows(glide) {
+    var body = dom().paneBody;
+    var on = !!body.querySelector(':scope > .facts');
+    var moved = [];
+    pane.rows().forEach(function (r) {
+      var left = r.offsetLeft;
+      if (on && glide && r.__left != null && r.__left !== left && !M.reducedMotion() &&
+          (parseFloat(r.style.opacity) || 0) > 0) {
+        moved.push({ el: r, dx: r.__left - left });
+      }
+      r.__left = left;
+    });
+    if (!moved.length) return;
+    var tl = M.timeline({ willChange: moved.map(function (m) { return m.el; }), willChangeValue: 'transform' });
+    moved.forEach(function (m) {
+      tl.fromTo(m.el, { x: '+=' + m.dx }, { x: 0, duration: M.dur(GLIDE), ease: GLIDE_EASE }, 0);
     });
   }
 
@@ -392,6 +418,7 @@
        the scale carries them there */
     colAt = body.childElementCount ? body.offsetLeft : null;
     settleRows(false);
+    slideRows(false);
     if (M.reducedMotion()) return;
     var s = (global.gsap.getProperty(body, 'scale') || 1) * from / to;
     var tl = M.timeline({ willChange: body, willChangeValue: 'transform' });
