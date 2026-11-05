@@ -23,7 +23,7 @@
  *   The table.  The 30° values go in, their column lit. Next. "Can we use this
  *     triangle for 60° too?" -- "Can we" lights the 60° column; with "this
  *     triangle" the table fades and the half comes back. "Yes! Its other
- *     acute angle is 60°." Next.
+ *     acute angle is 60°." -- and on into the 60° section, no Next.
  * ========================================================================== */
 (function (global) {
   'use strict';
@@ -639,7 +639,8 @@
         return K.speakBySentence('s3Yes60');
       })
       .then(function () { return Flow.wait(BEAT); })
-      .then(function () { return K.handOver(); });
+      /* no Next: the page turns itself into the 60° section */
+      .then(function () { return K.autoTurn(); });
   }
 
   /* The kept half, in the middle of the board, with its three lengths and

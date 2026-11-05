@@ -686,9 +686,10 @@
      comma that joins two clauses
      -- three words or more before it, and a clause starter after it (so,
      and, but, let's, the, a capital, ...) -- so a list ("the sine, cosine
-     and tangent values") stays whole. Each piece is trimmed, loses a
-     trailing comma, and begins with a capital, so it reads as a sentence
-     of its own. null for a line of one piece. */
+     and tangent values") stays whole. Each piece is trimmed, begins with
+     a capital, and a piece cut at a comma ends with a full stop (the
+     danda in a line that ends with one) in its place, so it reads as a
+     sentence of its own. null for a line of one piece. */
   var CLAUSE = /^(?:(?:so|and|but|then|because|while|which|where|or|let’s|let's|we|we’ll|we'll|the|it|it’s|it's|you|you’ll|you'll|now|watch|this|that|these|those|our|a|an)\b|[A-Z])/;
   function tidy(s) {
     s = s.trim().replace(/,$/, '').trim();
@@ -700,10 +701,11 @@
   function wordsIn(s) { return (s.match(/\S+/g) || []).length; }
   function clausesOf(p) {
     var pieces = [], from = 0, re = /,\s+/g, m;
+    var stop = /।\s*$/.test(p) ? '।' : '.';
     while ((m = re.exec(p)) !== null) {
       var left = p.slice(from, m.index), right = p.slice(m.index + m[0].length);
       if (wordsIn(left) >= 3 && CLAUSE.test(right)) {
-        pieces.push(left + ',');
+        pieces.push(left + stop);
         from = m.index + m[0].length;
       }
     }
