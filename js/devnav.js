@@ -38,6 +38,13 @@
 (function (global) {
   'use strict';
 
+  /* TEMPORARILY OFF: the bar mounts only when the URL asks for it --
+     ?dev=1, or a ?scene=N jump link. Delete this block to bring it back. */
+  try {
+    var q0 = new URLSearchParams(global.location.search);
+    if (!q0.has('dev') && !q0.has('scene')) return;
+  } catch (e) { return; }
+
   var STORE = 'devnav.pages';        /* the page counts, for this session */
 
   var ARROW = "data:image/svg+xml;utf8," +
